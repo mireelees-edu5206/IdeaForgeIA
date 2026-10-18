@@ -1,0 +1,31 @@
+# Secretos y variables de entorno (NUNCA subir claves reales)
+.env
+.env.*
+!.env.example
+**/backend/.env
+**/frontend/.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+
+# Editores / agentes / capturas pesadas locales
+.vscode/
+.idea/
+.devin/
+capturas_manual/
+documentacion/
+Thumbs.db
+.DS_Store

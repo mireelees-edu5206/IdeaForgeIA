@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "IdeaForge AI — Observatorio de ideas",
+  "short_name": "IdeaForge",
+  "description": "Investiga, evalúa y valida ideas de negocio con evidencia.",
+  "lang": "es-MX",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#fbfaff",
+  "theme_color": "#fbfaff",
+  "icons": [
+    {
+      "src": "/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
