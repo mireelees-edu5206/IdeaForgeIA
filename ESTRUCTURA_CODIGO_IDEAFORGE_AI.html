@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Estructura del Código y Guía de Archivos — IdeaForge AI</title>
+    <style>
+      body {
+        font-family: Arial, Helvetica, sans-serif;
+        line-height: 1.6;
+        color: #1f2937;
+        background: #f9fafb;
+        margin: 0;
+        padding: 24px;
+      }
+      main {
+        max-width: 1000px;
+        margin: 0 auto;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 10px;
+        padding: 28px 32px;
+      }
+      h1 {
+        margin-top: 0;
+        color: #4c1d95;
+        border-bottom: 2px solid #e5e7eb;
+        padding-bottom: 12px;
+      }
+      h2 {
+        color: #5b21b6;
+        margin-top: 32px;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 6px;
+      }
+      h3 {
+        color: #374151;
+        margin-top: 22px;
+      }
+      pre {
+        background: #111827;
+        color: #f9fafb;
+        padding: 16px;
+        border-radius: 8px;
+        overflow-x: auto;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      code {
+        font-family: Consolas, "Courier New", monospace;
+        background: #f3f4f6;
+        padding: 2px 5px;
+        border-radius: 4px;
+        font-size: 90%;
+      }
+      pre code {
+        background: transparent;
+        padding: 0;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 14px 0 22px;
+        font-size: 14px;
+      }
+      th,
+      td {
+        border: 1px solid #d1d5db;
+        padding: 9px 12px;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: #f3e8ff;
+        color: #4c1d95;
+      }
+      ul {
+        padding-left: 20px;
+      }
+      li {
+        margin-bottom: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Estructura Completa del Código y Función de cada Archivo — IdeaForge AI</h1>
+      <p>
+        Este documento describe el árbol completo de carpetas y archivos del proyecto
+        <strong>IdeaForge AI</strong> y explica para qué sirve cada archivo tanto del
+        <strong>Backend</strong> como del <strong>Frontend</strong> y los scripts
+        <strong>SQL</strong>.
+      </p>
+
+      <h2>1. Estructura General del Proyecto (Árbol de Directorios)</h2>
+      <pre><code>Proyecto_Integrador/
+├── ideaforge_database.sql                # Script SQL completo del esquema PostgreSQL 18
+├── ideaforge_tablas_estructura.sql       # Script DDL de creación de las 25 tablas, índices y triggers
+├── ideaforge_insercion_datos.sql         # Script DML con datos semilla de prueba para todas las tablas
+├── ideaforge_queries.sql                 # Catálogo de consultas SQL analíticas, JOINs y métricas
+├── AGENTS.md                             # Memoria técnica y reglas de arquitectura del proyecto
+├── PROMPT_MAESTRO.md                     # Especificación funcional original de las 17 fases
+├── MANUAL_TECNICO_IDEAFORGE_AI.pdf       # Manual técnico oficial compilado en PDF
+├── MANUAL_TECNICO_IDEAFORGE_AI.html      # Fuente HTML imprimible del manual técnico
+├── MANUAL_TECNICO_IDEAFORGE_AI.md        # Versión Markdown del manual técnico
+│
+├── backend/                              # API REST asíncrona (Python 3.13 + FastAPI + SQLAlchemy 2.0)
+│   ├── pyproject.toml                    # Dependencias de Python gestionadas con uv y configuración de Ruff/Pytest
+│   ├── alembic.ini                       # Configuración de Alembic para migraciones de PostgreSQL
+│   ├── alembic/
+│   │   ├── env.py                        # Entorno asíncrono de ejecución de migraciones
+│   │   └── versions/                     # Historial de migraciones del esquema de base de datos
+│   ├── app/
+│   │   ├── main.py                       # Punto de entrada FastAPI, ciclo de vida (lifespan), CORS y runners
+│   │   ├── api/
+│   │   │   ├── deps.py                   # Inyección de dependencias (DbSession, CurrentUser, AdminUser)
+│   │   │   └── v1/
+│   │   │       ├── health.py             # Endpoint de salud GET /api/v1/health
+│   │   │       └── router.py             # Enrutador maestro que monta todos los módulos en /api/v1
+│   │   ├── core/                         # Configuración, criptografía Argon2/JWT, errores, enums y rate limit
+│   │   ├── db/                           # Clase Base ORM, mixins UUIDv7/timestamps, sesión asyncpg y registro de modelos
+│   │   └── modules/                      # 12 módulos de dominio desacoplados
+│   │       ├── admin/                    # Panel de administración, telemetría de IA y gestión de usuarios
+│   │       ├── ai/                       # Abstracción AIProvider, Gemini, Ollama, búsqueda web pública y orquestador
+│   │       ├── analysis/                 # Los 4 cuadrantes: oportunidades, riesgos, hipótesis e información faltante
+│   │       ├── auth/                     # Registro, login, rotación de refresh tokens y cierre de sesión
+│   │       ├── chat/                     # Asistente conversacional con contexto del proyecto y dominio abierto
+│   │       ├── entities/                 # Normalización de entidades y gestión de competidores
+│   │       ├── findings/                 # Extracción de hallazgos, evidencias literales y cálculo de confianza
+│   │       ├── geo/                      # Geocodificación Nominatim y búsqueda radial de negocios en Overpass API
+│   │       ├── projects/                 # CRUD de proyectos, atributos de la idea y verificación de estructura
+│   │       ├── reports/                  # Generación en segundo plano de informes versionados de 10 secciones
+│   │       ├── research/                 # Orquestador de investigación web, preguntas, fuentes y normalización de URLs
+│   │       └── users/                    # Perfil del usuario autenticado y cambio de contraseña
+│   └── tests/                            # Suite de 175 pruebas automatizadas (unitarias, BD e integración API)
+│
+└── frontend/                             # Cliente Web SPA / PWA (React 19.3 + TypeScript 7 + Vite 8 + Tailwind v4)
+    ├── package.json                      # Dependencias exactas del cliente y scripts de compilación/pruebas
+    ├── vite.config.ts                    # Configuración de Vite, plugin Tailwind v4 y proxy /api -> :8000
+    ├── index.html                        # Documento raíz HTML5, fuentes tipográficas y arranque del tema
+    ├── public/
+    │   ├── manifest.webmanifest          # Manifiesto de instalación de la Aplicación Web Progresiva (PWA)
+    │   ├── service-worker.js             # Service Worker con caché del app-shell estático sin cachear /api
+    │   └── offline.html                  # Pantalla de respaldo cuando el dispositivo pierde conexión
+    └── src/
+        ├── main.tsx                      # Punto de montaje de React 19 y registro del Service Worker
+        ├── app/                          # Proveedores globales (QueryClient, AuthProvider) y árbol de rutas
+        ├── components/
+        │   ├── layout/                   # Estructura visual, barra superior/inferior, fondo WebGL 3D e instalación PWA
+        │   └── ui/                       # Sistema de diseño: paneles de cristal, botones, insignias, campos y diálogos
+        ├── features/                     # 11 módulos funcionales del cliente
+        │   ├── admin/                    # Vista de administrador (/admin), métricas y control de cuentas
+        │   ├── analysis/                 # Pestaña de análisis de 4 cuadrantes, tarjetas y formularios
+        │   ├── auth/                     # Contexto de sesión, guardianes de ruta y pantallas de login/registro
+        │   ├── chat/                     # Pestaña del asistente conversacional con historial y citas
+        │   ├── dashboard/                # Panel principal con el Sistema Orbital del Portafolio
+        │   ├── findings/                 # Pestañas de Hallazgos y Competidores con constelación orbital
+        │   ├── geo/                      # Explorador geográfico y mapa interactivo Leaflet
+        │   ├── projects/                 # Portafolio, creación, cabecera de 8 etapas y estructuración de la idea
+        │   ├── reports/                  # Pestaña de informes versionados con descarga Markdown e impresión PDF
+        │   ├── research/                 # Pestañas de Investigación y Fuentes con resaltado de citas literales
+        │   └── settings/                 # Pantalla de configuración de cuenta, tema claro/oscuro y sesión
+        ├── lib/                          # Cliente HTTP con rotación de token, almacenamiento, fechas y escena 3D
+        ├── pages/                        # Pantallas transversales de error de ruta y 404
+        ├── styles/index.css              # Tokens del tema, glassmorphism, modo claro/oscuro y estilos de impresión
+        └── test/                         # Utilidades de pruebas para Vitest + Testing Library y mocks de fetch</code></pre>
+
+      <h2>2. Para qué sirve cada archivo del Backend (<code>backend/</code>)</h2>
+
+      <h3>2.1 Raíz, Migraciones y Punto de Entrada</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Archivo</th>
+            <th>Para qué sirve</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>backend/alembic/env.py</code></td>
+            <td>Conecta Alembic con el motor asíncrono <code>asyncpg</code> y el <code>Base.metadata</code> para ejecutar migraciones o comparar el esquema contra los modelos.</td>
+          </tr>
+          <tr>
+            <td><code>backend/alembic/versions/20260923_a1b3ade021f1_initial_schema.py</code></td>
+            <td>Primera migración: crea las extensiones <code>citext</code> y <code>pg_trgm</code>, la función <code>set_updated_at()</code> y las 25 tablas del sistema con sus restricciones <code>CHECK</code>, índices y triggers.</td>
+          </tr>
+          <tr>
+            <td><code>backend/alembic/versions/20261014_95f14ef1a15d_add_ollama_provider_and_ai_cost.py</code></td>
+            <td>Segunda migración: incorpora el proveedor <code>'ollama'</code> en las restricciones <code>CHECK</code> y añade la columna <code>estimated_cost_usd</code> en <code>ai_api_logs</code>.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/main.py</code></td>
+            <td>Crea la instancia <code>FastAPI</code>, inicializa el motor de base de datos, el proveedor de IA, el proveedor geográfico y los ejecutores en segundo plano (<code>ResearchOrchestrator</code>, <code>AnalysisRunner</code>, <code>ReportRunner</code>), y recupera corridas interrumpidas al arrancar.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/api/deps.py</code></td>
+            <td>Define las dependencias reutilizables en los endpoints: <code>DbSession</code> (sesión SQLAlchemy), <code>AppSettings</code>, <code>CurrentUser</code> (valida el JWT Bearer) y <code>AdminUser</code> (exige <code>role == 'admin'</code>).</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/api/v1/health.py</code></td>
+            <td>Expone <code>GET /api/v1/health</code> para comprobar que el servidor está activo.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/api/v1/router.py</code></td>
+            <td>Une todos los routers de los módulos bajo el prefijo <code>/api/v1</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>2.2 Núcleo Transversal (<code>backend/app/core/</code> y <code>backend/app/db/</code>)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Archivo</th>
+            <th>Para qué sirve</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>backend/app/core/config.py</code></td>
+            <td>Carga y valida las variables de entorno (<code>.env</code>) mediante <code>pydantic-settings</code> (URLs de PostgreSQL, clave JWT, configuración de Gemini, Ollama, timeouts y límites).</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/core/enums.py</code></td>
+            <td>Define enumeraciones compartidas en todo el dominio (<code>RecordOrigin</code>, <code>ReviewStatus</code>, <code>Level</code>, <code>AIProviderName</code>).</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/core/errors.py</code></td>
+            <td>Define las excepciones de dominio (<code>NotFoundError</code>, <code>ConflictError</code>, <code>ForbiddenError</code>, <code>AuthenticationError</code>, <code>RateLimitError</code>) y los manejadores globales que devuelven siempre <code>{"error": {"code", "message", "details?"}}</code>.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/core/logging.py</code></td>
+            <td>Configura el formato uniforme de bitácoras de consola del servidor.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/core/rate_limit.py</code></td>
+            <td>Implementa <code>LoginRateLimiter</code> en memoria para bloquear intentos repetidos de inicio de sesión fallidos por correo o dirección IP.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/core/schemas.py</code></td>
+            <td>Proporciona clases base Pydantic (<code>AppModel</code>, <code>PatchModel</code> que prohíbe <code>null</code> en campos no limpiables, y paginación genérica <code>Page[T]</code>).</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/core/security.py</code></td>
+            <td>Ejecuta el hash y verificación de contraseñas con <strong>Argon2id</strong> en un <em>threadpool</em>, emite y valida tokens JWT <code>HS256</code> y calcula el hash <code>SHA-256</code> de los <em>refresh tokens</em>.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/db/base.py</code></td>
+            <td>Define la clase declarativa <code>Base</code>, claves primarias <code>uuidv7()</code>, mixins de <code>created_at</code>/<code>updated_at</code>, columnas <code>str_enum</code> (<code>VARCHAR + CHECK</code>) y claves foráneas compuestas <code>research_run_fk</code>.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/db/models.py</code></td>
+            <td>Importa todos los modelos ORM para registrarlos en <code>Base.metadata</code>.</td>
+          </tr>
+          <tr>
+            <td><code>backend/app/db/session.py</code></td>
+            <td>Construye el <code>AsyncEngine</code> y el <code>async_sessionmaker</code> de SQLAlchemy sobre <code>asyncpg</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>2.3 Módulos de Dominio del Backend (<code>backend/app/modules/</code>)</h3>
+      <ul>
+        <li><strong><code>auth/*</code>:</strong> Modelo <code>RefreshToken</code> (<code>models.py</code>), consultas de tokens (<code>repository.py</code>), esquemas de acceso (<code>schemas.py</code>), servicio de login/registro y rotación de sesiones con detección de reúso (<code>service.py</code>) y endpoints <code>/auth/*</code> (<code>router.py</code>).</li>
+        <li><strong><code>users/*</code>:</strong> Modelo <code>User</code> y roles <code>user</code>/<code>admin</code> (<code>models.py</code>), repositorio por correo o ID (<code>repository.py</code>), esquemas de perfil (<code>schemas.py</code>), servicio de actualización de cuenta/contraseña (<code>service.py</code>) y endpoints <code>/users/me</code> (<code>router.py</code>).</li>
+        <li><strong><code>projects/*</code>:</strong> Modelos <code>Project</code> e <code>IdeaAttribute</code> (<code>models.py</code>), consultas paginadas (<code>repository.py</code>), contratos Pydantic (<code>schemas.py</code>), verificación de los 3 atributos obligatorios en <code>check_structure()</code> y propiedad en <code>get_owned_project()</code> (<code>service.py</code>), y endpoints <code>/projects/*</code> (<code>router.py</code>).</li>
+        <li><strong><code>ai/*</code>:</strong> Tabla de auditoría <code>AIApiLog</code> (<code>models.py</code>), tipos neutrales (<code>types.py</code>), errores de proveedor (<code>errors.py</code>), medición de latencia/tokens (<code>calls.py</code>), fábrica de proveedores (<code>factory.py</code>), orquestador con fallback (<code>orchestrator.py</code>) y adaptadores en <code>providers/</code> (<code>base.py</code>, <code>http.py</code>, <code>gemini.py</code>, <code>ollama.py</code>, <code>web_search.py</code> con DuckDuckGo + Wikipedia ES, y <code>fake.py</code>).</li>
+        <li><strong><code>research/*</code>:</strong> Modelos <code>ResearchRun</code>, <code>ResearchQuery</code>, <code>Source</code> y <code>ResearchQuerySource</code> (<code>models.py</code>), normalización de URLs canónicas (<code>urls.py</code>), prompts versionados (<code>prompts.py</code>), orquestador asíncrono paralelo (<code>orchestrator.py</code>), repositorio, servicio y endpoints <code>/research-runs</code> y <code>/sources</code>.</li>
+        <li><strong><code>findings/*</code> y <code>entities/*</code>:</strong> Modelos de evidencias, hallazgos, entidades y competidores; regla epistémica de confianza <code>cap_confidence()</code> (<code>findings/confidence.py</code>); extracción validada que descarta hallazgos sin soporte (<code>findings/extraction.py</code>); normalización de nombres societarios (<code>entities/normalize.py</code>); y endpoints CRUD/revisión para hallazgos y competidores.</li>
+        <li><strong><code>analysis/*</code>:</strong> Modelos, generación con IA (<code>generation.py</code>), ejecutor en segundo plano (<code>runner.py</code>), servicio y endpoints para los 4 cuadrantes: Oportunidades, Riesgos, Hipótesis de validación e Información faltante.</li>
+        <li><strong><code>chat/*</code>:</strong> Reconstrucción del contexto del proyecto (<code>context.py</code>), prompt <code>chat.v7</code> capaz de responder dudas del proyecto o preguntas abiertas/financieras (<code>prompts.py</code>), servicio y endpoint <code>POST /projects/{id}/chat</code>.</li>
+        <li><strong><code>reports/*</code>:</strong> Modelos <code>Report</code> y <code>ReportSection</code>, redactor de las 10 secciones con validación de referencias <code>[H#]</code>, <code>[E#]</code> y <code>[S#]</code> (<code>generation.py</code>), ejecutor en segundo plano (<code>runner.py</code>) y endpoints <code>/reports</code>.</li>
+        <li><strong><code>geo/*</code>:</strong> Interfaz <code>GeoProvider</code> (<code>providers/base.py</code>), adaptador <code>OpenStreetMapGeoProvider</code> con Nominatim y Overpass API limitados y cacheados (<code>providers/openstreetmap.py</code>), servicio y endpoints <code>/geo/geocode</code> y <code>/projects/{id}/geo/places</code>.</li>
+        <li><strong><code>admin/*</code>:</strong> Esquemas, servicio de métricas agregadas sobre <code>ai_api_logs</code> y gestión de cuentas con revocación de sesiones (<code>service.py</code>), y endpoints protegidos con <code>AdminUser</code> (<code>/admin/overview</code>, <code>/admin/users</code>).</li>
+      </ul>
+
+      <h2>3. Para qué sirve cada archivo del Frontend (<code>frontend/</code>)</h2>
+
+      <h3>3.1 Arranque, Configuración y Librerías Base (<code>src/app/</code> y <code>src/lib/</code>)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Archivo</th>
+            <th>Para qué sirve</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>frontend/src/main.tsx</code></td>
+            <td>Monta la aplicación React en <code>#root</code> y registra el Service Worker en producción.</td>
+          </tr>
+          <tr>
+            <td><code>frontend/src/app/App.tsx</code></td>
+            <td>Configura los proveedores globales: <code>QueryClientProvider</code>, <code>AuthProvider</code> y <code>RouterProvider</code>.</td>
+          </tr>
+          <tr>
+            <td><code>frontend/src/app/router.tsx</code></td>
+            <td>Declara el árbol de rutas de la aplicación y aplica los guardianes <code>GuestOnly</code>, <code>RequireAuth</code> y <code>RequireAdmin</code>.</td>
+          </tr>
+          <tr>
+            <td><code>frontend/src/lib/apiClient.ts</code></td>
+            <td>Cliente HTTP centralizado: adjunta el token Bearer, traduce errores a <code>ApiError</code> y serializa la renovación de sesión (<code>/auth/refresh</code>) entre pestañas usando <code>navigator.locks</code>.</td>
+          </tr>
+          <tr>
+            <td><code>frontend/src/lib/tokenStorage.ts</code></td>
+            <td>Lee, guarda y limpia los tokens de acceso y refresco en <code>localStorage</code>.</td>
+          </tr>
+          <tr>
+            <td><code>frontend/src/lib/queryClient.ts</code></td>
+            <td>Configura la instancia global de TanStack Query.</td>
+          </tr>
+          <tr>
+            <td><code>frontend/src/lib/forgeSceneStore.ts</code></td>
+            <td>Almacén reactivo ligero que comunica el estado de la pantalla actual al lienzo 3D (<code>ForgeCanvas</code>).</td>
+          </tr>
+          <tr>
+            <td><code>frontend/src/lib/formatDate.ts</code></td>
+            <td>Formatea fechas ISO en español (<code>es-MX</code>) y valida enlaces externos seguros (<code>safeHref</code>).</td>
+          </tr>
+          <tr>
+            <td><code>frontend/src/lib/formErrors.ts</code></td>
+            <td>Extrae mensajes de error por campo devueltos por el backend para mostrarlos en formularios.</td>
+          </tr>
+          <tr>
+            <td><code>frontend/src/lib/cn.ts</code></td>
+            <td>Utilidad para concatenar clases condicionales de Tailwind CSS.</td>
+          </tr>
+          <tr>
+            <td><code>frontend/src/lib/useDocumentTitle.ts</code></td>
+            <td>Hook que actualiza dinámicamente el <code>&lt;title&gt;</code> de la pestaña del navegador.</td>
+          </tr>
+          <tr>
+            <td><code>frontend/src/styles/index.css</code></td>
+            <td>Define los tokens de diseño (<code>@theme</code>), el modo claro y modo oscuro, las clases de glassmorphism (<code>.glass</code>, <code>.stage-3d</code>) y las reglas de impresión <code>@media print</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>3.2 Layout Global y Sistema de Diseño (<code>src/components/</code>)</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Archivo</th>
+            <th>Para qué sirve</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>components/layout/AppShell.tsx</code></td>
+            <td>Contenedor principal de las vistas privadas: monta el fondo cósmico, la barra superior/inferior y el <code>&lt;Outlet /&gt;</code>.</td>
+          </tr>
+          <tr>
+            <td><code>components/layout/AuthLayout.tsx</code></td>
+            <td>Maquetación de dos columnas para las pantallas de inicio de sesión y registro.</td>
+          </tr>
+          <tr>
+            <td><code>components/layout/Backdrop.tsx</code></td>
+            <td>Capa de atmósfera fija que carga <code>ForgeCanvas</code> de forma diferida (<code>React.lazy</code>).</td>
+          </tr>
+          <tr>
+            <td><code>components/layout/ForgeCanvas.tsx</code></td>
+            <td>Escena espacial 3D en Three.js con 3 400 estrellas, nebulosas, 2 galaxias espirales, 2 cinturones de asteroides y 2 cometas.</td>
+          </tr>
+          <tr>
+            <td><code>components/layout/Topbar.tsx</code></td>
+            <td>Barra de navegación superior en escritorio e inferior en móvil; muestra el enlace <strong>Admin</strong> si <code>user.role === 'admin'</code>.</td>
+          </tr>
+          <tr>
+            <td><code>components/layout/InstallPwaCard.tsx</code></td>
+            <td>Tarjeta que captura el evento <code>beforeinstallprompt</code> para instalar la aplicación como PWA.</td>
+          </tr>
+          <tr>
+            <td><code>components/ui/*</code></td>
+            <td>Primitivas visuales reutilizables: <code>GlassPanel.tsx</code>, <code>Button.tsx</code>, <code>LinkButton.tsx</code>, <code>Badge.tsx</code>, <code>Alert.tsx</code>, <code>ConfirmDialog.tsx</code>, <code>TextField.tsx</code>, <code>TextArea.tsx</code>, <code>Select.tsx</code>, <code>Spinner.tsx</code>, <code>ThemeToggle.tsx</code>, <code>Logo.tsx</code> y <code>ForgeGlyphs.tsx</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>3.3 Módulos Funcionales del Cliente (<code>src/features/</code>)</h3>
+      <ul>
+        <li><strong><code>features/auth/*</code>:</strong> Contexto de sesión (<code>AuthProvider.tsx</code>, <code>AuthContext.ts</code>), guardianes de rutas (<code>guards.tsx</code>) y pantallas <code>LoginPage.tsx</code> y <code>RegisterPage.tsx</code>.</li>
+        <li><strong><code>features/dashboard/DashboardPage.tsx</code>:</strong> Panel principal con el conducto de 4 etapas y el Sistema Orbital del Portafolio.</li>
+        <li><strong><code>features/projects/*</code>:</strong> Portafolio filtrable (<code>ProjectsPage.tsx</code>), creación de proyecto (<code>NewProjectPage.tsx</code>), cabecera de 8 etapas (<code>ProjectDetailPage.tsx</code>) y estructuración de atributos de la idea (<code>ProjectIdeaTab.tsx</code>, <code>IdeaSection.tsx</code>, <code>AttributeSection.tsx</code>, <code>StructurePanel.tsx</code>).</li>
+        <li><strong><code>features/research/*</code>:</strong> Pestaña de investigación web (<code>ResearchTab.tsx</code>), estado de ejecución (<code>RunStatusCard.tsx</code>), tarjetas de preguntas (<code>QueryCard.tsx</code>), resaltado de citas literales (<code>CitedText.tsx</code>) y catálogo de fuentes por dominio (<code>SourcesTab.tsx</code>).</li>
+        <li><strong><code>features/findings/*</code>:</strong> Pestaña de hallazgos (<code>FindingsTab.tsx</code>, <code>FindingCard.tsx</code>, <code>FindingForm.tsx</code>) y pestaña de competidores con mapa orbital (<code>CompetitorsTab.tsx</code>, <code>CompetitorCard.tsx</code>, <code>CompetitorForm.tsx</code>).</li>
+        <li><strong><code>features/geo/*</code>:</strong> Explorador geográfico (<code>GeoExplorer.tsx</code>) y mapa interactivo con Leaflet y OpenStreetMap (<code>GeoMap.tsx</code>).</li>
+        <li><strong><code>features/analysis/*</code>:</strong> Pestaña de los 4 cuadrantes de análisis (<code>AnalysisTab.tsx</code>), tarjetas con trazabilidad (<code>AnalysisItemCard.tsx</code>) y formularios (<code>AnalysisItemForm.tsx</code>).</li>
+        <li><strong><code>features/chat/ChatTab.tsx</code>:</strong> Asistente conversacional del proyecto con historial y referencias verificables.</li>
+        <li><strong><code>features/reports/ReportsTab.tsx</code>:</strong> Generador y lector de informes versionados con descarga Markdown e impresión a PDF.</li>
+        <li><strong><code>features/admin/AdminPage.tsx</code>:</strong> Panel de administración con métricas globales, telemetría comparativa de Gemini vs Ollama y gestión de usuarios.</li>
+        <li><strong><code>features/settings/SettingsPage.tsx</code>:</strong> Configuración de cuenta, selector de tema claro/oscuro, instalación PWA y cierre de sesión.</li>
+      </ul>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,21 @@
+import { CrucibleGlyph } from "./ForgeGlyphs";
+
+export function Logo({ compact = false }: { compact?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-2.5">
+      <span className="neo-raised grid size-9 place-items-center rounded-xl ring-1 ring-accent-cyan/30">
+        <CrucibleGlyph className="size-5 text-accent-cyan" />
+      </span>
+      {!compact && (
+        <span className="flex flex-col leading-none">
+          <span className="font-display text-lg font-bold tracking-tight">
+            IdeaForge <span className="text-gradient">AI</span>
+          </span>
+          <span className="font-mono-tech mt-0.5 text-[10px] font-semibold tracking-widest text-slate-400 uppercase">
+            Observatorio · IA
+          </span>
+        </span>
+      )}
+    </span>
+  );
+}

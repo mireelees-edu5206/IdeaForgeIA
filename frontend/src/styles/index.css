@@ -1,0 +1,410 @@
+@import "tailwindcss";
+
+/* ─────────────── Tokens del Observatorio Cósmico (Blanco Marfil + Abismo Amatista) ─────────────── */
+@theme {
+  --font-display: "Syne", "Fraunces", Georgia, serif;
+  --font-sans: "Plus Jakarta Sans", "Segoe UI Variable", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+
+  /* Superficies base */
+  --color-night-950: #fbfaff;
+  --color-night-900: #f3effc;
+  --color-night-800: #ffffff;
+  --color-night-700: #ebe4fb;
+
+  /* Paleta de marca: Violeta Imperial + Magenta Nebulosa */
+  --color-brand-ember: #6d28d9;
+  --color-brand-copper: #a21caf;
+  --color-brand-chrome: #140a2a;
+
+  --color-accent-cyan: #6d28d9;
+  --color-accent-violet: #a21caf;
+
+  /* Los 5 colores semánticos del dominio */
+  --color-kind-data: #0284c7;
+  --color-kind-finding: #047857;
+  --color-kind-evidence: #4d7c0f;
+  --color-kind-analysis: #7e22ce;
+  --color-kind-hypothesis: #b45309;
+  --color-kind-uncertain: #5b4b73;
+
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-fade-up: fade-up 0.45s var(--ease-spring);
+  --animate-jelly: jelly 0.55s ease-in-out;
+  --animate-forge-pulse: forge-pulse 2.6s ease-in-out infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      translate: 0 12px;
+    }
+  }
+
+  @keyframes jelly {
+    0%,
+    100% {
+      transform: scale3d(1, 1, 1);
+    }
+    30% {
+      transform: scale3d(1.04, 0.968, 1);
+    }
+    50% {
+      transform: scale3d(0.98, 1.02, 1);
+    }
+    70% {
+      transform: scale3d(1.015, 0.99, 1);
+    }
+  }
+
+  @keyframes forge-pulse {
+    0%,
+    100% {
+      opacity: 0.65;
+      transform: scale(0.98);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.04);
+    }
+  }
+}
+
+:root {
+  color-scheme: light;
+  --surface-canvas: #faf8ff;
+  --surface-elevated: rgb(250 246 255 / 0.56);
+  --surface-elevated-strong: rgb(248 243 255 / 0.66);
+  --surface-raised-start: rgb(255 255 255 / 0.72);
+  --surface-raised-end: rgb(242 235 254 / 0.62);
+  --surface-inset: rgb(238 231 252 / 0.62);
+  --border-subtle: rgb(109 40 217 / 0.20);
+  --border-strong: rgb(109 40 217 / 0.46);
+  --border-highlight: rgb(255 255 255 / 0.68);
+
+  /* Sombras limpias y nítidas en modo blanco (sin ensuciar el fondo) */
+  --shadow-ambient:
+    0 24px 56px -24px rgb(46 16 101 / 0.11),
+    0 8px 20px -10px rgb(109 40 217 / 0.08),
+    inset 0 1px 0 rgb(255 255 255 / 0.98);
+  --shadow-raised:
+    0 10px 24px -10px rgb(46 16 101 / 0.11),
+    0 2px 6px -1px rgb(46 16 101 / 0.05),
+    inset 0 1px 0 rgb(255 255 255 / 1);
+  --shadow-inset:
+    inset 0 2px 5px rgb(46 16 101 / 0.07),
+    inset 0 1px 0 rgb(255 255 255 / 0.8);
+
+  --grid-line: rgb(109 40 217 / 0.045);
+  --orb-primary: rgb(139 92 246 / 0.1);
+  --orb-secondary: rgb(217 70 239 / 0.08);
+  --orb-tertiary: rgb(99 102 241 / 0.07);
+
+  --color-slate-50: #110826;
+  --color-slate-100: #170e2c;
+  --color-slate-200: #291a4a;
+  --color-slate-300: #46336e;
+  --color-slate-400: #665191;
+  --color-slate-500: #826dad;
+  --color-emerald-100: #065f46;
+  --color-emerald-200: #047857;
+  --color-emerald-300: #059669;
+  --color-sky-100: #075985;
+  --color-sky-200: #0369a1;
+  --color-amber-100: #92400e;
+  --color-amber-200: #b45309;
+  --color-orange-200: #c2410c;
+  --color-rose-100: #9f1239;
+  --color-rose-200: #be123c;
+  --color-rose-300: #e11d48;
+  --color-violet-200: #6d28d9;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-night-950: #06030f;
+  --color-night-900: #0d0720;
+  --color-night-800: #150c30;
+  --color-night-700: #22144a;
+
+  --color-brand-ember: #c084fc;
+  --color-brand-copper: #e879f9;
+  --color-brand-chrome: #f5f0ff;
+
+  --color-accent-cyan: #c084fc;
+  --color-accent-violet: #e879f9;
+
+  --color-kind-data: #38bdf8;
+  --color-kind-finding: #34d399;
+  --color-kind-evidence: #a3e635;
+  --color-kind-analysis: #d8b4fe;
+  --color-kind-hypothesis: #fbbf24;
+  --color-kind-uncertain: #b39ddb;
+
+  --surface-canvas: #06030f;
+  --surface-elevated: rgb(18 9 40 / 0.46);
+  --surface-elevated-strong: rgb(24 13 52 / 0.56);
+  --surface-raised-start: rgb(42 23 88 / 0.58);
+  --surface-raised-end: rgb(18 9 41 / 0.46);
+  --surface-inset: rgb(10 5 24 / 0.54);
+  --border-subtle: rgb(216 180 254 / 0.24);
+  --border-strong: rgb(192 132 252 / 0.58);
+  --border-highlight: rgb(245 208 254 / 0.16);
+
+  --shadow-ambient:
+    0 32px 76px -26px rgb(0 0 0 / 0.85),
+    0 14px 36px -16px rgb(168 85 247 / 0.28),
+    0 2px 6px rgb(0 0 0 / 0.55),
+    inset 0 1px 0 rgb(233 213 255 / 0.12);
+  --shadow-raised:
+    10px 14px 28px rgb(0 0 0 / 0.7),
+    -4px -4px 16px rgb(216 180 254 / 0.05),
+    0 2px 5px rgb(0 0 0 / 0.5),
+    inset 0 1px 0 rgb(233 213 255 / 0.12);
+  --shadow-inset:
+    inset 4px 5px 12px rgb(0 0 0 / 0.76),
+    inset -3px -3px 8px rgb(216 180 254 / 0.045);
+
+  --grid-line: rgb(216 180 254 / 0.065);
+  --orb-primary: rgb(168 85 247 / 0.26);
+  --orb-secondary: rgb(232 121 249 / 0.22);
+  --orb-tertiary: rgb(99 102 241 / 0.18);
+
+  --color-slate-50: #fbf8ff;
+  --color-slate-100: #f3ecff;
+  --color-slate-200: #e4d7ff;
+  --color-slate-300: #cbb8f5;
+  --color-slate-400: #a48dd4;
+  --color-slate-500: #7c66ad;
+  --color-emerald-100: #d1fae5;
+  --color-emerald-200: #a7f3d0;
+  --color-emerald-300: #6ee7b7;
+  --color-sky-100: #e0f2fe;
+  --color-sky-200: #bae6fd;
+  --color-amber-100: #fef3c7;
+  --color-amber-200: #fde68a;
+  --color-orange-200: #fed7aa;
+  --color-rose-100: #ffe4e6;
+  --color-rose-200: #fecdd3;
+  --color-rose-300: #fda4af;
+  --color-violet-200: #e9d5ff;
+}
+
+@layer base {
+  html,
+  body {
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  body {
+    background-color: var(--surface-canvas);
+    background-image:
+      radial-gradient(circle at 12% 6%, var(--orb-primary), transparent 32%),
+      radial-gradient(circle at 88% 12%, var(--orb-secondary), transparent 30%),
+      radial-gradient(circle at 52% 94%, var(--orb-tertiary), transparent 36%);
+    @apply min-h-dvh font-sans text-slate-100 antialiased selection:bg-accent-cyan/20;
+  }
+
+  h1,
+  h2 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+  }
+
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent-cyan;
+  }
+
+  option {
+    background-color: var(--color-night-800);
+    color: var(--color-slate-100);
+  }
+}
+
+/* ─────────────── Materiales y elevaciones ─────────────── */
+
+@utility glass {
+  position: relative;
+  background:
+    linear-gradient(145deg, var(--border-highlight), transparent 42%),
+    var(--surface-elevated);
+  border: 1px solid var(--border-subtle);
+  -webkit-backdrop-filter: blur(12px) saturate(145%);
+  backdrop-filter: blur(12px) saturate(145%);
+  box-shadow: var(--shadow-ambient);
+}
+
+@utility neo-raised {
+  background: linear-gradient(145deg, var(--surface-raised-start), var(--surface-raised-end));
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-raised);
+}
+
+@utility neo-inset {
+  background-color: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-inset);
+}
+
+@utility stage-3d {
+  position: relative;
+  background:
+    radial-gradient(
+      520px circle at var(--spotlight-x, 82%) var(--spotlight-y, 18%),
+      var(--orb-primary),
+      transparent 55%
+    ),
+    radial-gradient(circle at 14% 88%, var(--orb-secondary), transparent 48%),
+    linear-gradient(145deg, var(--border-highlight), transparent 38%),
+    var(--surface-elevated-strong);
+  border: 1px solid var(--border-subtle);
+  -webkit-backdrop-filter: blur(15px) saturate(150%);
+  backdrop-filter: blur(15px) saturate(150%);
+  box-shadow: var(--shadow-ambient);
+}
+
+@utility tilt-3d {
+  transition:
+    transform 260ms var(--ease-spring),
+    box-shadow 260ms ease,
+    border-color 220ms ease;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--border-strong);
+    transform: translateY(-3px);
+  }
+}
+
+@utility fog-uncertain {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      color-mix(in oklab, var(--color-kind-uncertain) 7%, transparent) 0 8px,
+      transparent 8px 16px
+    ),
+    var(--surface-inset);
+  border: 1px dashed color-mix(in oklab, var(--color-kind-hypothesis) 48%, transparent);
+}
+
+@utility filament-line {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-brand-ember),
+    var(--color-brand-copper),
+    var(--color-kind-evidence)
+  );
+}
+
+@utility jelly {
+  transition:
+    transform 220ms var(--ease-spring),
+    box-shadow 220ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+
+  &:where(:not(:disabled)):hover,
+  &:where(:not(:disabled)):focus-visible {
+    animation: var(--animate-jelly);
+  }
+  &:where(:not(:disabled)):active {
+    transform: translateY(1px) scale(0.98);
+  }
+}
+
+@utility text-gradient {
+  background-image: linear-gradient(105deg, var(--color-brand-ember), var(--color-brand-copper));
+  background-clip: text;
+  color: transparent;
+}
+
+@utility font-display {
+  font-family: var(--font-display);
+}
+
+@utility font-mono-tech {
+  font-family: var(--font-mono);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media print {
+  @page {
+    margin: 18mm;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  #report-print,
+  #report-print * {
+    visibility: visible !important;
+  }
+
+  #report-print {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    max-width: none;
+    border: 0 !important;
+    background: #fff !important;
+    box-shadow: none !important;
+    color: #171717 !important;
+    backdrop-filter: none !important;
+  }
+
+  #report-print h3,
+  #report-print h4,
+  #report-print p {
+    color: #171717 !important;
+  }
+
+  #report-print article {
+    break-inside: avoid;
+  }
+
+  #report-print a::after {
+    color: #444;
+    content: " (" attr(href) ")";
+    font-size: 9pt;
+    overflow-wrap: anywhere;
+  }
+}
+
+.geo-map .leaflet-container {
+  z-index: 0;
+  background: var(--surface-inset);
+  color: var(--color-slate-100);
+  font-family: var(--font-sans);
+}
+
+.geo-map .leaflet-control-zoom a,
+.geo-map .leaflet-popup-content-wrapper,
+.geo-map .leaflet-popup-tip {
+  border-color: var(--border-subtle);
+  background: var(--surface-elevated-strong);
+  color: var(--color-slate-100);
+}
+
+.geo-map .leaflet-control-zoom a {
+  border-bottom-color: var(--border-subtle);
+}
+
+.geo-map .leaflet-popup-content a {
+  color: var(--color-brand-ember);
+}
+
+.geo-map .leaflet-control-attribution {
+  background: var(--surface-elevated-strong);
+  color: var(--color-slate-400);
+}
