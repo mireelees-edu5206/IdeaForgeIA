@@ -23,6 +23,7 @@ from app.modules.ai.providers.ollama import OllamaProvider
 from app.modules.ai.providers.web_search import WebHit
 from app.modules.ai.types import AIMessage, AIUsage, GroundedResult, StructuredResult
 from app.modules.chat.schemas import ChatAnswer
+from app.modules.reports.schemas import ReportDraft
 from app.modules.research.orchestrator import _search_failure_code
 from tests.conftest import make_settings
 
@@ -201,6 +202,83 @@ def test_ollama_structured_output_records_local_zero_cost() -> None:
     assert result.usage.output_tokens == 8
     assert result.usage.estimated_cost_usd == Decimal(0)
     assert result.provider == AIProviderName.OLLAMA
+
+
+def test_ollama_report_draft_builds_the_structured_verdict_from_project_context() -> None:
+    context = {
+        "project": {
+            "title": "Heladería Centro",
+            "idea": "Vender helado artesanal en la zona centro.",
+            "attributes": [],
+        },
+        "findings": [
+            {
+                "ref": "H1",
+                "category": "customers",
+                "statement": "Personas entrevistadas buscan opciones de postre local.",
+                "origin": "user",
+                "review_status": "accepted",
+                "confidence": "medium",
+                "evidence": [{"ref": "E1", "source_ref": "S1", "content": "Entrevista"}],
+            }
+        ],
+        "sources": [{"ref": "S1", "domain": "example.org", "title": "Encuesta local"}],
+        "competitors": [{"name": "Helados cercanos", "type": "direct"}],
+        "analysis": {
+            "opportunities": [],
+            "risks": [],
+            "hypotheses": [],
+            "missing_information": [{"question": "¿Cuánto cuesta rentar un local?"}],
+        },
+        "geography": {
+            "status": "places_found",
+            "areas": [
+                {
+                    "query": "Centro Toluca",
+                    "resolved_area": "Centro Toluca",
+                    "status": "places_found",
+                    "places": [
+                        {
+                            "ref": "G1",
+                            "name": "Heladería cercana",
+                            "category": "shop",
+                        }
+                    ],
+                }
+            ],
+        },
+    }
+    answer = (
+        "La propuesta merece validación con clientes antes de invertir. "
+        "La evidencia disponible es inicial.===CONCLUSIONES==="
+        "Entrevista a más clientes y calcula los costos del local antes de avanzar."
+    )
+
+    def send(_request, timeout):
+        return response(
+            {
+                "message": {"content": answer},
+                "prompt_eval_count": 30,
+                "eval_count": 40,
+            }
+        )
+
+    provider = OllamaProvider("http://localhost:11434", "llama3.2:3b", 20)
+    messages = [
+        AIMessage(
+            "user",
+            f"<report_data>{json.dumps(context, ensure_ascii=False)}</report_data>",
+        )
+    ]
+    with patch("app.modules.ai.providers.http.urlopen", side_effect=send):
+        result = asyncio.run(provider.generate_structured(messages, ReportDraft))
+
+    assert result.data.executive_summary.recommendation == "needs_validation"
+    assert result.data.executive_summary.investment is None
+    assert result.data.executive_summary.zones[0].place_refs == ["G1"]
+    assert "¿Cuánto cuesta rentar un local?" in result.data.executive_summary.missing_information
+    assert result.data.executive_summary.next_steps
+    assert result.data.conclusions.startswith("Entrevista a más clientes")
 
 
 def test_ollama_chat_answer_has_no_short_text_cap_and_a_larger_generation_budget() -> None:

@@ -16,6 +16,7 @@ from app.modules.ai.providers.base import AIProvider
 from app.modules.ai.providers.http import post_json
 from app.modules.ai.providers.web_search import synthesize_grounded_from_web
 from app.modules.ai.types import AIMessage, AIUsage, GroundedResult, StructuredResult
+from app.modules.reports.schemas import BusinessVerdict
 
 
 class OllamaProvider(AIProvider):
@@ -95,16 +96,32 @@ class OllamaProvider(AIProvider):
             ctx = json.loads(raw_json)
         except json.JSONDecodeError:
             ctx = {}
+        if not isinstance(ctx, dict):
+            ctx = {}
 
         title = ctx.get("project", {}).get("title") or "Proyecto"
         idea = (ctx.get("project", {}).get("idea") or "")[:500]
         findings_summary = [
-            f"[{f.get('ref')}] {f.get('statement')}" for f in ctx.get("findings", [])[:6]
+            f"[{f.get('ref')}] {str(f.get('statement') or '')[:240]}"
+            for f in ctx.get("findings", [])[:6]
         ]
         opps_summary = [
-            o.get("title") for o in ctx.get("analysis", {}).get("opportunities", [])[:4]
+            str(o.get("title") or "")[:100]
+            for o in ctx.get("analysis", {}).get("opportunities", [])[:4]
         ]
-        risks_summary = [r.get("title") for r in ctx.get("analysis", {}).get("risks", [])[:4]]
+        risks_summary = [
+            str(r.get("title") or "")[:100] for r in ctx.get("analysis", {}).get("risks", [])[:4]
+        ]
+        competitors_summary = [
+            f"{item.get('name')} ({item.get('type')})" for item in ctx.get("competitors", [])[:4]
+        ]
+        geography_summary = [
+            _geography_summary(area) for area in ctx.get("geography", {}).get("areas", [])[:3]
+        ]
+        questions_summary = [
+            str(item.get("question") or "")[:120]
+            for item in ctx.get("analysis", {}).get("missing_information", [])[:3]
+        ]
 
         payload = {
             "model": self.model,
@@ -112,9 +129,13 @@ class OllamaProvider(AIProvider):
                 {
                     "role": "system",
                     "content": (
-                        "Redacta en español y sin HTML (1) un Resumen Ejecutivo de un párrafo "
-                        "claro y (2) las Conclusiones y próximos pasos de un párrafo basándote "
-                        "solo en los datos del proyecto. Sepáralos con ===CONCLUSIONES===."
+                        "Redacta en español y sin HTML un resumen ejecutivo y conclusiones "
+                        "prudentes basados únicamente en los datos indicados. "
+                        "Considera resultados, "
+                        "alternativas, oportunidades, riesgos, preguntas pendientes y zonas. No "
+                        "prometas éxito, no inventes inversión, demanda, ventas ni precios de "
+                        "renta. "
+                        "Separa el resumen de las conclusiones con ===CONCLUSIONES===."
                     ),
                 },
                 {
@@ -122,7 +143,10 @@ class OllamaProvider(AIProvider):
                     "content": (
                         f"Proyecto: {title}\nIdea: {idea}\n"
                         f"Hallazgos principales: {findings_summary}\n"
-                        f"Oportunidades: {opps_summary}\nRiesgos: {risks_summary}"
+                        f"Alternativas: {competitors_summary}\n"
+                        f"Oportunidades: {opps_summary}\nRiesgos: {risks_summary}\n"
+                        f"Preguntas pendientes: {questions_summary}\n"
+                        f"Zonas y lugares mapeados: {geography_summary}"
                     ),
                 },
             ],
@@ -193,7 +217,7 @@ def _parse_chat_content[T: BaseModel](content: str, schema: type[T]) -> T:
     )
 
 
-def _assemble_report_draft_from_context(ctx: dict[str, Any], llm_text: str) -> dict[str, str]:
+def _assemble_report_draft_from_context(ctx: dict[str, Any], llm_text: str) -> dict[str, Any]:
     parts = llm_text.split("===CONCLUSIONES===", 1)
     exec_summary = re.sub(r"^\*\*Resumen Ejecutivo\*\*\s*", "", parts[0].strip(), flags=re.I)
     conclusions = (
@@ -325,16 +349,115 @@ def _assemble_report_draft_from_context(ctx: dict[str, Any], llm_text: str) -> d
     )
 
     return {
-        "executive_summary": exec_summary,
-        "idea_overview": idea_overview,
-        "market": market_text,
-        "competition": competition_text,
-        "opportunities": opportunities_text,
-        "risks": risks_text,
-        "hypotheses": hypotheses_text,
-        "missing_information": missing_text,
-        "conclusions": conclusions,
+        "executive_summary": _ollama_report_verdict(ctx, exec_summary),
+        "idea_overview": _bounded_report_text(idea_overview),
+        "market": _bounded_report_text(market_text),
+        "competition": _bounded_report_text(competition_text),
+        "opportunities": _bounded_report_text(opportunities_text),
+        "risks": _bounded_report_text(risks_text),
+        "hypotheses": _bounded_report_text(hypotheses_text),
+        "missing_information": _bounded_report_text(missing_text),
+        "conclusions": _bounded_report_text(conclusions),
     }
+
+
+def _ollama_report_verdict(ctx: dict[str, Any], summary: str) -> BusinessVerdict:
+    findings = ctx.get("findings", [])
+    accepted_findings = [
+        item
+        for item in findings
+        if item.get("origin") == "user" or item.get("review_status") == "accepted"
+    ]
+    sources = ctx.get("sources", [])
+    enough_context = bool(accepted_findings and sources)
+    domains = {source.get("domain") for source in sources if source.get("domain")}
+    confidence = (
+        "medium"
+        if len(accepted_findings) >= 4 and len(domains) >= 3 and not ctx.get("context_truncated")
+        else "low"
+    )
+
+    missing = [
+        str(item.get("question") or "").strip()[:240]
+        for item in ctx.get("analysis", {}).get("missing_information", [])
+        if item.get("question")
+    ]
+    if not accepted_findings:
+        missing.append(
+            "Faltan resultados revisados con evidencia suficiente para apoyar la decisión."
+        )
+    if not sources:
+        missing.append("Faltan fuentes verificables sobre el mercado y sus alternativas.")
+    if ctx.get("context_truncated"):
+        missing.append("El informe usa solo una parte de la información disponible.")
+
+    geography = ctx.get("geography", {})
+    zones = []
+    for area in geography.get("areas", [])[:3]:
+        places = area.get("places", [])
+        refs = [
+            place["ref"]
+            for place in places
+            if isinstance(place.get("ref"), str) and place["ref"].startswith("G")
+        ][:8]
+        if not refs:
+            if area.get("status") in {"ambiguous", "not_found", "unavailable", "no_places"}:
+                missing.append(
+                    f"No se pudo evaluar con claridad la zona {area.get('query') or 'indicada'}."
+                )
+            continue
+        zone_name = str(area.get("resolved_area") or area.get("query") or "Zona evaluada")[:240]
+        zones.append(
+            {
+                "name": zone_name,
+                "reason": (
+                    f"Se registraron {len(refs)} lugares cercanos en el mapa; "
+                    "sirven como referencia para revisar el entorno."
+                ),
+                "place_refs": refs,
+                "caveat": (
+                    "OpenStreetMap puede estar incompleto; estos registros no prueban demanda, "
+                    "ventas, renta ni ausencia de negocios."
+                ),
+            }
+        )
+
+    next_steps = []
+    for hypothesis in ctx.get("analysis", {}).get("hypotheses", []):
+        method = hypothesis.get("validation_method") or hypothesis.get("statement")
+        if method:
+            next_steps.append(f"Comprueba esta hipótesis: {str(method).strip()[:200]}")
+        if len(next_steps) == 3:
+            break
+    if not next_steps:
+        next_steps.append(
+            "Habla con posibles clientes y registra cuántos pagarían por la propuesta."
+        )
+    if not any(item.get("category") == "pricing" for item in accepted_findings):
+        missing.append("Faltan costos comprobables para estimar la inversión inicial.")
+        next_steps.append("Cotiza renta, equipo, insumos y permisos antes de comprometer capital.")
+    if zones:
+        next_steps.append("Visita la zona evaluada y comprueba en campo los lugares registrados.")
+
+    return BusinessVerdict(
+        recommendation="needs_validation" if enough_context else "insufficient_information",
+        confidence=confidence,
+        summary=_bounded_report_text(summary),
+        zones=zones[:4],
+        missing_information=list(dict.fromkeys(missing))[:8],
+        next_steps=list(dict.fromkeys(next_steps))[:5],
+    )
+
+
+def _bounded_report_text(value: str) -> str:
+    cleaned = value.strip()
+    return cleaned[:5900] if len(cleaned) > 5900 else cleaned
+
+
+def _geography_summary(area: dict[str, Any]) -> str:
+    place_names = ", ".join(str(place.get("name") or "") for place in area.get("places", [])[:4])
+    area_name = area.get("resolved_area") or area.get("query")
+    return f"{area_name}: {place_names or area.get('status')}"
 
 
 def _token_count(value: Any) -> int | None:
