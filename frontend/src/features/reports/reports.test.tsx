@@ -16,7 +16,18 @@ const PROJECT: ProjectDetail = {
   status: "analyzed",
   created_at: NOW,
   updated_at: NOW,
-  attributes: [],
+  attributes: [
+    {
+      id: "area1",
+      attribute_type: "geographic_scope",
+      value: "Toluca, México",
+      position: 0,
+      origin: "user",
+      is_confirmed: true,
+      created_at: NOW,
+      updated_at: NOW,
+    },
+  ],
   structure: { ready: true, missing: [], pending_suggestions: 0 },
 };
 const REPORT: Report = {
@@ -24,10 +35,10 @@ const REPORT: Report = {
   project_id: "p1",
   run_id: "run1",
   version: 1,
-  title: "Informe de validación: Agro Conecta",
+  title: "Veredicto final: Agro Conecta",
   status: "generating",
-  ai_provider: "ollama",
-  ai_model: "qwen3:4b",
+  ai_provider: "fake",
+  ai_model: "fake-1",
   error_code: null,
   created_at: NOW,
   completed_at: null,
@@ -42,8 +53,17 @@ const DETAIL: ReportDetail = {
       id: "section1",
       section_type: "executive_summary",
       position: 0,
-      title: "Resumen ejecutivo",
+      title: "Veredicto final",
       content: "El análisis identifica una oportunidad por validar.",
+      verdict: {
+        recommendation: "needs_validation",
+        confidence: "medium",
+        summary: "El análisis identifica una oportunidad por validar.",
+        investment: null,
+        zones: [],
+        missing_information: ["Faltan datos de costos."],
+        next_steps: ["Entrevistar posibles clientes."],
+      },
     },
     {
       id: "section2",
@@ -79,12 +99,19 @@ describe("Informes del proyecto", () => {
         },
       ]),
     );
-    renderRoutes([projectDetailRoute], "/proyectos/p1/reportes");
+    renderRoutes(
+      [projectDetailRoute],
+      "/proyectos/p1/reportes?zona=San%20Mateo%2C%20Toluca&lat=19.2925&lon=-99.6569&radio=500&giro=ropa",
+    );
 
-    await user.click(await screen.findByRole("button", { name: "Generar informe" }));
+    await user.click(await screen.findByRole("button", { name: "Generar veredicto" }));
 
     expect(await screen.findByText("El análisis identifica una oportunidad por validar.")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Informes de validación" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Veredicto final" })).toBeInTheDocument();
+    expect(screen.getByText("Faltan pruebas importantes")).toBeInTheDocument();
+    expect(screen.getByText(/no se puede estimar de forma responsable/i)).toBeInTheDocument();
+    expect(screen.getByText(/Este veredicto es una demostración/)).toBeInTheDocument();
+    expect(screen.queryByText(/fake-1|Proveedor de pruebas/i)).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "https://fuente.example/estudio" })).toHaveAttribute(
       "rel",
       "noopener noreferrer nofollow",
@@ -94,5 +121,19 @@ describe("Informes del proyecto", () => {
         ([url, init]) => String(url).endsWith("/reports") && init?.method === "POST",
       ),
     ).toBe(true);
+    const createCall = fetchMock.mock.calls.find(
+      ([url, init]) => String(url).endsWith("/reports") && init?.method === "POST",
+    );
+    expect(JSON.parse(createCall![1]!.body as string)).toEqual({
+      geographic_scopes: [
+        {
+          query: "San Mateo, Toluca",
+          latitude: 19.2925,
+          longitude: -99.6569,
+          radius_m: 500,
+          keyword: "ropa",
+        },
+      ],
+    });
   });
 });

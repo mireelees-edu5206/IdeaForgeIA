@@ -9,24 +9,22 @@ import { cn } from "../../lib/cn";
 import { errorMessageFrom } from "../../lib/formErrors";
 import { CONFIDENCE_META, STANCE_META } from "../findings/constants";
 import { useProjectOutlet } from "../projects/outlet";
-import { CATEGORY_LABELS, PROVIDER_LABELS, safeHref } from "../research/constants";
+import { CATEGORY_LABELS, safeHref } from "../research/constants";
 import { chatApi } from "./api";
-import type { ChatFindingReference, ChatReply, ChatTurn } from "./types";
+import type { ChatFindingReference, ChatTurn } from "./types";
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_HISTORY_CHARS = 5000;
 
 const QUICK_PROMPTS = [
-  "¿Qué evidencia respalda hoy el problema principal?",
-  "¿Cuáles son los riesgos más críticos y qué los respalda?",
-  "¿Qué hipótesis debería validar primero y cómo?",
-  "¿Qué información sigue faltando antes de decidir?",
+  "¿Qué sabemos de los posibles clientes?",
+  "¿Qué problemas o riesgos debería considerar?",
+  "¿Qué debería probar primero?",
+  "¿Qué dudas siguen abiertas?",
 ];
 
 interface VisibleTurn extends ChatTurn {
   references?: ChatFindingReference[];
-  provider?: ChatReply["provider"];
-  model?: string | null;
 }
 
 export function ChatTab() {
@@ -54,8 +52,6 @@ export function ChatTab() {
           role: "assistant",
           content: reply.answer,
           references: reply.references,
-          provider: reply.provider,
-          model: reply.model,
         },
       ]);
     } catch (cause) {
@@ -70,10 +66,9 @@ export function ChatTab() {
   return (
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-2">
-        <h2 className="text-lg font-semibold">Asistente del proyecto</h2>
+        <h2 className="text-lg font-semibold">Pregunta sobre tu idea</h2>
         <p className="max-w-3xl text-sm text-slate-400">
-          Pregunta sobre este proyecto o cualquier tema general, aunque no esté relacionado con la idea. Al hablar del
-          proyecto diferencio sus datos y evidencias de las interpretaciones; no realizo búsquedas web nuevas.
+          Pregunta lo que quieras. Puedo usar la información y las fuentes guardadas en este proyecto, pero no hago búsquedas nuevas en internet.
         </p>
       </header>
 
@@ -90,10 +85,9 @@ export function ChatTab() {
                 <FiMessageCircle aria-hidden="true" className="size-7" />
               </span>
               <div>
-                <h3 className="text-lg font-semibold text-slate-100">Conversemos sobre {project.title}</h3>
+                <h3 className="text-lg font-semibold text-slate-100">¿Por dónde empezamos?</h3>
                 <p className="mt-1 max-w-md text-sm text-slate-400">
-                  Elige una pregunta sugerida o escribe cualquier otra. Si falta evidencia del proyecto, lo aclararé;
-                  también puedo ayudarte con preguntas generales.
+                  Elige una pregunta o escribe la tuya. Si no hay información suficiente, te lo diré.
                 </p>
               </div>
               <div className="mt-2 grid w-full max-w-2xl gap-2 sm:grid-cols-2">
@@ -117,7 +111,7 @@ export function ChatTab() {
           )}
           {pending && (
             <p role="status" className="flex items-center gap-2 text-sm text-accent-cyan">
-              <span className="size-2 animate-pulse rounded-full bg-current" /> Preparando una respuesta y usando el contexto del proyecto cuando sea útil…
+              <span className="size-2 animate-pulse rounded-full bg-current" /> Revisando la información del proyecto…
             </p>
           )}
         </div>
@@ -131,7 +125,7 @@ export function ChatTab() {
             maxLength={MAX_MESSAGE_LENGTH}
             showCount
             value={question}
-            placeholder="Ej.: ¿cuánto capital inicial requiere esta idea y qué datos hacen falta para estimarlo?"
+            placeholder="Ej.: ¿Quiénes podrían comprar este producto y qué información tenemos sobre ellos?"
             onChange={(event) => setQuestion(event.target.value)}
             disabled={pending}
           />
@@ -174,24 +168,21 @@ function trimHistory(messages: ChatTurn[], message: string): ChatTurn[] {
 function ChatBubble({ message }: { message: VisibleTurn }) {
   const assistant = message.role === "assistant";
   return (
-    <article className={cn("flex max-w-[92%] flex-col gap-2 rounded-2xl p-4", assistant ? "glass self-start" : "neo-inset self-end")}>
+    <article className={cn("flex max-w-[92%] flex-col gap-2 rounded-2xl p-4", assistant ? "surface-panel self-start" : "neo-inset self-end")}>
       <header className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
         <span className="font-semibold text-slate-200">{assistant ? "Asistente" : "Tú"}</span>
-        {assistant && message.provider && (
-          <span>{PROVIDER_LABELS[message.provider]} · {message.model}</span>
-        )}
       </header>
       <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-200">{message.content}</p>
       {assistant && message.references && message.references.length > 0 && (
-        <section aria-label="Hallazgos citados" className="mt-2 flex flex-col gap-3 border-t border-slate-400/15 pt-3">
-          <h4 className="text-xs font-semibold text-slate-300">Hallazgos relacionados</h4>
+        <section aria-label="Resultados citados" className="mt-2 flex flex-col gap-3 border-t border-slate-400/15 pt-3">
+          <h4 className="text-xs font-semibold text-slate-300">Resultados relacionados</h4>
           <ul className="flex flex-col gap-3">
             {message.references.map((reference) => (
               <li key={reference.id} className="border-l-2 border-kind-evidence/40 pl-3">
                 <p className="text-sm text-slate-100">{reference.statement}</p>
                 <p className="mt-1 text-xs text-slate-400">
                   {CATEGORY_LABELS[reference.finding_type]} · {CONFIDENCE_META[reference.confidence_level].label}
-                  {reference.origin === "ai" ? " · hallazgo de IA" : " · aportado por ti"}
+                  {reference.origin === "ai" ? " · propuesta de IA" : " · aportado por ti"}
                 </p>
                 {reference.evidence.length > 0 ? (
                   <ul className="mt-2 flex flex-col gap-2">
@@ -215,7 +206,7 @@ function ChatBubble({ message }: { message: VisibleTurn }) {
                     })}
                   </ul>
                 ) : (
-                  <p className="mt-1 text-xs text-amber-200">Este hallazgo no tiene evidencia externa vinculada.</p>
+                  <p className="mt-1 text-xs text-amber-200">Este resultado todavía no tiene una fuente externa asociada.</p>
                 )}
               </li>
             ))}

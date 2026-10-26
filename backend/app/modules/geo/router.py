@@ -16,6 +16,7 @@ def get_geo_service(request: Request, db: DbSession) -> GeoService:
 
 Service = Annotated[GeoService, Depends(get_geo_service)]
 GeoQuery = Annotated[str, Query(min_length=3, max_length=160)]
+KeywordQuery = Annotated[str | None, Query(max_length=80)]
 Latitude = Annotated[float, Query(ge=-90, le=90)]
 Longitude = Annotated[float, Query(ge=-180, le=180)]
 Radius = Annotated[int, Query(ge=100, le=5000)]
@@ -36,12 +37,17 @@ async def nearby_places(
     longitude: Longitude,
     radius_m: Radius = 1000,
     category: GeoCategory = "all",
+    keyword: KeywordQuery = None,
 ) -> GeoPlacesResponse:
-    places = await service.nearby_places(user, project_id, latitude, longitude, radius_m, category)
+    clean_keyword = " ".join((keyword or "").split()).strip() or None
+    places = await service.nearby_places(
+        user, project_id, latitude, longitude, radius_m, category, clean_keyword
+    )
     return GeoPlacesResponse(
         latitude=latitude,
         longitude=longitude,
         radius_m=radius_m,
         category=category,
+        keyword=clean_keyword,
         places=places,
     )

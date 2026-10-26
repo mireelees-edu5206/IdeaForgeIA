@@ -26,6 +26,7 @@ export interface GeoPlacesResponse {
   longitude: number;
   radius_m: number;
   category: GeoCategory;
+  keyword?: string | null;
   places: GeoBusiness[];
   attribution: string;
   caveat: string;
@@ -36,4 +37,5 @@ export interface GeoSearchParams {
   longitude: number;
   radius_m: number;
   category: GeoCategory;
+  keyword?: string;
 }

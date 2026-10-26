@@ -35,8 +35,10 @@ export function RequireAuth() {
     return (
       <FullScreenMessage>
         <GlassPanel className="max-w-sm p-8 text-center">
-          <h1 className="text-lg font-semibold">No se pudo conectar con el servidor</h1>
-          <p className="mt-2 text-sm text-slate-300">Comprueba tu conexión e inténtalo de nuevo.</p>
+          <h1 className="text-lg font-semibold">No se pudo verificar tu acceso</h1>
+          <p className="mt-2 text-sm text-slate-300">
+            Comprueba la conexión y la configuración de Supabase; después, inténtalo de nuevo.
+          </p>
           <Button className="mt-6" variant="secondary" icon={<FiRefreshCw aria-hidden="true" />} onClick={retry}>
             Reintentar
           </Button>

@@ -30,7 +30,7 @@ export function Select<T extends string>({
         id={id}
         value={value}
         onChange={(event) => onChange(event.target.value as T)}
-        className="neo-inset h-10 rounded-xl px-3 text-sm text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan/70 disabled:opacity-60"
+        className="neo-inset h-10 w-full min-w-0 max-w-full rounded-xl px-3 text-sm text-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan/70 disabled:opacity-60"
         {...props}
       >
         {options.map((option) => (

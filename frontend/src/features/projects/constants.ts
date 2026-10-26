@@ -11,15 +11,15 @@ export const ATTRIBUTE_VALUE_MAX_LENGTH = 4000;
 export const MAX_VALUES_PER_ATTRIBUTE = 10;
 
 export const STATUS_META: Record<ProjectStatus, { label: string; className: string; icon: IconType }> = {
-  draft: { label: "Borrador", className: "text-slate-200 bg-slate-400/15 ring-slate-300/25", icon: FiEdit3 },
-  structured: { label: "Estructurado", className: "text-sky-200 bg-sky-400/15 ring-sky-300/30", icon: FiCheckCircle },
+  draft: { label: "Idea por completar", className: "text-slate-200 bg-slate-400/15 ring-slate-300/25", icon: FiEdit3 },
+  structured: { label: "Lista para investigar", className: "text-sky-200 bg-sky-400/15 ring-sky-300/30", icon: FiCheckCircle },
   researching: {
-    label: "En investigación",
+    label: "Investigación en curso",
     className: "text-amber-200 bg-amber-400/15 ring-amber-300/30",
     icon: FiSearch,
   },
   analyzed: {
-    label: "Analizado",
+    label: "Resultados listos",
     className: "text-emerald-200 bg-emerald-400/15 ring-emerald-300/30",
     icon: FiActivity,
   },

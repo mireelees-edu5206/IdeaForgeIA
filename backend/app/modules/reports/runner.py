@@ -11,6 +11,7 @@ from app.modules.ai.calls import AICallContext, build_call_logs, timed_call
 from app.modules.ai.errors import AIProviderError
 from app.modules.ai.models import AIOperation
 from app.modules.ai.providers.base import AIProvider
+from app.modules.geo.providers.base import GeoProvider
 from app.modules.projects.models import Project
 from app.modules.reports import fake_responses as _fake_responses  # noqa: F401
 from app.modules.reports.generation import (
@@ -32,10 +33,12 @@ class ReportRunner:
         sessionmaker: async_sessionmaker[AsyncSession],
         provider: AIProvider,
         settings: Settings,
+        geo_provider: GeoProvider | None = None,
     ) -> None:
         self.sessionmaker = sessionmaker
         self.provider = provider
         self.settings = settings
+        self.geo_provider = geo_provider
 
     async def run(self, report_id: uuid.UUID) -> None:
         """La tarea de fondo registra fallos sin propagar excepciones al servidor."""
@@ -64,7 +67,13 @@ class ReportRunner:
             await self._mark_failed(session, report.id, "report_context_missing")
             return
 
-        context = await build_report_context(session, project, run)
+        context = await build_report_context(
+            session,
+            project,
+            run,
+            self.geo_provider,
+            report.geographic_scopes,
+        )
         outcome = await timed_call(
             self.provider.generate_structured(report_messages(context), ReportDraft),
             self.settings.ai_timeout_seconds,
@@ -99,8 +108,9 @@ class ReportRunner:
                 position=position,
                 title=SECTION_TITLES[section_type],
                 content=content,
+                verdict=verdict,
             )
-            for position, (section_type, content) in enumerate(sections)
+            for position, (section_type, content, verdict) in enumerate(sections)
         )
         report.status = ReportStatus.COMPLETED
         report.ai_provider = outcome.result.provider or self.provider.name

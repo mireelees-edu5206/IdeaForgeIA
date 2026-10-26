@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from app.modules.ai.providers.fake import FAKE_MARKER, register_fake_response
 from app.modules.ai.types import AIMessage
-from app.modules.reports.schemas import ReportDraft
+from app.modules.reports.schemas import BusinessVerdict, ReportDraft
 
 
 @register_fake_response(ReportDraft)
@@ -16,7 +16,12 @@ def report_response(_: Sequence[AIMessage]) -> BaseModel:
         "ni representa una conclusión validada."
     )
     return ReportDraft(
-        executive_summary=simulated,
+        executive_summary=BusinessVerdict(
+            recommendation="insufficient_information",
+            confidence="low",
+            summary=simulated,
+            next_steps=["Configurar un proveedor de IA real antes de evaluar una idea."],
+        ),
         idea_overview=simulated,
         market=simulated,
         competition=simulated,

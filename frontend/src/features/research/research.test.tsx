@@ -113,8 +113,8 @@ describe("Pestaña de investigación", () => {
     // La URL javascript: se muestra como texto, nunca como enlace.
     expect(screen.getByText("Enlace peligroso").closest("a")).toBeNull();
     expect(screen.getByText("Consultada, no citada")).toBeInTheDocument();
-    expect(screen.queryByText(/Resultados simulados/)).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Nueva investigación" })).toBeInTheDocument();
+    expect(screen.queryByText(/Resultados de demostración/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Buscar información otra vez" })).toBeInTheDocument();
   });
 
   it("muestra el progreso de una investigación en curso y avisa si es simulada", async () => {
@@ -125,7 +125,7 @@ describe("Pestaña de investigación", () => {
     const progress = await screen.findByRole("progressbar", { name: "Progreso de la investigación" });
     expect(progress).toHaveAttribute("aria-valuenow", "40");
     expect(screen.getByText("Buscando información en la web")).toBeInTheDocument();
-    expect(screen.getByText(/Resultados simulados/)).toBeInTheDocument();
+    expect(screen.getByText(/Resultados de demostración/)).toBeInTheDocument();
     // Con una investigación activa no se puede lanzar otra.
     expect(screen.queryByRole("button", { name: /investigación/ })).not.toBeInTheDocument();
   });
@@ -141,8 +141,8 @@ describe("Pestaña de investigación", () => {
   it("en borrador pide confirmar la estructura antes de investigar", async () => {
     renderResearch(project({ status: "draft" }), []);
     expect(await screen.findByText(/primero confirma la estructura/)).toBeInTheDocument();
-    expect(await screen.findByText("Aún no hay investigaciones")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Iniciar investigación" })).not.toBeInTheDocument();
+    expect(await screen.findByText("Aún no hemos buscado información")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Buscar información" })).not.toBeInTheDocument();
   });
 });
 
@@ -155,7 +155,7 @@ describe("Iniciar investigación", () => {
     await router.navigate("/proyectos/p1");
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Iniciar investigación" }));
+    await user.click(await screen.findByRole("button", { name: "Buscar información en internet" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/proyectos/p1/investigacion"));
     expect(fetchMock.mock.calls.some(([, init]) => init?.method === "POST")).toBe(true);
@@ -172,7 +172,7 @@ describe("Iniciar investigación", () => {
       },
     ]);
     const user = userEvent.setup();
-    await user.click(await screen.findByRole("button", { name: "Iniciar investigación" }));
+    await user.click(await screen.findByRole("button", { name: "Buscar información" }));
     expect(await screen.findByText(/Alcanzaste el límite/)).toBeInTheDocument();
   });
 });
@@ -192,7 +192,7 @@ describe("Pestaña de fuentes", () => {
     renderRoutes([projectDetailRoute], "/proyectos/p1/fuentes");
     const user = userEvent.setup();
 
-    const list = await screen.findByRole("list");
+    const list = await screen.findByRole("list", { name: "Fuentes consultadas" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
     expect(within(list).getByText("Citada en 2 preguntas")).toBeInTheDocument();
     expect(within(list).getByText("Gobierno")).toBeInTheDocument();

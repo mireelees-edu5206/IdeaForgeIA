@@ -10,6 +10,14 @@ def test_health_ok(client: TestClient) -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_security_headers_are_set_on_success_and_error_responses(client: TestClient) -> None:
+    for response in (client.get("/api/v1/health"), client.get("/api/v1/no-existe")):
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert response.headers["x-frame-options"] == "DENY"
+        assert response.headers["referrer-policy"] == "strict-origin-when-cross-origin"
+        assert response.headers["cache-control"] == "no-store"
+
+
 def test_health_db_unavailable_returns_503_without_details(client: TestClient) -> None:
     response = client.get("/api/v1/health/db")
     assert response.status_code == 503

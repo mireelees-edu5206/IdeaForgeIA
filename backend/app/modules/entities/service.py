@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import Origin, ReviewStatus
-from app.core.errors import ConflictError, NotFoundError
+from app.core.errors import AppError, ConflictError, NotFoundError
 from app.modules.entities.models import Competitor, Entity
 from app.modules.entities.normalize import normalize_entity_name
 from app.modules.entities.repository import CompetitorRepository, EntityRepository
@@ -90,7 +90,8 @@ class EntityService:
                 raise EntityNotFoundError()
             entity_id = entity.id
         else:
-            assert data.name is not None
+            if data.name is None:
+                raise AppError("Indica el nombre de la entidad.", code="invalid_competitor")
             entity_id = await self.entities.upsert(
                 project.id,
                 data.entity_type,

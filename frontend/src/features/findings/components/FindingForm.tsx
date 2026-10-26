@@ -32,7 +32,7 @@ export function FindingForm({ initial, submitLabel, pending, error, note, onSubm
   const [level, setLevel] = useState<Level>(initial?.confidence_level ?? "undetermined");
   const [rationale, setRationale] = useState(initial?.confidence_rationale ?? "");
   const [touched, setTouched] = useState(false);
-  const statementError = touched && !statement.trim() ? "Escribe el hallazgo." : undefined;
+  const statementError = touched && !statement.trim() ? "Escribe el resultado." : undefined;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -53,21 +53,21 @@ export function FindingForm({ initial, submitLabel, pending, error, note, onSubm
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Select label="Categoría" value={type} options={CATEGORY_OPTIONS} onChange={setType} />
-        <Select label="Confianza" value={level} options={LEVEL_OPTIONS} onChange={setLevel} />
+        <Select label="Tema" value={type} options={CATEGORY_OPTIONS} onChange={setType} />
+        <Select label="Qué tan confiable parece" value={level} options={LEVEL_OPTIONS} onChange={setLevel} />
       </div>
       <TextArea
-        label="Hallazgo"
+        label="Resultado"
         rows={3}
         maxLength={STATEMENT_MAX_LENGTH}
         showCount
         value={statement}
         error={statementError}
-        placeholder="Ej.: los restaurantes independientes compran verdura dos veces por semana"
+        placeholder="Ej.: los restaurantes de la zona compran verdura dos veces por semana"
         onChange={(event) => setStatement(event.target.value)}
       />
       <TextArea
-        label="¿Por qué esa confianza? (opcional)"
+        label="¿Qué te hace pensar que es cierto? (opcional)"
         rows={2}
         maxLength={RATIONALE_MAX_LENGTH}
         value={rationale}

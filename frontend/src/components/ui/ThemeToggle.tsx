@@ -5,8 +5,8 @@ export type ThemeMode = "light" | "dark";
 
 const STORAGE_KEY = "ideaforge-theme";
 const THEME_COLORS: Record<ThemeMode, string> = {
-  light: "#fbfaff",
-  dark: "#06030f",
+  light: "#f8fafc",
+  dark: "#0b1220",
 };
 
 export function readInitialTheme(): ThemeMode {
@@ -39,7 +39,7 @@ export function ThemeToggle() {
   }, [theme]);
 
   const nextTheme: ThemeMode = theme === "light" ? "dark" : "light";
-  const label = theme === "light" ? "Activar modo oscuro" : "Activar modo claro";
+  const label = theme === "light" ? "Activar tema oscuro" : "Activar tema claro";
 
   return (
     <button
@@ -47,17 +47,17 @@ export function ThemeToggle() {
       onClick={() => setTheme(nextTheme)}
       aria-label={label}
       title={label}
-      className="jelly neo-raised inline-flex h-10 items-center gap-2 rounded-xl px-3 text-xs font-semibold text-slate-200 hover:text-accent-cyan"
+      className="jelly neo-raised inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-xl px-3 text-xs font-semibold text-slate-200 hover:text-accent-cyan"
     >
       {theme === "light" ? (
         <>
           <FiMoon aria-hidden="true" className="size-4 text-accent-violet" />
-          <span className="hidden sm:inline">Cosmos oscuro</span>
+          <span className="hidden sm:inline">Tema oscuro</span>
         </>
       ) : (
         <>
           <FiSun aria-hidden="true" className="size-4 text-amber-200" />
-          <span className="hidden sm:inline">Luz estelar</span>
+          <span className="hidden sm:inline">Tema claro</span>
         </>
       )}
     </button>

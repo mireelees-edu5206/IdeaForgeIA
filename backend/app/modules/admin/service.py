@@ -4,8 +4,12 @@ from decimal import Decimal
 
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.concurrency import run_in_threadpool
 
-from app.core.errors import ConflictError, NotFoundError
+from app.core.config import Settings
+from app.core.errors import ConflictError, NotFoundError, ServiceUnavailableError
+from app.core.supabase_admin import SupabaseAdminClient
+from app.core.supabase_auth import SupabaseAuthUnavailableError
 from app.modules.admin.schemas import (
     AdminAILogRead,
     AdminOverview,
@@ -17,8 +21,8 @@ from app.modules.ai.models import AIApiLog, AICallStatus
 from app.modules.auth.repository import RefreshTokenRepository
 from app.modules.findings.models import Finding
 from app.modules.projects.models import Project, ProjectStatus
-from app.modules.reports.models import Report
-from app.modules.research.models import ResearchRun, RunStatus
+from app.modules.reports.models import Report, ReportStatus
+from app.modules.research.models import ACTIVE_RUN_STATUSES, ResearchRun, RunStatus
 from app.modules.users.models import User, UserRole
 
 
@@ -28,8 +32,9 @@ class UserNotFoundError(NotFoundError):
 
 
 class AdminService:
-    def __init__(self, session: AsyncSession) -> None:
+    def __init__(self, session: AsyncSession, settings: Settings) -> None:
         self.session = session
+        self.settings = settings
 
     async def overview(self) -> AdminOverview:
         user_row = (
@@ -200,3 +205,69 @@ class AdminService:
         await self.session.commit()
         users = await self.list_users()
         return next(item for item in users if item.id == target.id)
+
+    async def delete_user(self, actor: User, target_id: uuid.UUID) -> uuid.UUID | None:
+        active_admin_ids = list(
+            await self.session.scalars(
+                select(User.id)
+                .where(User.role == UserRole.ADMIN, User.is_active.is_(True))
+                .order_by(User.id)
+                .with_for_update()
+            )
+        )
+        target = await self.session.scalar(
+            select(User).where(User.id == target_id).with_for_update()
+        )
+        if target is None:
+            raise UserNotFoundError()
+        if target.id == actor.id:
+            raise ConflictError(
+                "No puedes eliminar tu propia cuenta de administrador.",
+                code="cannot_delete_self",
+            )
+
+        if target.role == UserRole.ADMIN and target.is_active:
+            if len(active_admin_ids) <= 1:
+                raise ConflictError(
+                    "No se puede eliminar la última cuenta de administrador activa.",
+                    code="last_admin_required",
+                )
+
+        active_run = await self.session.scalar(
+            select(ResearchRun.id)
+            .join(Project, Project.id == ResearchRun.project_id)
+            .where(
+                Project.user_id == target.id,
+                ResearchRun.status.in_(ACTIVE_RUN_STATUSES),
+            )
+            .limit(1)
+        )
+        generating_report = await self.session.scalar(
+            select(Report.id)
+            .join(Project, Project.id == Report.project_id)
+            .where(
+                Project.user_id == target.id,
+                Report.status == ReportStatus.GENERATING,
+            )
+            .limit(1)
+        )
+        if active_run is not None or generating_report is not None:
+            raise ConflictError(
+                "Espera a que terminen las tareas del usuario antes de eliminar su cuenta.",
+                code="user_has_active_jobs",
+            )
+
+        if target.supabase_user_id is not None:
+            try:
+                await run_in_threadpool(
+                    SupabaseAdminClient(self.settings).delete_user, target.supabase_user_id
+                )
+            except SupabaseAuthUnavailableError as exc:
+                raise ServiceUnavailableError(
+                    str(exc), code="supabase_account_deletion_unavailable"
+                ) from exc
+
+        supabase_user_id = target.supabase_user_id
+        await self.session.delete(target)
+        await self.session.commit()
+        return supabase_user_id

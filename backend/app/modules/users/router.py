@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter
 
 from app.api.deps import AppSettings, CurrentUser, DbSession
 from app.modules.auth.service import AuthService
@@ -6,6 +6,7 @@ from app.modules.users.schemas import PasswordChange, UserRead, UserUpdate
 from app.modules.users.service import UserService
 
 router = APIRouter(prefix="/users", tags=["users"])
+legacy_password_router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/me", response_model=UserRead)
@@ -18,9 +19,8 @@ async def update_me(data: UserUpdate, user: CurrentUser, db: DbSession) -> UserR
     return UserRead.model_validate(await UserService(db).update_profile(user, data))
 
 
-@router.put("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+@legacy_password_router.put("/me/password", status_code=204)
 async def change_password(
     data: PasswordChange, user: CurrentUser, db: DbSession, settings: AppSettings
 ) -> None:
-    # Cierra todas las sesiones (revoca los refresh tokens).
     await AuthService(db, settings).change_password(user, data)

@@ -315,6 +315,31 @@ def test_competitor_from_existing_entity(
     assert created.json()["finding_count"] == 6
 
 
+def test_competitor_cannot_link_entity_from_another_project(
+    db_client: TestClient, headers: dict
+) -> None:
+    source_project = create_project(db_client, headers, "Proyecto de origen")
+    source_competitor = db_client.post(
+        competitors_url(source_project["id"]),
+        json={"name": "Entidad privada", "competitor_type": "direct"},
+        headers=headers,
+    )
+    assert source_competitor.status_code == 201
+
+    target_project = create_project(db_client, headers, "Proyecto destino")
+    response = db_client.post(
+        competitors_url(target_project["id"]),
+        json={
+            "entity_id": source_competitor.json()["entity"]["id"],
+            "competitor_type": "direct",
+        },
+        headers=headers,
+    )
+
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "entity_not_found"
+
+
 def test_competitor_review_keeps_origin(
     db_client: TestClient, headers: dict, researched: dict
 ) -> None:

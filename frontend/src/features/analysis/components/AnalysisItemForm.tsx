@@ -167,7 +167,7 @@ export function AnalysisItemForm({ kind, initial, findings, pending, error, onSu
       {kind === "hypotheses" && (
         <>
           <TextArea
-            label="Hipótesis comprobable"
+            label="¿Qué quieres comprobar?"
             rows={2}
             maxLength={4000}
             value={statement}
@@ -176,20 +176,20 @@ export function AnalysisItemForm({ kind, initial, findings, pending, error, onSu
             required
           />
           <Select
-            label="Atributo relacionado"
+            label="Parte de la idea relacionada"
             value={relatedAttribute}
             options={ATTRIBUTE_OPTIONS}
             onChange={(value) => setRelatedAttribute(value as AttributeType | "none")}
           />
           <TextArea
-            label="Método de validación"
+            label="¿Cómo podrías comprobarlo?"
             rows={2}
             maxLength={4000}
             value={validationMethod}
             onChange={(event) => setValidationMethod(event.target.value)}
           />
           <TextArea
-            label="Criterio de éxito medible"
+            label="¿Qué resultado te daría confianza?"
             rows={2}
             maxLength={4000}
             value={successCriteria}
@@ -218,7 +218,7 @@ export function AnalysisItemForm({ kind, initial, findings, pending, error, onSu
             onChange={(event) => setReason(event.target.value)}
           />
           <Select
-            label="Atributo relacionado"
+            label="Parte de la idea relacionada"
             value={relatedAttribute}
             options={ATTRIBUTE_OPTIONS}
             onChange={(value) => setRelatedAttribute(value as AttributeType | "none")}
@@ -229,9 +229,9 @@ export function AnalysisItemForm({ kind, initial, findings, pending, error, onSu
 
       {!initial && kind !== "missing-information" && (
         <fieldset className="neo-inset flex flex-col gap-2 rounded-xl p-3">
-          <legend className="px-1 text-sm font-medium text-slate-300">Hallazgos relacionados (opcional)</legend>
+          <legend className="px-1 text-sm font-medium text-slate-300">Resultados relacionados (opcional)</legend>
           {findings.length === 0 ? (
-            <p className="text-xs text-slate-400">No hay hallazgos revisables de esta investigación para vincular.</p>
+            <p className="text-xs text-slate-400">Todavía no hay resultados revisados que puedas vincular.</p>
           ) : (
             <ul className="flex max-h-48 flex-col gap-2 overflow-y-auto">
               {findings.map((finding) => (
@@ -249,7 +249,7 @@ export function AnalysisItemForm({ kind, initial, findings, pending, error, onSu
               ))}
             </ul>
           )}
-          <p className="text-xs text-slate-400">Sin hallazgos vinculados, la propuesta queda pendiente de comprobación.</p>
+          <p className="text-xs text-slate-400">Sin resultados vinculados, esta sugerencia queda pendiente de revisión.</p>
         </fieldset>
       )}
       {initial?.origin === "ai" && (

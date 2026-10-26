@@ -32,6 +32,7 @@ def make_settings(**overrides: object) -> Settings:
         "cors_origins": [ALLOWED_ORIGIN],
         "database_url": UNREACHABLE_DB_URL,
         "secret_key": TEST_SECRET_KEY,
+        "legacy_auth_enabled": True,
         "ai_provider": "fake",
         "ai_fake_latency_ms": 0,
         "research_recover_on_startup": False,

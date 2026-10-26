@@ -1,43 +1,85 @@
 @import "tailwindcss";
 
-/* ─────────────── Tokens del Observatorio Cósmico (Blanco Marfil + Abismo Amatista) ─────────────── */
+/* ─────────────── Sistema de diseño IdeaForge: investigación clara + cristal de navegación ─────────────── */
 @theme {
-  --font-display: "Syne", "Fraunces", Georgia, serif;
-  --font-sans: "Plus Jakarta Sans", "Segoe UI Variable", system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  --font-display: "Fira Sans", "Plus Jakarta Sans", "Segoe UI Variable", sans-serif;
+  --font-sans: "Fira Sans", "Plus Jakarta Sans", "Segoe UI Variable", system-ui, sans-serif;
+  --font-mono: "Fira Code", "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
 
   /* Superficies base */
-  --color-night-950: #fbfaff;
-  --color-night-900: #f3effc;
+  --color-night-950: #f8fafc;
+  --color-night-900: #eef2f7;
   --color-night-800: #ffffff;
-  --color-night-700: #ebe4fb;
+  --color-night-700: #e2e8f0;
 
-  /* Paleta de marca: Violeta Imperial + Magenta Nebulosa */
-  --color-brand-ember: #6d28d9;
-  --color-brand-copper: #a21caf;
-  --color-brand-chrome: #140a2a;
+  /* Azul de investigación, tinta navy y ámbar para acciones importantes */
+  --color-brand-ember: #d97706;
+  --color-brand-copper: #2563eb;
+  --color-brand-chrome: #1e3a8a;
 
-  --color-accent-cyan: #6d28d9;
-  --color-accent-violet: #a21caf;
+  --color-accent-cyan: #1e40af;
+  --color-accent-violet: #3b82f6;
+  --color-primary: #1e40af;
+  --color-primary-hover: #1e3a8a;
+  --color-secondary: #3b82f6;
+  --color-accent: #d97706;
+  --color-on-accent: #0f172a;
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-muted: #e9eef6;
+  --color-muted-foreground: #475569;
+  --color-border: #dbeafe;
+  --color-ring: #1e40af;
 
   /* Los 5 colores semánticos del dominio */
   --color-kind-data: #0284c7;
   --color-kind-finding: #047857;
   --color-kind-evidence: #4d7c0f;
-  --color-kind-analysis: #7e22ce;
-  --color-kind-hypothesis: #b45309;
-  --color-kind-uncertain: #5b4b73;
+  --color-kind-analysis: #1e40af;
+  --color-kind-hypothesis: #a16207;
+  --color-kind-uncertain: #475569;
 
-  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
 
-  --animate-fade-up: fade-up 0.45s var(--ease-spring);
-  --animate-jelly: jelly 0.55s ease-in-out;
+  --animate-fade-up: fade-up 0.62s var(--ease-spring);
+  --animate-jelly: jelly 0.48s var(--ease-spring);
   --animate-forge-pulse: forge-pulse 2.6s ease-in-out infinite;
+  --animate-liquid-drift: liquid-drift 26s ease-in-out infinite alternate;
 
   @keyframes fade-up {
-    from {
+    0% {
       opacity: 0;
-      translate: 0 12px;
+      translate: 0 18px;
+      scale: 0.986;
+    }
+    65% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes liquid-screen-in {
+    0% {
+      opacity: 0;
+      translate: 0 16px;
+      scale: 0.988;
+    }
+    60% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes liquid-route-sheen {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, -18px, 0) scale3d(0.72, 0.55, 1);
+    }
+    38% {
+      opacity: 0.85;
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(0, 36px, 0) scale3d(1.22, 1.08, 1);
     }
   }
 
@@ -46,14 +88,64 @@
     100% {
       transform: scale3d(1, 1, 1);
     }
-    30% {
-      transform: scale3d(1.04, 0.968, 1);
+    35% {
+      transform: scale3d(1.022, 0.985, 1);
     }
-    50% {
-      transform: scale3d(0.98, 1.02, 1);
+    68% {
+      transform: scale3d(0.994, 1.008, 1);
+    }
+  }
+
+  @keyframes liquid-drift {
+    from {
+      transform: translate3d(-14px, 10px, 0) scale(1);
+    }
+    to {
+      transform: translate3d(20px, -16px, 0) scale(1.06);
+    }
+  }
+
+  @keyframes liquid-wave-expand {
+    0% {
+      opacity: 0.95;
+      transform: translate3d(-50%, -50%, 0) scale3d(0.04, 0.04, 1);
+    }
+    55% {
+      opacity: 0.65;
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(-50%, -50%, 0) scale3d(1, 1, 1);
+    }
+  }
+
+  @keyframes liquid-drop-splash {
+    0% {
+      opacity: 0.9;
+      transform: translate3d(-50%, -50%, 0) scale3d(0.08, 0.08, 1);
+    }
+    40% {
+      opacity: 0.55;
+      transform: translate3d(-50%, -50%, 0) scale3d(0.42, 0.42, 1);
+    }
+    100% {
+      opacity: 0;
+      transform: translate3d(-50%, -50%, 0) scale3d(0.78, 0.78, 1);
+    }
+  }
+
+  @keyframes liquid-surface-wobble {
+    0% {
+      transform: scale3d(0.975, 0.95, 1);
+    }
+    38% {
+      transform: scale3d(1.024, 1.03, 1);
     }
     70% {
-      transform: scale3d(1.015, 0.99, 1);
+      transform: scale3d(0.994, 0.99, 1);
+    }
+    100% {
+      transform: scale3d(1, 1, 1);
     }
   }
 
@@ -72,110 +164,190 @@
 
 :root {
   color-scheme: light;
-  --surface-canvas: #faf8ff;
-  --surface-elevated: rgb(250 246 255 / 0.56);
-  --surface-elevated-strong: rgb(248 243 255 / 0.66);
-  --surface-raised-start: rgb(255 255 255 / 0.72);
-  --surface-raised-end: rgb(242 235 254 / 0.62);
-  --surface-inset: rgb(238 231 252 / 0.62);
-  --border-subtle: rgb(109 40 217 / 0.20);
-  --border-strong: rgb(109 40 217 / 0.46);
-  --border-highlight: rgb(255 255 255 / 0.68);
+  --color-primary: #1e40af;
+  --color-primary-hover: #1e3a8a;
+  --color-on-primary: #ffffff;
+  --color-secondary: #3b82f6;
+  --color-accent: #d97706;
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-muted: #e9eef6;
+  --color-muted-foreground: #475569;
+  --color-border: #dbeafe;
+  --color-ring: #1e40af;
 
-  /* Sombras limpias y nítidas en modo blanco (sin ensuciar el fondo) */
+  --surface-canvas: var(--color-background);
+  --surface-card: var(--color-card);
+  --surface-card-muted: #f1f5f9;
+  --surface-elevated: rgb(255 255 255 / 0.56);
+  --surface-elevated-strong: rgb(255 255 255 / 0.94);
+  --surface-raised-start: rgb(255 255 255 / 0.96);
+  --surface-raised-end: rgb(241 245 249 / 0.88);
+  --surface-inset: rgb(241 245 249 / 0.82);
+  --border-subtle: rgb(203 213 225 / 0.82);
+  --border-strong: rgb(37 99 235 / 0.58);
+  --border-highlight: rgb(255 255 255 / 0.95);
+  --glass-reflection: rgb(255 255 255 / 0.88);
+  --glass-sheen-mid: rgb(255 255 255 / 0.30);
+  --glass-specular-top: rgb(255 255 255 / 0.96);
+  --glass-specular-bottom: rgb(30 64 175 / 0.12);
+  --glass-specular-side: rgb(255 255 255 / 0.72);
+  --glass-refraction: rgb(59 130 246 / 0.13);
+  --glass-refraction-secondary: rgb(217 119 6 / 0.10);
+  --glass-cursor-glow: rgb(255 255 255 / 0.50);
+  --glass-caustic-orb: rgb(59 130 246 / 0.14);
+  --wave-ring-primary: rgb(30 64 175 / 0.76);
+  --wave-ring-secondary: rgb(59 130 246 / 0.68);
+  --wave-glow: rgb(37 99 235 / 0.28);
+  --wave-drop: rgb(255 255 255 / 0.88);
+
+  --shadow-panel:
+    0 8px 24px -16px rgb(15 23 42 / 0.16),
+    0 1px 2px rgb(15 23 42 / 0.04);
   --shadow-ambient:
-    0 24px 56px -24px rgb(46 16 101 / 0.11),
-    0 8px 20px -10px rgb(109 40 217 / 0.08),
-    inset 0 1px 0 rgb(255 255 255 / 0.98);
+    0 24px 56px -22px rgb(30 58 138 / 0.13),
+    0 10px 24px -10px rgb(37 99 235 / 0.10),
+    inset 0 2px 1px rgb(255 255 255 / 0.96),
+    inset 0 -1.5px 2px rgb(30 64 175 / 0.12);
   --shadow-raised:
-    0 10px 24px -10px rgb(46 16 101 / 0.11),
-    0 2px 6px -1px rgb(46 16 101 / 0.05),
-    inset 0 1px 0 rgb(255 255 255 / 1);
+    0 10px 24px -10px rgb(30 58 138 / 0.14),
+    0 3px 8px -2px rgb(37 99 235 / 0.08),
+    inset 0 2px 1px rgb(255 255 255 / 0.98),
+    inset 0 -1.5px 2px rgb(30 64 175 / 0.12);
+  --shadow-glass-hover:
+    0 24px 48px -20px rgb(30 58 138 / 0.20),
+    0 10px 22px -10px rgb(37 99 235 / 0.16),
+    inset 0 2px 2px rgb(255 255 255 / 1),
+    inset 0 -2px 4px rgb(56 189 248 / 0.22);
   --shadow-inset:
-    inset 0 2px 5px rgb(46 16 101 / 0.07),
-    inset 0 1px 0 rgb(255 255 255 / 0.8);
+    inset 0 2px 6px rgb(30 58 138 / 0.07),
+    inset 0 1px 0 rgb(255 255 255 / 0.86);
+  --shadow-panel:
+    0 12px 28px -24px rgb(15 23 42 / 0.24),
+    0 2px 5px rgb(15 23 42 / 0.035);
 
-  --grid-line: rgb(109 40 217 / 0.045);
-  --orb-primary: rgb(139 92 246 / 0.1);
-  --orb-secondary: rgb(217 70 239 / 0.08);
-  --orb-tertiary: rgb(99 102 241 / 0.07);
+  --grid-line: rgb(30 64 175 / 0.035);
+  --orb-primary: rgb(37 99 235 / 0.09);
+  --orb-secondary: rgb(217 119 6 / 0.07);
+  --orb-tertiary: rgb(14 165 233 / 0.06);
 
-  --color-slate-50: #110826;
-  --color-slate-100: #170e2c;
-  --color-slate-200: #291a4a;
-  --color-slate-300: #46336e;
-  --color-slate-400: #665191;
-  --color-slate-500: #826dad;
-  --color-emerald-100: #065f46;
+  --color-slate-50: #0f172a;
+  --color-slate-100: #172033;
+  --color-slate-200: #27344a;
+  --color-slate-300: #475569;
+  --color-slate-400: #64748b;
+  --color-slate-500: #8793a5;
+  --color-emerald-100: #ecfdf5;
   --color-emerald-200: #047857;
-  --color-emerald-300: #059669;
-  --color-sky-100: #075985;
-  --color-sky-200: #0369a1;
-  --color-amber-100: #92400e;
-  --color-amber-200: #b45309;
+  --color-emerald-300: #10b981;
+  --color-sky-100: #eff6ff;
+  --color-sky-200: #1d4ed8;
+  --color-amber-100: #fffbeb;
+  --color-amber-200: #a16207;
   --color-orange-200: #c2410c;
-  --color-rose-100: #9f1239;
+  --color-rose-100: #fff1f2;
   --color-rose-200: #be123c;
   --color-rose-300: #e11d48;
-  --color-violet-200: #6d28d9;
+  --color-violet-200: #1e40af;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-night-950: #06030f;
-  --color-night-900: #0d0720;
-  --color-night-800: #150c30;
-  --color-night-700: #22144a;
+  --color-night-950: #0b1220;
+  --color-night-900: #111c2e;
+  --color-night-800: #172338;
+  --color-night-700: #24334a;
 
-  --color-brand-ember: #c084fc;
-  --color-brand-copper: #e879f9;
-  --color-brand-chrome: #f5f0ff;
+  --color-primary: #93c5fd;
+  --color-primary-hover: #bfdbfe;
+  --color-on-primary: #0b1220;
+  --color-secondary: #60a5fa;
+  --color-accent: #fbbf24;
+  --color-on-accent: #0b1220;
+  --color-background: #0b1220;
+  --color-foreground: #f1f5f9;
+  --color-card: #111c2e;
+  --color-card-foreground: #f1f5f9;
+  --color-muted: #172338;
+  --color-muted-foreground: #a7b4c6;
+  --color-border: #334155;
+  --color-ring: #93c5fd;
 
-  --color-accent-cyan: #c084fc;
-  --color-accent-violet: #e879f9;
+  --surface-canvas: var(--color-background);
+  --surface-card: var(--color-card);
+  --surface-card-muted: #172338;
+  --surface-elevated: rgb(23 35 56 / 0.80);
+  --surface-elevated-strong: rgb(17 28 46 / 0.94);
+  --surface-raised-start: rgb(42 58 82 / 0.90);
+  --surface-raised-end: rgb(17 28 46 / 0.96);
+  --surface-inset: rgb(11 18 32 / 0.80);
+  --border-subtle: rgb(148 163 184 / 0.22);
+  --border-strong: rgb(96 165 250 / 0.62);
+  --border-highlight: rgb(255 255 255 / 0.18);
+  --glass-reflection: rgb(255 255 255 / 0.18);
+  --glass-sheen-mid: rgb(147 197 253 / 0.08);
+  --glass-specular-top: rgb(255 255 255 / 0.32);
+  --glass-specular-bottom: rgb(96 165 250 / 0.22);
+  --glass-specular-side: rgb(255 255 255 / 0.14);
+  --glass-refraction: rgb(59 130 246 / 0.19);
+  --glass-refraction-secondary: rgb(251 191 36 / 0.10);
+  --glass-cursor-glow: rgb(147 197 253 / 0.16);
+  --glass-caustic-orb: rgb(59 130 246 / 0.18);
+  --wave-ring-primary: rgb(191 219 254 / 0.92);
+  --wave-ring-secondary: rgb(96 165 250 / 0.84);
+  --wave-glow: rgb(59 130 246 / 0.52);
+  --wave-drop: rgb(255 255 255 / 0.92);
 
-  --color-kind-data: #38bdf8;
+  --color-brand-ember: #fbbf24;
+  --color-brand-copper: #60a5fa;
+  --color-brand-chrome: #f8fafc;
+  --color-accent-cyan: #93c5fd;
+  --color-accent-violet: #60a5fa;
+
+  --color-kind-data: #7dd3fc;
   --color-kind-finding: #34d399;
   --color-kind-evidence: #a3e635;
-  --color-kind-analysis: #d8b4fe;
+  --color-kind-analysis: #93c5fd;
   --color-kind-hypothesis: #fbbf24;
-  --color-kind-uncertain: #b39ddb;
-
-  --surface-canvas: #06030f;
-  --surface-elevated: rgb(18 9 40 / 0.46);
-  --surface-elevated-strong: rgb(24 13 52 / 0.56);
-  --surface-raised-start: rgb(42 23 88 / 0.58);
-  --surface-raised-end: rgb(18 9 41 / 0.46);
-  --surface-inset: rgb(10 5 24 / 0.54);
-  --border-subtle: rgb(216 180 254 / 0.24);
-  --border-strong: rgb(192 132 252 / 0.58);
-  --border-highlight: rgb(245 208 254 / 0.16);
+  --color-kind-uncertain: #94a3b8;
 
   --shadow-ambient:
     0 32px 76px -26px rgb(0 0 0 / 0.85),
-    0 14px 36px -16px rgb(168 85 247 / 0.28),
+    0 14px 36px -16px rgb(37 99 235 / 0.24),
     0 2px 6px rgb(0 0 0 / 0.55),
-    inset 0 1px 0 rgb(233 213 255 / 0.12);
+    inset 0 1.5px 1px rgb(255 255 255 / 0.32),
+    inset 0 -1.5px 2px rgb(96 165 250 / 0.22);
   --shadow-raised:
     10px 14px 28px rgb(0 0 0 / 0.7),
-    -4px -4px 16px rgb(216 180 254 / 0.05),
+    -4px -4px 16px rgb(147 197 253 / 0.06),
     0 2px 5px rgb(0 0 0 / 0.5),
-    inset 0 1px 0 rgb(233 213 255 / 0.12);
+    inset 0 1.5px 1px rgb(255 255 255 / 0.30),
+    inset 0 -1.5px 2px rgb(56 189 248 / 0.18);
+  --shadow-glass-hover:
+    0 24px 48px -22px rgb(0 0 0 / 0.82),
+    0 12px 28px -12px rgb(37 99 235 / 0.30),
+    inset 0 2px 2px rgb(255 255 255 / 0.42),
+    inset 0 -2px 4px rgb(56 189 248 / 0.28);
   --shadow-inset:
     inset 4px 5px 12px rgb(0 0 0 / 0.76),
-    inset -3px -3px 8px rgb(216 180 254 / 0.045);
+    inset -3px -3px 8px rgb(147 197 253 / 0.05);
+  --shadow-panel:
+    0 18px 42px -30px rgb(0 0 0 / 0.8),
+    0 2px 8px rgb(0 0 0 / 0.28);
 
-  --grid-line: rgb(216 180 254 / 0.065);
-  --orb-primary: rgb(168 85 247 / 0.26);
-  --orb-secondary: rgb(232 121 249 / 0.22);
-  --orb-tertiary: rgb(99 102 241 / 0.18);
+  --grid-line: rgb(148 163 184 / 0.045);
+  --orb-primary: rgb(37 99 235 / 0.18);
+  --orb-secondary: rgb(217 119 6 / 0.12);
+  --orb-tertiary: rgb(14 165 233 / 0.11);
 
-  --color-slate-50: #fbf8ff;
-  --color-slate-100: #f3ecff;
-  --color-slate-200: #e4d7ff;
-  --color-slate-300: #cbb8f5;
-  --color-slate-400: #a48dd4;
-  --color-slate-500: #7c66ad;
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
   --color-emerald-100: #d1fae5;
   --color-emerald-200: #a7f3d0;
   --color-emerald-300: #6ee7b7;
@@ -222,27 +394,289 @@
   }
 }
 
-/* ─────────────── Materiales y elevaciones ─────────────── */
+/* Dashboard: navy de confianza, azul de datos y acento ámbar. */
+.dashboard-hero {
+  isolation: isolate;
+  color: #fff;
+  background:
+    radial-gradient(circle at 84% 10%, rgb(147 197 253 / 0.22), transparent 25%),
+    radial-gradient(circle at 100% 100%, rgb(217 119 6 / 0.18), transparent 34%),
+    linear-gradient(118deg, #172b57 0%, #1e40af 62%, #2563eb 100%);
+  box-shadow:
+    0 22px 56px -32px rgb(30 64 175 / 0.55),
+    inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+
+.dashboard-hero__orb {
+  position: absolute;
+  z-index: -1;
+  width: 17rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(36px);
+  opacity: 0.24;
+  pointer-events: none;
+}
+
+.dashboard-hero__orb--one {
+  top: -11rem;
+  right: 16%;
+  background: #60a5fa;
+}
+
+.dashboard-hero__orb--two {
+  right: -8rem;
+  bottom: -12rem;
+  background: #f59e0b;
+}
+
+.dashboard-eyebrow,
+.section-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.dashboard-eyebrow {
+  color: #dbeafe;
+}
+
+.section-eyebrow {
+  color: var(--color-primary);
+}
+
+.dashboard-hero__highlight {
+  color: #fde68a;
+}
+
+.dashboard-hero__primary {
+  color: #172b57 !important;
+  border-color: rgb(255 255 255 / 0.72) !important;
+  background: linear-gradient(145deg, #fde68a, #f59e0b) !important;
+  box-shadow:
+    0 10px 24px -12px rgb(15 23 42 / 0.56),
+    inset 0 1px 0 rgb(255 255 255 / 0.72) !important;
+}
+
+.dashboard-hero__primary:hover {
+  filter: brightness(1.04);
+}
+
+.dashboard-hero__secondary {
+  color: #fff !important;
+  border-color: rgb(255 255 255 / 0.26) !important;
+  background: rgb(255 255 255 / 0.10) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.20) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(140%);
+}
+
+.dashboard-hero__secondary:hover {
+  background: rgb(255 255 255 / 0.17) !important;
+}
+
+.dashboard-hero__rule {
+  position: absolute;
+  right: 2rem;
+  bottom: 0;
+  left: 2rem;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.32), transparent);
+}
+
+.summary-tile {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-panel);
+  transition:
+    transform 220ms var(--ease-spring),
+    border-color 220ms ease,
+    box-shadow 240ms ease;
+}
+
+.summary-tile:hover,
+.summary-tile:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-glass-hover);
+}
+
+.summary-tile__icon--draft {
+  color: #a16207;
+  background: #fffbeb;
+}
+
+.summary-tile__icon--structured {
+  color: #1e40af;
+  background: #eff6ff;
+}
+
+.summary-tile__icon--researching {
+  color: #0369a1;
+  background: #f0f9ff;
+}
+
+.summary-tile__icon--analyzed {
+  color: #047857;
+  background: #ecfdf5;
+}
+
+:root[data-theme="dark"] .summary-tile__icon--draft {
+  color: #fcd34d;
+  background: rgb(217 119 6 / 0.16);
+}
+
+:root[data-theme="dark"] .summary-tile__icon--structured {
+  color: #bfdbfe;
+  background: rgb(59 130 246 / 0.18);
+}
+
+:root[data-theme="dark"] .summary-tile__icon--researching {
+  color: #7dd3fc;
+  background: rgb(14 165 233 / 0.16);
+}
+
+:root[data-theme="dark"] .summary-tile__icon--analyzed {
+  color: #6ee7b7;
+  background: rgb(16 185 129 / 0.16);
+}
+
+.method-step {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card-muted);
+}
+
+.verdict-card {
+  border: 1px solid var(--border-strong);
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--color-primary) 9%, transparent), transparent 42%),
+    var(--surface-card);
+  box-shadow: var(--shadow-panel);
+}
+
+.verdict-detail {
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-card-muted);
+}
+
+.progress-liquid {
+  background: linear-gradient(90deg, var(--color-secondary), var(--color-accent));
+}
+
+.liquid-loader {
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid var(--border-subtle);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: liquid-loader-spin 720ms linear infinite;
+}
+
+.project-card {
+  transition:
+    transform 220ms var(--ease-spring),
+    border-color 220ms ease,
+    box-shadow 240ms ease;
+}
+
+.project-card:hover,
+.project-card:focus-within {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-glass-hover);
+}
+
+.project-card__arrow {
+  color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--surface-card));
+  transition:
+    transform 220ms var(--ease-spring),
+    background-color 220ms ease;
+}
+
+.project-card:hover .project-card__arrow,
+.project-card:focus-within .project-card__arrow {
+  transform: translate3d(2px, -2px, 0);
+  background: color-mix(in srgb, var(--color-primary) 14%, var(--surface-card));
+}
+
+.theme-preview {
+  border-radius: 0.75rem;
+}
+
+.theme-preview--light {
+  color: #0f172a;
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.theme-preview--dark {
+  color: #f1f5f9;
+  background: #0b1220;
+  border-color: #334155;
+}
+
+@keyframes liquid-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ─────────────── Materiales y elevaciones (Cristal Líquido) ─────────────── */
 
 @utility glass {
   position: relative;
   background:
-    linear-gradient(145deg, var(--border-highlight), transparent 42%),
+    linear-gradient(
+      152deg,
+      var(--glass-reflection) 0%,
+      var(--glass-sheen-mid) 26%,
+      transparent 48%,
+      var(--glass-refraction-secondary) 100%
+    ),
+    radial-gradient(115% 95% at 0% 0%, var(--glass-refraction), transparent 60%),
+    radial-gradient(95% 85% at 100% 100%, var(--glass-refraction-secondary), transparent 64%),
     var(--surface-elevated);
   border: 1px solid var(--border-subtle);
   -webkit-backdrop-filter: blur(12px) saturate(145%);
   backdrop-filter: blur(12px) saturate(145%);
-  box-shadow: var(--shadow-ambient);
+  box-shadow:
+    var(--shadow-ambient),
+    inset 0 2px 1.5px var(--glass-specular-top),
+    inset 0 -2px 3px var(--glass-specular-bottom),
+    inset 1.5px 0 1.5px var(--glass-specular-side);
+  transition:
+    border-color 260ms ease,
+    box-shadow 280ms ease;
+}
+
+@utility surface-panel {
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-panel);
 }
 
 @utility neo-raised {
-  background: linear-gradient(145deg, var(--surface-raised-start), var(--surface-raised-end));
+  position: relative;
+  background:
+    linear-gradient(155deg, var(--glass-reflection) 0%, var(--glass-sheen-mid) 36%, transparent 62%),
+    linear-gradient(145deg, var(--surface-raised-start), var(--surface-raised-end));
   border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-raised);
+  -webkit-backdrop-filter: blur(12px) saturate(145%);
+  backdrop-filter: blur(12px) saturate(145%);
+  box-shadow:
+    var(--shadow-raised),
+    inset 0 2px 1px var(--glass-specular-top),
+    inset 0 -1.5px 2.5px var(--glass-specular-bottom);
 }
 
 @utility neo-inset {
-  background-color: var(--surface-inset);
+  background:
+    radial-gradient(110% 100% at 100% 0%, var(--glass-refraction), transparent 64%),
+    linear-gradient(180deg, transparent 55%, var(--glass-sheen-mid) 100%),
+    var(--surface-inset);
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-inset);
 }
@@ -250,30 +684,23 @@
 @utility stage-3d {
   position: relative;
   background:
-    radial-gradient(
-      520px circle at var(--spotlight-x, 82%) var(--spotlight-y, 18%),
-      var(--orb-primary),
-      transparent 55%
-    ),
-    radial-gradient(circle at 14% 88%, var(--orb-secondary), transparent 48%),
-    linear-gradient(145deg, var(--border-highlight), transparent 38%),
-    var(--surface-elevated-strong);
+    linear-gradient(135deg, color-mix(in srgb, var(--color-primary) 4%, transparent), transparent 42%),
+    var(--surface-card);
   border: 1px solid var(--border-subtle);
-  -webkit-backdrop-filter: blur(15px) saturate(150%);
-  backdrop-filter: blur(15px) saturate(150%);
-  box-shadow: var(--shadow-ambient);
+  box-shadow: var(--shadow-panel);
 }
 
 @utility tilt-3d {
   transition:
-    transform 260ms var(--ease-spring),
-    box-shadow 260ms ease,
-    border-color 220ms ease;
+    transform 320ms var(--ease-spring),
+    box-shadow 320ms ease,
+    border-color 240ms ease;
 
   &:hover,
   &:focus-visible {
     border-color: var(--border-strong);
-    transform: translateY(-3px);
+    box-shadow: var(--shadow-glass-hover);
+    transform: translate3d(0, -2.5px, 0);
   }
 }
 
@@ -291,30 +718,216 @@
 @utility filament-line {
   background-image: linear-gradient(
     90deg,
-    var(--color-brand-ember),
-    var(--color-brand-copper),
-    var(--color-kind-evidence)
+    var(--color-primary),
+    var(--color-secondary),
+    var(--color-accent)
   );
 }
 
 @utility jelly {
+  position: relative;
+  overflow: hidden;
   transition:
-    transform 220ms var(--ease-spring),
-    box-shadow 220ms ease,
-    background-color 180ms ease,
-    color 180ms ease;
+    transform 260ms var(--ease-spring),
+    box-shadow 260ms ease,
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease;
 
   &:where(:not(:disabled)):hover,
   &:where(:not(:disabled)):focus-visible {
     animation: var(--animate-jelly);
   }
   &:where(:not(:disabled)):active {
-    transform: translateY(1px) scale(0.98);
+    transform: translate3d(0, 1px, 0) scale3d(0.98, 0.98, 1);
+  }
+}
+
+/* ─────────────── Cápsulas de botones y Olas Líquidas al hacer clic ─────────────── */
+
+.liquid-host {
+  position: relative;
+  overflow: hidden;
+}
+
+.liquid-btn-primary {
+  --wave-ring-primary: rgb(255 255 255 / 0.94);
+  --wave-ring-secondary: rgb(255 251 235 / 0.88);
+  --wave-glow: rgb(255 251 235 / 0.56);
+  --wave-drop: rgb(255 255 255 / 0.96);
+  box-shadow:
+    0 12px 26px -12px var(--color-accent),
+    inset 0 2px 1.5px rgb(255 255 255 / 0.68),
+    inset 0 -2px 4px rgb(120 53 15 / 0.28);
+  background-image:
+    linear-gradient(180deg, rgb(255 255 255 / 0.28) 0%, transparent 48%),
+    linear-gradient(95deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 84%, #b45309));
+}
+
+.liquid-btn-glass {
+  -webkit-backdrop-filter: blur(14px) saturate(155%);
+  backdrop-filter: blur(14px) saturate(155%);
+  box-shadow:
+    var(--shadow-raised),
+    inset 0 2px 1.5px var(--glass-specular-top),
+    inset 0 -2px 3px var(--glass-specular-bottom);
+}
+
+.liquid-btn-ghost {
+  box-shadow: inset 0 1px 0 transparent;
+  &:hover,
+  &:focus-visible {
+    box-shadow:
+      inset 0 1.5px 1px var(--glass-specular-top),
+      inset 0 -1.5px 2px var(--glass-specular-bottom);
+  }
+}
+
+.is-liquid-waving {
+  animation: liquid-surface-wobble 500ms var(--ease-spring);
+}
+
+.liquid-ripple {
+  pointer-events: none;
+  position: absolute;
+  z-index: 2;
+  border-radius: 9999px;
+  contain: layout style paint;
+  transform: translate3d(-50%, -50%, 0);
+}
+
+.liquid-ripple__drop {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 54%;
+  height: 54%;
+  border-radius: 9999px;
+  will-change: transform, opacity;
+  background: radial-gradient(
+    circle,
+    var(--wave-drop) 0%,
+    var(--wave-ring-secondary) 44%,
+    transparent 72%
+  );
+  animation: liquid-drop-splash 480ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.liquid-ripple__wave {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  border-radius: 9999px;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+
+.liquid-ripple__wave--1 {
+  border: 2.5px solid var(--wave-ring-primary);
+  background: radial-gradient(
+    circle,
+    transparent 56%,
+    color-mix(in oklab, var(--wave-ring-secondary) 26%, transparent) 69%,
+    color-mix(in oklab, var(--wave-ring-primary) 38%, transparent) 75%,
+    transparent 80%
+  );
+  animation: liquid-wave-expand 680ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.liquid-ripple__wave--2 {
+  border: 2px solid var(--wave-ring-secondary);
+  background: radial-gradient(
+    circle,
+    transparent 62%,
+    color-mix(in oklab, var(--wave-ring-primary) 22%, transparent) 73%,
+    transparent 80%
+  );
+  animation: liquid-wave-expand 820ms cubic-bezier(0.16, 1, 0.3, 1) 110ms forwards;
+}
+
+.liquid-ripple__wave--3 {
+  border: 1.5px solid var(--wave-ring-primary);
+  animation: liquid-wave-expand 940ms cubic-bezier(0.16, 1, 0.3, 1) 220ms forwards;
+}
+
+.liquid-orb {
+  will-change: transform;
+  animation: var(--animate-liquid-drift);
+}
+
+.liquid-orb--secondary {
+  animation-duration: 32s;
+  animation-delay: -10s;
+}
+
+.liquid-orb--tertiary {
+  animation-duration: 38s;
+  animation-delay: -18s;
+}
+
+.liquid-orb--caustic {
+  animation-duration: 22s;
+  animation-delay: -6s;
+}
+
+/* ─────────────── Transición fluida entre pantallas y pestañas ─────────────── */
+
+.animate-liquid-screen {
+  animation: liquid-screen-in 560ms var(--ease-spring);
+}
+
+.animate-liquid-screen > * > *:nth-child(1),
+.animate-fade-up > *:nth-child(1) {
+  animation: fade-up 520ms var(--ease-spring);
+}
+
+.animate-liquid-screen > * > *:nth-child(2),
+.animate-fade-up > *:nth-child(2) {
+  animation: fade-up 580ms var(--ease-spring) 45ms backwards;
+}
+
+.animate-liquid-screen > * > *:nth-child(3),
+.animate-fade-up > *:nth-child(3) {
+  animation: fade-up 620ms var(--ease-spring) 85ms backwards;
+}
+
+.animate-liquid-screen > * > *:nth-child(4),
+.animate-fade-up > *:nth-child(4) {
+  animation: fade-up 660ms var(--ease-spring) 120ms backwards;
+}
+
+.liquid-route-wave {
+  will-change: transform, opacity;
+  background: radial-gradient(
+    ellipse at center,
+    var(--glass-refraction) 0%,
+    var(--glass-refraction-secondary) 42%,
+    transparent 74%
+  );
+  animation: liquid-route-sheen 720ms var(--ease-spring) forwards;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .stage-3d {
+    background: var(--surface-card);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass,
+  .neo-raised,
+  .liquid-btn-glass {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--surface-card);
   }
 }
 
 @utility text-gradient {
-  background-image: linear-gradient(105deg, var(--color-brand-ember), var(--color-brand-copper));
+  background-image: linear-gradient(105deg, var(--color-primary), var(--color-secondary));
   background-clip: text;
   color: transparent;
 }
@@ -359,7 +972,7 @@
     border: 0 !important;
     background: #fff !important;
     box-shadow: none !important;
-    color: #171717 !important;
+    color: #0f172a !important;
     backdrop-filter: none !important;
   }
 

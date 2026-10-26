@@ -24,11 +24,17 @@ class Settings(BaseSettings):
     test_database_url: SecretStr | None = None
 
     # Autenticación
-    secret_key: SecretStr
+    secret_key: SecretStr | None = None
+    legacy_auth_enabled: bool = False
     access_token_expire_minutes: int = Field(default=30, ge=5, le=120)
     refresh_token_expire_days: int = Field(default=7, ge=1, le=30)
     login_max_failed_attempts: int = Field(default=5, ge=1)
     login_lockout_seconds: int = Field(default=900, ge=60)
+    supabase_url: str | None = None
+    supabase_publishable_key: SecretStr | None = None
+    supabase_service_role_key: SecretStr | None = None
+    supabase_jwt_secret: SecretStr | None = None
+    supabase_jwks_url: str | None = None
 
     # Las credenciales solo se leen en backend; SecretStr evita mostrarlas en repr o logs.
     ai_provider: AIProviderName = AIProviderName.FAKE
@@ -37,9 +43,9 @@ class Settings(BaseSettings):
     gemini_model: str = Field(default="gemini-3.5-flash-lite", min_length=1, max_length=100)
     gemini_search_grounding_enabled: bool = True
     ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = Field(default="qwen3:4b", min_length=1, max_length=100)
+    ollama_model: str = Field(default="llama3.2:3b", min_length=1, max_length=100)
     ollama_think: bool = False
-    ai_timeout_seconds: float = Field(default=240, ge=5, le=600)
+    ai_timeout_seconds: float = Field(default=360, ge=5, le=600)
     ai_max_concurrency: int = Field(default=3, ge=1, le=10)
     # Latencia simulada del proveedor falso, para ver el progreso en desarrollo.
     ai_fake_latency_ms: int = Field(default=700, ge=0, le=10_000)
@@ -60,11 +66,71 @@ class Settings(BaseSettings):
     # Al arrancar, marca como interrumpidas las ejecuciones que quedaron a medias.
     research_recover_on_startup: bool = True
 
-    @field_validator("secret_key")
+    @field_validator("secret_key", mode="before")
     @classmethod
-    def require_strong_secret(cls, value: SecretStr) -> SecretStr:
-        if len(value.get_secret_value()) < 32:
-            raise ValueError("SECRET_KEY debe tener al menos 32 caracteres.")
+    def empty_secret_key_is_missing(cls, value: Any) -> Any:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("supabase_url", mode="before")
+    @classmethod
+    def empty_supabase_url_is_missing(cls, value: Any) -> Any:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("supabase_url")
+    @classmethod
+    def validate_supabase_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip().rstrip("/")
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+            or parsed.path not in {"", "/"}
+        ):
+            raise ValueError("SUPABASE_URL debe ser un origen HTTPS válido.")
+        return value
+
+    @field_validator("supabase_publishable_key", mode="before")
+    @classmethod
+    def empty_supabase_publishable_key_is_missing(cls, value: Any) -> Any:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("supabase_service_role_key", mode="before")
+    @classmethod
+    def empty_supabase_service_key_is_missing(cls, value: Any) -> Any:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("supabase_jwt_secret", mode="before")
+    @classmethod
+    def empty_supabase_secret_is_missing(cls, value: Any) -> Any:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("supabase_jwks_url", mode="before")
+    @classmethod
+    def empty_supabase_jwks_url_is_missing(cls, value: Any) -> Any:
+        return None if isinstance(value, str) and not value.strip() else value
+
+    @field_validator("supabase_jwks_url")
+    @classmethod
+    def validate_supabase_jwks_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        value = value.strip()
+        parsed = urlsplit(value)
+        if (
+            parsed.scheme != "https"
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+        ):
+            raise ValueError("SUPABASE_JWKS_URL debe ser una URL HTTPS válida.")
         return value
 
     @field_validator("gemini_api_key", mode="before")
@@ -136,6 +202,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_ai_provider_setup(self) -> "Settings":
+        if self.legacy_auth_enabled and (
+            self.secret_key is None or len(self.secret_key.get_secret_value()) < 32
+        ):
+            raise ValueError("SECRET_KEY debe tener al menos 32 caracteres con auth heredada.")
         if self.app_env == "production" and self.ai_provider == AIProviderName.FAKE:
             raise ValueError("AI_PROVIDER=fake solo se permite en desarrollo y tests.")
         if self.ai_provider == AIProviderName.LEGACY:

@@ -98,7 +98,7 @@ describe("Pestaña de análisis", () => {
     render([]);
     const card = await screen.findByRole("article", { name: OPPORTUNITY.title });
 
-    expect(within(card).getByText("Interpretación de IA, no un hecho comprobado")).toBeInTheDocument();
+    expect(within(card).getByText("Sugerencia de IA · revisa las fuentes antes de aceptarla")).toBeInTheDocument();
     expect(within(card).getByText(FINDING.statement)).toBeInTheDocument();
     expect(within(card).getByRole("link", { name: /Informe sectorial/ })).toHaveAttribute("href", "https://fuente.example/informe");
   });

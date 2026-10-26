@@ -1,9 +1,9 @@
-import { FiAlertTriangle, FiCpu } from "react-icons/fi";
+import { FiAlertTriangle } from "react-icons/fi";
 
 import { Alert } from "../../../components/ui/Alert";
 import { GlassPanel } from "../../../components/ui/GlassPanel";
 import { formatDateTime } from "../../../lib/formatDate";
-import { PROVIDER_LABELS, RUN_STEP_LABELS, isActiveRun } from "../constants";
+import { RUN_STEP_LABELS, isActiveRun } from "../constants";
 import type { ResearchRunDetail } from "../types";
 import { RunStatusBadge } from "./badges";
 
@@ -24,8 +24,8 @@ export function FakeProviderNotice() {
     >
       <FiAlertTriangle aria-hidden="true" className="mt-0.5 shrink-0 text-kind-hypothesis" />
       <p>
-        <strong className="font-semibold">Resultados simulados.</strong> Los generó el proveedor de pruebas, no una
-        investigación real: las fuentes (example.com, example.org…) no existen. No los uses para tomar decisiones.
+        <strong className="font-semibold">Resultados de demostración.</strong> Son ejemplos, no una búsqueda real:
+        las fuentes (example.com, example.org…) no existen. No los uses para tomar decisiones.
       </p>
     </div>
   );
@@ -46,9 +46,6 @@ export function RunStatusCard({ run }: { run: ResearchRunDetail }) {
             Iniciada el <time dateTime={run.created_at}>{formatDateTime(run.created_at)}</time>
           </span>
         </div>
-        <span className="flex items-center gap-1.5 text-xs text-slate-400">
-          <FiCpu aria-hidden="true" /> {PROVIDER_LABELS[run.ai_provider]} · {run.ai_model}
-        </span>
       </div>
 
       {active && (

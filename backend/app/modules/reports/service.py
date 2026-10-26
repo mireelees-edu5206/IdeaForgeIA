@@ -4,12 +4,20 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.enums import AttributeType
 from app.core.errors import ConflictError, NotFoundError
 from app.modules.ai.providers.base import AIProvider
 from app.modules.projects.models import Project, ProjectStatus
+from app.modules.projects.repository import IdeaAttributeRepository
 from app.modules.projects.service import get_owned_project
 from app.modules.reports.models import Report, ReportSection, ReportStatus
-from app.modules.reports.schemas import ReportDetail, ReportListItem, ReportRead, ReportSectionRead
+from app.modules.reports.schemas import (
+    GeographicScopeInput,
+    ReportDetail,
+    ReportListItem,
+    ReportRead,
+    ReportSectionRead,
+)
 from app.modules.research.models import ResearchRun, RunStatus
 from app.modules.users.models import User
 
@@ -22,7 +30,13 @@ class ReportService:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
 
-    async def start(self, user: User, project_id: uuid.UUID, provider: AIProvider) -> ReportRead:
+    async def start(
+        self,
+        user: User,
+        project_id: uuid.UUID,
+        provider: AIProvider,
+        geographic_scopes: list[GeographicScopeInput] | None = None,
+    ) -> ReportRead:
         project = await get_owned_project(self.session, user, project_id)
         await self.session.scalar(
             select(Project.id).where(Project.id == project.id).with_for_update()
@@ -46,6 +60,19 @@ class ReportService:
                 code="completed_research_required",
             )
 
+        if geographic_scopes is None:
+            attributes = await IdeaAttributeRepository(self.session).list_for_project(project.id)
+            geographic_scopes_data = [
+                {"query": attribute.value.strip()}
+                for attribute in attributes
+                if attribute.attribute_type == AttributeType.GEOGRAPHIC_SCOPE
+                and attribute.is_confirmed
+            ][:3]
+        else:
+            geographic_scopes_data = [
+                scope.model_dump(exclude_none=True) for scope in geographic_scopes
+            ]
+
         pending = await self.session.scalar(
             select(Report.id).where(
                 Report.project_id == project.id,
@@ -65,7 +92,8 @@ class ReportService:
             project_id=project.id,
             run_id=run.id,
             version=version,
-            title=f"Informe de validación: {project.title}",
+            title=f"Veredicto final: {project.title}",
+            geographic_scopes=geographic_scopes_data,
             status=ReportStatus.GENERATING,
             ai_provider=provider.name,
             ai_model=provider.model,

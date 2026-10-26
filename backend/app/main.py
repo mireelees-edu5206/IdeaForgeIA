@@ -2,23 +2,30 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
+from starlette.middleware.base import RequestResponseEndpoint
+from starlette.responses import Response
 
+from app.api.deps import CurrentUser
 from app.api.v1.router import api_router
 from app.core.config import Settings, get_settings
 from app.core.errors import register_exception_handlers
 from app.core.logging import configure_logging
 from app.core.rate_limit import LoginRateLimiter
+from app.core.supabase_auth import SupabaseTokenVerifier
 from app.db.session import build_engine, build_sessionmaker
 from app.modules.ai.factory import build_ai_provider
 from app.modules.ai.providers.base import AIProvider
 from app.modules.analysis.runner import AnalysisRunner
+from app.modules.auth.router import router as legacy_auth_router
 from app.modules.geo.providers.base import GeoProvider
 from app.modules.geo.providers.factory import build_geo_provider
 from app.modules.reports.runner import ReportRunner
 from app.modules.research.orchestrator import ResearchOrchestrator, recover_interrupted_runs
+from app.modules.users.router import legacy_password_router
+from app.modules.users.schemas import UserRead
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +50,7 @@ def create_app(
             app.state.sessionmaker, provider, settings
         )
         app.state.analysis_runner = AnalysisRunner(app.state.sessionmaker, provider, settings)
-        app.state.report_runner = ReportRunner(app.state.sessionmaker, provider, settings)
+        app.state.report_runner = ReportRunner(app.state.sessionmaker, provider, settings, geo)
         app.state.geo_provider = geo
         if settings.research_recover_on_startup:
             try:
@@ -68,6 +75,9 @@ def create_app(
     app.state.settings = settings
     app.state.ai_provider = provider
     app.state.geo_provider = geo
+    app.state.supabase_jwt_verifier = (
+        SupabaseTokenVerifier(settings) if settings.supabase_url is not None else None
+    )
     app.state.login_limiter = LoginRateLimiter(
         settings.login_max_failed_attempts, settings.login_lockout_seconds
     )
@@ -81,8 +91,31 @@ def create_app(
         allow_headers=["Authorization", "Content-Type"],
     )
 
+    @app.middleware("http")
+    async def add_security_headers(
+        request: Request, call_next: RequestResponseEndpoint
+    ) -> Response:
+        response = await call_next(request)
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault("Cache-Control", "no-store")
+        return response
+
     register_exception_handlers(app)
+
+    @app.get("/", tags=["health"])
+    async def root() -> dict[str, str]:
+        return {"service": settings.app_name, "status": "ok"}
+
+    @app.get("/perfil", response_model=UserRead, tags=["users"])
+    async def read_profile(user: CurrentUser) -> UserRead:
+        return UserRead.model_validate(user)
+
     app.include_router(api_router, prefix=settings.api_v1_prefix)
+    if settings.legacy_auth_enabled:
+        app.include_router(legacy_auth_router, prefix=settings.api_v1_prefix)
+        app.include_router(legacy_password_router, prefix=settings.api_v1_prefix)
     return app
 
 

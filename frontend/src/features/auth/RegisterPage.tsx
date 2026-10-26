@@ -8,6 +8,7 @@ import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
 import { errorMessageFrom, fieldErrorsFrom } from "../../lib/formErrors";
 import { useDocumentTitle } from "../../lib/useDocumentTitle";
+import { supabase } from "../../lib/supabaseClient";
 import { useAuth } from "./AuthContext";
 
 const PASSWORD_MIN_LENGTH = 8;
@@ -20,6 +21,7 @@ export function RegisterPage() {
   const [form, setForm] = useState({ full_name: "", email: "", password: "", confirm: "" });
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [confirmationSent, setConfirmationSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const update = (field: keyof typeof form) => (event: ChangeEvent<HTMLInputElement>) =>
@@ -38,14 +40,23 @@ export function RegisterPage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setConfirmationSent(false);
     const errors = validate();
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
     setSubmitting(true);
     try {
-      await register({ full_name: form.full_name.trim(), email: form.email.trim(), password: form.password });
-      navigate("/", { replace: true });
+      const needsConfirmation = await register({
+        full_name: form.full_name.trim(),
+        email: form.email.trim(),
+        password: form.password,
+      });
+      if (needsConfirmation) {
+        setConfirmationSent(true);
+      } else {
+        navigate("/", { replace: true });
+      }
     } catch (err) {
       const serverFieldErrors = fieldErrorsFrom(err);
       setFieldErrors(serverFieldErrors);
@@ -57,7 +68,7 @@ export function RegisterPage() {
   return (
     <AuthLayout
       title="Crea tu cuenta"
-      subtitle="Estructura tu idea y descubre qué dice la evidencia."
+      subtitle="Guarda tu idea y sigue una guía sencilla para explorarla."
       footer={
         <>
           ¿Ya tienes cuenta?{" "}
@@ -68,6 +79,14 @@ export function RegisterPage() {
       }
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" noValidate>
+        {!supabase && (
+          <Alert>Falta configurar Supabase en las variables VITE_SUPABASE_URL y VITE_SUPABASE_PUBLISHABLE_KEY.</Alert>
+        )}
+        {confirmationSent && (
+          <Alert tone="info">
+            Te enviamos un enlace de confirmación. Ábrelo desde tu correo para activar la cuenta y después inicia sesión.
+          </Alert>
+        )}
         {error && <Alert>{error}</Alert>}
         <TextField
           label="Nombre completo"
@@ -105,7 +124,14 @@ export function RegisterPage() {
           onChange={update("confirm")}
           error={fieldErrors.confirm}
         />
-        <Button type="submit" size="lg" loading={submitting} icon={<FiUserPlus aria-hidden="true" />} className="mt-2">
+        <Button
+          type="submit"
+          size="lg"
+          loading={submitting}
+          disabled={!supabase}
+          icon={<FiUserPlus aria-hidden="true" />}
+          className="mt-2"
+        >
           Crear cuenta
         </Button>
       </form>

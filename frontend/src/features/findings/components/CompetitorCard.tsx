@@ -27,7 +27,7 @@ export function CompetitorCard({ projectId, competitor }: { projectId: string; c
   const review = (review_status: ReviewStatus) => update.mutate({ competitorId: competitor.id, review_status });
 
   return (
-    <article aria-labelledby={headingId} className={cn("glass flex flex-col gap-3 rounded-2xl p-5", rejected && "opacity-60")}>
+    <article aria-labelledby={headingId} className={cn("surface-panel flex flex-col gap-3 rounded-2xl p-5", rejected && "opacity-60")}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <h4 id={headingId} className={cn("font-semibold text-slate-100", rejected && "line-through")}>
@@ -36,7 +36,7 @@ export function CompetitorCard({ projectId, competitor }: { projectId: string; c
           <p className="text-xs text-slate-400">
             {ENTITY_TYPE_LABELS[entity.entity_type]}
             {competitor.finding_count > 0 &&
-              ` · en ${competitor.finding_count} ${competitor.finding_count === 1 ? "hallazgo" : "hallazgos"}`}
+              ` · aparece en ${competitor.finding_count} ${competitor.finding_count === 1 ? "resultado" : "resultados"}`}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -68,14 +68,14 @@ export function CompetitorCard({ projectId, competitor }: { projectId: string; c
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Select
-          label={`Tipo de competidor de ${entity.name}`}
+          label={`Qué tan parecida es la opción ${entity.name}`}
           value={competitor.competitor_type}
           options={TYPE_OPTIONS}
           disabled={update.isPending}
           onChange={(competitor_type) => update.mutate({ competitorId: competitor.id, competitor_type })}
         />
         <Select
-          label={`Nivel de amenaza de ${entity.name}`}
+          label={`Qué tan fuerte parece la opción ${entity.name}`}
           value={competitor.threat_level}
           options={THREAT_OPTIONS}
           disabled={update.isPending}
@@ -105,7 +105,7 @@ export function CompetitorCard({ projectId, competitor }: { projectId: string; c
           <Button
             size="icon"
             variant="ghost"
-            aria-label={`Eliminar competidor ${entity.name}`}
+            aria-label={`Quitar opción ${entity.name}`}
             className="hover:text-rose-300"
             onClick={() => setConfirmDelete(true)}
           >
@@ -116,15 +116,14 @@ export function CompetitorCard({ projectId, competitor }: { projectId: string; c
 
       <ConfirmDialog
         open={confirmDelete}
-        title="¿Quitar este competidor?"
+        title="¿Quitar esta opción?"
         confirmLabel="Quitar"
         loading={remove.isPending}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => remove.mutate(competitor.id, { onSettled: () => setConfirmDelete(false) })}
       >
         <p>
-          <strong className="text-slate-100">{entity.name}</strong> dejará de figurar como competidor. La entidad y sus
-          hallazgos se conservan.
+          <strong className="text-slate-100">{entity.name}</strong> dejará de aparecer en esta lista. Sus resultados y fuentes se conservan.
         </p>
       </ConfirmDialog>
     </article>

@@ -15,7 +15,7 @@ from tests.conftest import make_settings, run_sql
 class StubGeoProvider(GeoProvider):
     def __init__(self) -> None:
         self.geocode_queries: list[str] = []
-        self.nearby_requests: list[tuple[float, float, int, GeoCategory]] = []
+        self.nearby_requests: list[tuple[float, float, int, GeoCategory, str | None]] = []
 
     async def geocode(self, query: str) -> list[GeoPlace]:
         self.geocode_queries.append(query)
@@ -31,9 +31,14 @@ class StubGeoProvider(GeoProvider):
         ]
 
     async def find_places(
-        self, latitude: float, longitude: float, radius_m: int, category: GeoCategory
+        self,
+        latitude: float,
+        longitude: float,
+        radius_m: int,
+        category: GeoCategory,
+        keyword: str | None = None,
     ) -> list[GeoBusiness]:
-        self.nearby_requests.append((latitude, longitude, radius_m, category))
+        self.nearby_requests.append((latitude, longitude, radius_m, category, keyword))
         return [
             GeoBusiness(
                 osm_type="node",
@@ -42,7 +47,7 @@ class StubGeoProvider(GeoProvider):
                 name="Comercial de prueba",
                 latitude=latitude,
                 longitude=longitude,
-                category=category,
+                category=keyword or category,
                 subtype="clothes",
                 website="https://business.example",
             )
@@ -94,7 +99,7 @@ def test_nearby_places_are_scoped_to_owned_project_and_bounded(migrated_db: str)
         assert response.json()["attribution"] == "© OpenStreetMap contributors"
         assert response.json()["places"][0]["name"] == "Comercial de prueba"
         assert "no confirma que sean competidores" in response.json()["caveat"]
-        assert provider.nearby_requests == [(19.2925, -99.6569, 1200, "clothing")]
+        assert provider.nearby_requests == [(19.2925, -99.6569, 1200, "clothing", None)]
 
         stranger = user_headers(client, email="geo-otro@ideaforge.dev")
         hidden = client.get(f"{BASE}/{project['id']}/geo/places", params=params, headers=stranger)

@@ -31,7 +31,7 @@ export function FindingsTab() {
   const [creating, setCreating] = useState(false);
   const create = useCreateFinding(project.id);
 
-  // Por defecto, la investigación más reciente (más los hallazgos aportados por el usuario).
+  // Por defecto, muestra los resultados de la búsqueda más reciente y los añadidos por el usuario.
   const runId = runChoice ?? runs.data?.[0]?.id ?? ALL;
   const findings = useFindings(project.id, {
     run_id: runId === ALL ? undefined : runId,
@@ -41,7 +41,7 @@ export function FindingsTab() {
   const pending = findings.data?.filter((f) => f.origin === "ai" && f.review_status === "proposed").length ?? 0;
 
   const runOptions = [
-    { value: ALL, label: "Todas las investigaciones" },
+    { value: ALL, label: "Todas las búsquedas" },
     ...(runs.data ?? []).map((run, index) => ({
       value: run.id,
       label: `${formatDateTime(run.created_at)}${index === 0 ? " (la más reciente)" : ""}`,
@@ -60,27 +60,26 @@ export function FindingsTab() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Hallazgos</h2>
+          <h2 className="text-lg font-semibold">Resultados de la búsqueda</h2>
           <p className="text-sm text-slate-400">
-            Afirmaciones extraídas de la investigación. Cada hallazgo de la IA cita al menos un fragmento de una fuente;
-            revísalos antes de darlos por buenos.
+            Aquí verás qué encontramos y de qué fuente viene. Revisa la información antes de usarla como base para una decisión.
           </p>
         </div>
         {!creating && (
           <Button icon={<FiPlus aria-hidden="true" />} onClick={() => setCreating(true)}>
-            Nuevo hallazgo
+            Añadir resultado
           </Button>
         )}
       </div>
 
       {creating && (
         <GlassPanel className="p-5">
-          <h3 className="mb-4 font-semibold">Nuevo hallazgo</h3>
+          <h3 className="mb-4 font-semibold">Añade un resultado que conozcas</h3>
           <FindingForm
-            submitLabel="Guardar hallazgo"
+            submitLabel="Guardar resultado"
             pending={create.isPending}
             error={create.error}
-            note="Se guardará como dato aportado por ti, sin evidencia vinculada."
+            note="Se guardará como información aportada por ti. Podrás vincular una fuente más adelante."
             onSubmit={(data) => create.mutateAsync(data).then(() => setCreating(false))}
             onCancel={() => {
               create.reset();
@@ -91,13 +90,13 @@ export function FindingsTab() {
       )}
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Select label="Investigación" value={runId} options={runOptions} onChange={setRunChoice} />
-        <Select label="Categoría" value={type} options={typeOptions} onChange={setType} />
-        <Select label="Revisión" value={review} options={reviewOptions} onChange={setReview} />
+        <Select label="Búsqueda" value={runId} options={runOptions} onChange={setRunChoice} />
+        <Select label="Tema" value={type} options={typeOptions} onChange={setType} />
+        <Select label="Estado de revisión" value={review} options={reviewOptions} onChange={setReview} />
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-        <span>Etiquetas:</span>
+        <span>Quién añadió cada resultado:</span>
         <ProvenanceBadge origin="ai" review="proposed" />
         <ProvenanceBadge origin="ai" review="accepted" />
         <ProvenanceBadge origin="user" review="accepted" />
@@ -105,7 +104,7 @@ export function FindingsTab() {
 
       {findings.isPending ? (
         <div role="status" className="flex items-center justify-center gap-3 py-16 text-slate-300">
-          <Spinner className="size-5 text-accent-cyan" /> Cargando hallazgos…
+          <Spinner className="size-5 text-accent-cyan" /> Cargando resultados…
         </div>
       ) : findings.isError ? (
         <GlassPanel className="flex flex-col items-start gap-4 p-6">
@@ -117,14 +116,14 @@ export function FindingsTab() {
       ) : findings.data.length === 0 ? (
         <EmptyState
           icon={FiFileText}
-          title="No hay hallazgos"
-          description="Aparecerán al completar una investigación. También puedes añadir los tuyos o cambiar los filtros."
+          title="Todavía no hay resultados"
+          description="Cuando busques información, aparecerán aquí los datos encontrados. También puedes añadir los que ya conoces."
         />
       ) : (
-        <section aria-label="Lista de hallazgos" className="flex flex-col gap-3">
+        <section aria-label="Lista de resultados" className="flex flex-col gap-3">
           <p className="text-sm text-slate-300" aria-live="polite">
-            {findings.data.length} {findings.data.length === 1 ? "hallazgo" : "hallazgos"}
-            {pending > 0 && ` · ${pending} sin revisar`}
+            {findings.data.length} {findings.data.length === 1 ? "resultado" : "resultados"}
+            {pending > 0 && ` · ${pending} pendiente${pending === 1 ? "" : "s"} de revisar`}
           </p>
           {findings.data.map((finding) => (
             <FindingCard key={finding.id} projectId={project.id} finding={finding} />

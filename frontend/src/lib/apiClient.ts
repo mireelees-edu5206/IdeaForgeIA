@@ -1,7 +1,6 @@
-import { type Tokens, tokenStorage } from "./tokenStorage";
+import { supabase } from "./supabaseClient";
 
 const API_BASE = (import.meta.env.VITE_API_URL ?? "/api/v1").replace(/\/$/, "");
-const REFRESH_LOCK = "ideaforge-auth-refresh";
 
 export interface ApiErrorDetail {
   field: string;
@@ -74,57 +73,44 @@ async function parse<T>(response: Response): Promise<T> {
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const auth = options.auth ?? true;
-  const accessToken = auth ? tokenStorage.get()?.accessToken : undefined;
+  const accessToken = auth ? await getAccessToken() : undefined;
   let response = await send(path, options, accessToken);
 
   if (response.status === 401 && accessToken) {
     const renewed = await refreshSession(accessToken);
-    if (renewed) response = await send(path, options, renewed.accessToken);
+    if (renewed) response = await send(path, options, renewed);
   }
   return parse<T>(response);
 }
 
-// ─────────────── Renovación de sesión ───────────────
-// El backend invalida toda la sesión si un refresh token se reutiliza. Por eso:
-//  - una sola renovación a la vez en la pestaña (promesa compartida), y
-//  - entre pestañas, un Web Lock; al obtenerlo se comprueba si otra pestaña ya renovó.
+async function getAccessToken(): Promise<string | undefined> {
+  if (!supabase) return undefined;
+  const { data, error } = await supabase.auth.getSession();
+  if (error) return undefined;
+  return data.session?.access_token;
+}
 
-let refreshInFlight: Promise<Tokens | null> | null = null;
+let refreshInFlight: Promise<string | null> | null = null;
 
-export function refreshSession(staleAccessToken?: string): Promise<Tokens | null> {
-  refreshInFlight ??= withCrossTabLock(() => doRefresh(staleAccessToken)).finally(() => {
+async function refreshSession(staleAccessToken: string): Promise<string | null> {
+  if (!supabase) return null;
+  refreshInFlight ??= doRefresh(staleAccessToken).finally(() => {
     refreshInFlight = null;
   });
   return refreshInFlight;
 }
 
-function withCrossTabLock<T>(task: () => Promise<T>): Promise<T> {
-  return typeof navigator !== "undefined" && navigator.locks
-    ? navigator.locks.request(REFRESH_LOCK, task)
-    : task();
-}
-
-async function doRefresh(staleAccessToken?: string): Promise<Tokens | null> {
-  const current = tokenStorage.get();
+async function doRefresh(staleAccessToken: string): Promise<string | null> {
+  const current = await getAccessToken();
   if (!current) return null;
-  if (staleAccessToken && current.accessToken !== staleAccessToken) return current;
-
-  let response: Response;
+  if (current !== staleAccessToken) return current;
   try {
-    response = await send("/auth/refresh", {
-      method: "POST",
-      body: { refresh_token: current.refreshToken },
-    });
+    const { data, error } = await supabase!.auth.refreshSession();
+    if (error || !data.session) throw error ?? new Error("No se pudo renovar la sesión.");
+    return data.session.access_token;
   } catch {
-    return null; // sin red: se conserva la sesión para reintentar más tarde
-  }
-  if (!response.ok) {
-    tokenStorage.clear();
+    await supabase!.auth.signOut().catch(() => undefined);
     sessionExpiredListeners.forEach((listener) => listener());
     return null;
   }
-  const data = (await response.json()) as { access_token: string; refresh_token: string };
-  const tokens = { accessToken: data.access_token, refreshToken: data.refresh_token };
-  tokenStorage.set(tokens);
-  return tokens;
 }

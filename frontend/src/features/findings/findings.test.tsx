@@ -114,7 +114,7 @@ describe("Pestaña de hallazgos", () => {
     expect(within(card).getByText("«Hay tres plataformas activas»")).toBeInTheDocument();
     expect(within(card).getByText("Respalda")).toBeInTheDocument();
     // Los hallazgos de la IA no se borran (solo se rechazan).
-    expect(within(card).queryByRole("button", { name: "Eliminar hallazgo" })).not.toBeInTheDocument();
+    expect(within(card).queryByRole("button", { name: "Eliminar resultado" })).not.toBeInTheDocument();
 
     await waitFor(() =>
       expect(fetchMock.mock.calls.some(([url]) => String(url).includes("findings?run_id=r1"))).toBe(true),
@@ -123,7 +123,7 @@ describe("Pestaña de hallazgos", () => {
     await waitFor(() => expect(bodyOf(fetchMock, "PATCH")).toEqual({ review_status: "accepted" }));
   });
 
-  it("crea un hallazgo propio validando el formulario", async () => {
+  it("crea un resultado propio validando el formulario", async () => {
     const fetchMock = render("/proyectos/p1/hallazgos", [
       { path: "/api/v1/projects/p1/findings", respond: () => jsonResponse(200, []) },
       {
@@ -134,14 +134,14 @@ describe("Pestaña de hallazgos", () => {
     ]);
     const user = userEvent.setup();
 
-    expect(await screen.findByText("No hay hallazgos")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Nuevo hallazgo" }));
-    await user.click(screen.getByRole("button", { name: "Guardar hallazgo" }));
-    expect(screen.getByText("Escribe el hallazgo.")).toBeInTheDocument();
+    expect(await screen.findByText("Todavía no hay resultados")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Añadir resultado" }));
+    await user.click(screen.getByRole("button", { name: "Guardar resultado" }));
+    expect(screen.getByText("Escribe el resultado.")).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText("Categoría", { selector: "form select" }), "pricing");
-    await user.type(screen.getByLabelText("Hallazgo"), "  Pagan 20 % más a intermediarios ");
-    await user.click(screen.getByRole("button", { name: "Guardar hallazgo" }));
+    await user.selectOptions(screen.getByLabelText("Tema", { selector: "form select" }), "pricing");
+    await user.type(screen.getByLabelText("Resultado"), "  Pagan 20 % más a intermediarios ");
+    await user.click(screen.getByRole("button", { name: "Guardar resultado" }));
 
     await waitFor(() =>
       expect(bodyOf(fetchMock, "POST")).toEqual({
@@ -153,7 +153,7 @@ describe("Pestaña de hallazgos", () => {
     );
   });
 
-  it("los hallazgos del usuario se identifican y se pueden eliminar", async () => {
+  it("los resultados del usuario se identifican y se pueden eliminar", async () => {
     render("/proyectos/p1/hallazgos", [
       {
         path: "/api/v1/projects/p1/findings",
@@ -162,8 +162,8 @@ describe("Pestaña de hallazgos", () => {
     ]);
     const card = await screen.findByRole("article");
     expect(within(card).getByText("Aportado por el usuario")).toBeInTheDocument();
-    expect(within(card).getByText("Sin evidencia vinculada.")).toBeInTheDocument();
-    expect(within(card).getByRole("button", { name: "Eliminar hallazgo" })).toBeInTheDocument();
+    expect(within(card).getByText("Todavía no hay una fuente vinculada.")).toBeInTheDocument();
+    expect(within(card).getByRole("button", { name: "Eliminar resultado" })).toBeInTheDocument();
   });
 });
 
@@ -189,18 +189,18 @@ describe("Pestaña de competidores", () => {
     ]);
     const user = userEvent.setup();
 
-    const group = await screen.findByRole("region", { name: /Competidores directos/ });
+    const group = await screen.findByRole("region", { name: /Opciones muy parecidas/ });
     const card = within(group).getByRole("article", { name: "AgroYa" });
     expect(within(card).getByText("Análisis de la IA (interpretación, no un hecho)")).toBeInTheDocument();
     // Una URL no http(s) nunca se muestra como enlace.
     expect(within(card).queryByRole("link")).not.toBeInTheDocument();
 
-    await user.selectOptions(within(card).getByLabelText("Nivel de amenaza de AgroYa"), "high");
+    await user.selectOptions(within(card).getByLabelText("Qué tan fuerte parece la opción AgroYa"), "high");
     await waitFor(() => expect(bodyOf(fetchMock, "PATCH")).toEqual({ threat_level: "high" }));
 
-    const others = screen.getByRole("region", { name: "Otras entidades mencionadas" });
-    await user.selectOptions(within(others).getByLabelText("Tipo de competidor para Cámara Agrícola"), "indirect");
-    await user.click(within(others).getByRole("button", { name: "Marcar como competidor" }));
+    const others = screen.getByRole("region", { name: "Otros nombres mencionados" });
+    await user.selectOptions(within(others).getByLabelText("Qué tan parecida es la opción Cámara Agrícola"), "indirect");
+    await user.click(within(others).getByRole("button", { name: "Añadir como opción" }));
     await waitFor(() => expect(bodyOf(fetchMock, "POST")).toEqual({ entity_id: "n2", competitor_type: "indirect" }));
   });
 });

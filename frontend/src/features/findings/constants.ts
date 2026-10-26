@@ -20,10 +20,10 @@ export const LEVEL_LABELS: Record<Level, string> = {
 };
 
 export const THREAT_META: Record<Level, { label: string; className: string }> = {
-  high: { label: "Amenaza alta", className: "text-rose-200 bg-rose-400/15 ring-rose-300/30" },
-  medium: { label: "Amenaza media", className: "text-amber-200 bg-amber-400/15 ring-amber-300/30" },
-  low: { label: "Amenaza baja", className: "text-emerald-200 bg-emerald-400/15 ring-emerald-300/30" },
-  undetermined: { label: "Amenaza indeterminada", className: "text-slate-300 bg-slate-400/15 ring-slate-300/25" },
+  high: { label: "Riesgo alto", className: "text-rose-200 bg-rose-400/15 ring-rose-300/30" },
+  medium: { label: "Riesgo medio", className: "text-amber-200 bg-amber-400/15 ring-amber-300/30" },
+  low: { label: "Riesgo bajo", className: "text-emerald-200 bg-emerald-400/15 ring-emerald-300/30" },
+  undetermined: { label: "Sin evaluar", className: "text-slate-300 bg-slate-400/15 ring-slate-300/25" },
 };
 
 export const REVIEW_LABELS: Record<ReviewStatus, string> = {
@@ -42,24 +42,24 @@ export const COMPETITOR_TYPES: CompetitorType[] = ["direct", "indirect", "substi
 
 export const COMPETITOR_TYPE_META: Record<CompetitorType, { label: string; plural: string; description: string }> = {
   direct: {
-    label: "Directo",
-    plural: "Competidores directos",
-    description: "Ofrecen una solución parecida al mismo segmento de clientes.",
+    label: "Muy parecida",
+    plural: "Opciones muy parecidas",
+    description: "Ofrecen algo similar para el mismo tipo de cliente.",
   },
   indirect: {
-    label: "Indirecto",
-    plural: "Competidores indirectos",
-    description: "Resuelven el mismo problema de otra manera o para otro segmento.",
+    label: "Otra forma",
+    plural: "Otras formas de resolverlo",
+    description: "Resuelven el mismo problema con un producto o servicio distinto.",
   },
   substitute: {
-    label: "Sustituto",
-    plural: "Sustitutos",
-    description: "Productos o servicios distintos que el cliente puede usar en su lugar.",
+    label: "Reemplazo",
+    plural: "Opciones que pueden reemplazarlo",
+    description: "Algo diferente que el cliente podría usar en vez de tu propuesta.",
   },
   alternative: {
     label: "Alternativa",
-    plural: "Alternativas",
-    description: "Otras formas de resolverlo, incluido no hacer nada o hacerlo a mano.",
+    plural: "Otras alternativas",
+    description: "Otras maneras de resolverlo, incluso hacerlo por cuenta propia.",
   },
 };
 

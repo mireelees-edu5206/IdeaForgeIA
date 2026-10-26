@@ -90,11 +90,18 @@ describe("Exploración geográfica", () => {
       fetchMock.mock.calls.filter(([url]) => String(url).includes("/geo/geocode")),
     ).toHaveLength(1);
 
+    await user.type(screen.getByLabelText("Tipo de lugar o negocio a buscar"), "ropa");
     await user.click(screen.getByRole("button", { name: "Explorar alrededores" }));
     expect(await screen.findByText("Tienda local")).toBeInTheDocument();
     expect(
       fetchMock.mock.calls.some(([url]) => String(url).includes("/geo/places")),
     ).toBe(true);
+    const verdictLink = screen.getByRole("link", { name: "Usar esta zona en el veredicto" });
+    const verdictUrl = new URL(verdictLink.getAttribute("href")!, "http://localhost");
+    expect(verdictUrl.pathname).toBe("/proyectos/p1/reportes");
+    expect(verdictUrl.searchParams.get("lat")).toBe(String(PLACE.latitude));
+    expect(verdictUrl.searchParams.get("lon")).toBe(String(PLACE.longitude));
+    expect(verdictUrl.searchParams.get("giro")).toBe("ropa");
     await waitFor(() =>
       expect(screen.getByText(/no confirma que sean competidores/i)).toBeInTheDocument(),
     );

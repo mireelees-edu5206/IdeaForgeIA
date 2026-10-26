@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 import jwt
 import pytest
 
+from app.core import rate_limit
 from app.core.rate_limit import LoginRateLimiter
 from app.core.security import (
     JWT_ALGORITHM,
@@ -96,3 +97,22 @@ def test_login_limiter_reset_on_success() -> None:
     limiter.reset("1.1.1.1", "a@x.com")
     limiter.register_failure("1.1.1.1", "a@x.com")
     assert limiter.retry_after("1.1.1.1", "a@x.com") is None
+
+
+def test_login_limiter_bounds_tracked_keys_and_prunes_expired_keys(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(rate_limit._FailureWindow, "MAX_TRACKED_KEYS", 2)
+    clock = FakeClock()
+    limiter = LoginRateLimiter(max_failures=3, window_seconds=60, clock=clock)
+
+    for index in range(3):
+        limiter.register_failure(f"192.0.2.{index}", f"user{index}@example.test")
+
+    assert len(limiter._per_account._failures) == 2
+    assert len(limiter._per_ip._failures) == 2
+
+    clock.now += 61
+    limiter.register_failure("192.0.2.4", "user4@example.test")
+    assert len(limiter._per_account._failures) == 1
+    assert len(limiter._per_ip._failures) == 1

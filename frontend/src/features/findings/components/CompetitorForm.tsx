@@ -23,7 +23,7 @@ export function CompetitorForm({ projectId, onDone }: { projectId: string; onDon
   const [rationale, setRationale] = useState("");
   const [touched, setTouched] = useState(false);
 
-  const nameError = touched && !name.trim() ? "Escribe el nombre del competidor." : undefined;
+  const nameError = touched && !name.trim() ? "Escribe el nombre de la opción." : undefined;
   const websiteError =
     touched && website.trim() && !safeHref(website.trim()) ? "Usa una URL completa, p. ej. https://ejemplo.com" : undefined;
 
@@ -58,11 +58,11 @@ export function CompetitorForm({ projectId, onDone }: { projectId: string; onDon
           error={websiteError}
           onChange={(e) => setWebsite(e.target.value)}
         />
-        <Select label="Tipo de competidor" value={type} options={TYPE_OPTIONS} onChange={setType} />
-        <Select label="Nivel de amenaza" value={threat} options={THREAT_OPTIONS} onChange={setThreat} />
+        <Select label="Qué tan parecida es" value={type} options={TYPE_OPTIONS} onChange={setType} />
+        <Select label="Qué tan fuerte parece" value={threat} options={THREAT_OPTIONS} onChange={setThreat} />
       </div>
       <TextArea
-        label="¿Por qué compite con tu idea? (opcional)"
+        label="¿Por qué podría ser una opción para tus clientes? (opcional)"
         rows={2}
         maxLength={RATIONALE_MAX_LENGTH}
         value={rationale}
@@ -74,7 +74,7 @@ export function CompetitorForm({ projectId, onDone }: { projectId: string; onDon
           Cancelar
         </Button>
         <Button type="submit" size="sm" loading={create.isPending}>
-          Añadir competidor
+          Añadir opción
         </Button>
       </div>
     </form>

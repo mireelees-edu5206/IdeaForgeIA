@@ -70,15 +70,15 @@ export function ResearchTab() {
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Investigación</h2>
+          <h2 className="text-lg font-semibold">Buscar información</h2>
           <p className="text-sm text-slate-400">
-            La IA plantea preguntas sobre tu idea y las responde buscando en la web, citando de dónde sale cada dato.
+            Buscaremos información en la web sobre tu idea y te mostraremos las fuentes para que puedas revisarlas.
           </p>
         </div>
         {canStart && runs.isSuccess && (
           <StartResearchButton
             projectId={project.id}
-            label={runs.data.length ? "Nueva investigación" : "Iniciar investigación"}
+            label={runs.data.length ? "Buscar información otra vez" : "Buscar información"}
             onStarted={selectLatest}
           />
         )}
@@ -105,15 +105,15 @@ export function ResearchTab() {
       ) : runs.data.length === 0 ? (
         <EmptyState
           icon={FiCompass}
-          title="Aún no hay investigaciones"
-          description="Cuando inicies una, verás aquí las preguntas, las respuestas con sus citas y las fuentes consultadas."
+          title="Aún no hemos buscado información"
+          description="Inicia una búsqueda para conocer el mercado y ver de dónde viene cada resultado."
         />
       ) : (
         <>
           {runs.data.length > 1 && (
             <div className="flex flex-col gap-1.5 sm:max-w-md">
               <label htmlFor="run-select" className="text-xs font-medium text-slate-400">
-                Investigación mostrada
+                Búsqueda que estás viendo
               </label>
               <select
                 id="run-select"

@@ -15,11 +15,11 @@ export const RUN_STATUS_META: Record<RunStatus, { label: string; className: stri
 };
 
 export const RUN_STEP_LABELS: Record<RunStep, string> = {
-  planning: "Planificando las preguntas de investigación",
+  planning: "Preparando qué vamos a buscar",
   searching: "Buscando información en la web",
-  extracting: "Extrayendo hallazgos",
-  analyzing: "Analizando resultados",
-  scoring: "Calculando la confianza",
+  extracting: "Organizando los resultados encontrados",
+  analyzing: "Revisando la información",
+  scoring: "Estimando qué tan sólida es",
 };
 
 export const QUERY_STATUS_LABELS: Record<QueryStatus, string> = {

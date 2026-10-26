@@ -27,6 +27,10 @@ class GeoService:
         longitude: float,
         radius_m: int,
         category: GeoCategory,
+        keyword: str | None = None,
     ) -> list[GeoBusiness]:
         await get_owned_project(self.session, user, project_id)
-        return await self.provider.find_places(latitude, longitude, radius_m, category)
+        clean_keyword = " ".join((keyword or "").split()).strip() or None
+        return await self.provider.find_places(
+            latitude, longitude, radius_m, category, clean_keyword
+        )

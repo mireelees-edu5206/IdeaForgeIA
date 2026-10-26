@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from enum import StrEnum
 
@@ -21,6 +22,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
     email: Mapped[str] = mapped_column(CITEXT, unique=True)
+    supabase_user_id: Mapped[uuid.UUID | None] = mapped_column(unique=True)
     password_hash: Mapped[str]
     full_name: Mapped[str] = mapped_column(String(120))
     role: Mapped[UserRole] = mapped_column(

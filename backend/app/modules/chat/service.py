@@ -10,6 +10,7 @@ from app.modules.ai.calls import AICallContext, build_call_logs, timed_call
 from app.modules.ai.errors import AIProviderError
 from app.modules.ai.models import AIOperation
 from app.modules.ai.providers.base import AIProvider
+from app.modules.ai.types import AIMessage
 from app.modules.chat import fake_responses as _fake_responses  # noqa: F401
 from app.modules.chat.context import build_project_context
 from app.modules.chat.prompts import CHAT_PROMPT_VERSION, build_chat_messages
@@ -59,6 +60,21 @@ def _greeting_reply(message: str, project_title: str, has_history: bool) -> Chat
     )
 
 
+def _is_question_echo(user_message: str, answer: str) -> bool:
+    stripped = answer.strip()
+    if len(stripped) < 120 and stripped.startswith("¿") and stripped.endswith("?"):
+        return True
+    if len(stripped) < 95 and stripped.endswith("?") and "\n" not in stripped:
+        return True
+    norm_q = re.sub(r"[^\w\s]", "", user_message.casefold()).split()
+    norm_a = re.sub(r"[^\w\s]", "", stripped.casefold()).split()
+    if norm_q and len(norm_a) <= len(norm_q) + 5:
+        overlap = sum(1 for w in norm_a if w in set(norm_q))
+        if overlap / max(len(norm_a), 1) >= 0.65:
+            return True
+    return False
+
+
 class ChatService:
     def __init__(self, session: AsyncSession, provider: AIProvider, settings: Settings) -> None:
         self.session = session
@@ -74,12 +90,32 @@ class ChatService:
         context, references = await build_project_context(self.session, project)
         await self.session.rollback()
 
+        messages = build_chat_messages(context, data.history, data.message)
         outcome = await timed_call(
-            self.provider.generate_structured(
-                build_chat_messages(context, data.history, data.message), ChatAnswer
-            ),
+            self.provider.generate_structured(messages, ChatAnswer),
             self.settings.ai_timeout_seconds,
         )
+        # Si un modelo pequeño solo parafraseó la pregunta, reintentamos forzando respuesta
+        if outcome.result is not None and _is_question_echo(
+            data.message, outcome.result.data.answer
+        ):
+            retry_messages = [
+                *messages[:-1],
+                AIMessage(
+                    "user",
+                    f"Pregunta del usuario: {data.message}\n\n"
+                    "IMPORTANTE: Tu intento anterior solo repitió la pregunta "
+                    f"('{outcome.result.data.answer}'). NO escribas una pregunta. "
+                    "Redacta ahora mismo una respuesta completa de varios párrafos "
+                    "explicando ventajas, riesgos, factores clave y recomendaciones.",
+                ),
+            ]
+            retry_outcome = await timed_call(
+                self.provider.generate_structured(retry_messages, ChatAnswer),
+                self.settings.ai_timeout_seconds,
+            )
+            if retry_outcome.result is not None:
+                outcome = retry_outcome
         usage = outcome.result.usage if outcome.result else None
         self.session.add_all(
             build_call_logs(

@@ -7,5 +7,6 @@ export function fieldErrorsFrom(error: unknown): Record<string, string> {
 }
 
 export function errorMessageFrom(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Ocurrió un error inesperado. Inténtalo de nuevo.";
+  if (error instanceof ApiError) return error.message;
+  return error instanceof Error ? error.message : "Ocurrió un error inesperado. Inténtalo de nuevo.";
 }

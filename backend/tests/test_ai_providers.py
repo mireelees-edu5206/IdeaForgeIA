@@ -233,7 +233,8 @@ def test_ollama_chat_answer_has_no_short_text_cap_and_a_larger_generation_budget
     assert captured[0]["options"]["num_predict"] == 4096
     assert captured[0]["options"]["repeat_penalty"] == 1.15
     assert captured[0]["options"]["temperature"] == 0.6
-    assert "maxLength" not in captured[0]["format"]["properties"]["answer"]
+    assert "format" not in captured[0]
+    assert "maxLength" not in ChatAnswer.model_json_schema()["properties"]["answer"]
 
 
 def test_ollama_synthesizes_real_search_snippets_with_source_citations() -> None:

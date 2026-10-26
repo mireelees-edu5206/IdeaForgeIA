@@ -16,5 +16,8 @@ class UserRepository:
     async def get_by_email(self, email: str) -> User | None:
         return await self.session.scalar(select(User).where(User.email == email))
 
+    async def get_by_supabase_user_id(self, user_id: uuid.UUID) -> User | None:
+        return await self.session.scalar(select(User).where(User.supabase_user_id == user_id))
+
     def add(self, user: User) -> None:
         self.session.add(user)

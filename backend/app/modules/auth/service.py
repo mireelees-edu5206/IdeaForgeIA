@@ -6,7 +6,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
-from app.core.errors import AppError, ConflictError, ForbiddenError, UnauthorizedError
+from app.core.errors import (
+    AppError,
+    ConflictError,
+    ForbiddenError,
+    ServiceUnavailableError,
+    UnauthorizedError,
+)
 from app.core.security import (
     create_access_token,
     generate_refresh_token,
@@ -116,6 +122,10 @@ class AuthService:
         await self.session.commit()
 
     def _issue_tokens(self, user_id: uuid.UUID, now: datetime) -> tuple[TokenPair, RefreshToken]:
+        if self.settings.secret_key is None:
+            raise ServiceUnavailableError(
+                "La autenticación local está desactivada.", code="legacy_auth_disabled"
+            )
         access_token, expires_in = create_access_token(
             user_id,
             self.settings.secret_key.get_secret_value(),

@@ -12,7 +12,12 @@ class GeoProvider(ABC):
 
     @abstractmethod
     async def find_places(
-        self, latitude: float, longitude: float, radius_m: int, category: GeoCategory
+        self,
+        latitude: float,
+        longitude: float,
+        radius_m: int,
+        category: GeoCategory,
+        keyword: str | None = None,
     ) -> list[GeoBusiness]:
         """Busca puntos cartografiados alrededor de unas coordenadas."""
 

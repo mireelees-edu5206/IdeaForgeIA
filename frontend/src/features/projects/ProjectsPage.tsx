@@ -44,7 +44,7 @@ export function ProjectsPage() {
   ];
 
   return (
-    <div className="flex animate-fade-up flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <GlassPanel className="stage-3d flex flex-col gap-5 rounded-3xl p-6">
         <PageHeader
           eyebrow="Portafolio de ideas"
@@ -74,7 +74,7 @@ export function ProjectsPage() {
                 aria-pressed={active}
                 onClick={() => update({ estado: filter.value })}
                 className={cn(
-                  "jelly h-9 rounded-xl px-3.5 text-xs font-semibold transition sm:text-sm",
+                  "jelly min-h-11 rounded-xl px-3.5 text-xs font-semibold transition sm:text-sm",
                   active
                     ? "neo-raised text-accent-cyan ring-1 ring-accent-cyan/35"
                     : "text-slate-300 hover:bg-slate-400/10 hover:text-slate-100",
@@ -118,7 +118,7 @@ export function ProjectsPage() {
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {projects.data.items.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard key={project.id} project={project} showDeleteAction />
             ))}
           </div>
           {totalPages > 1 && (

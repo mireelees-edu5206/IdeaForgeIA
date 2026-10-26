@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import { FiArrowRight, FiFolder, FiPlus, FiShield } from "react-icons/fi";
+import { FiActivity, FiArrowRight, FiCheckCircle, FiCompass, FiEdit3, FiPlus } from "react-icons/fi";
 import { Link } from "react-router";
 
 import { Alert } from "../../components/ui/Alert";
-import { CrucibleGlyph, FilamentBridgeGlyph, StageSealGlyph } from "../../components/ui/ForgeGlyphs";
+import { GlassPanel } from "../../components/ui/GlassPanel";
 import { LinkButton } from "../../components/ui/LinkButton";
 import { cn } from "../../lib/cn";
 import { forgeSceneStore } from "../../lib/forgeSceneStore";
@@ -20,60 +20,75 @@ import type { ProjectStatus } from "../projects/types";
 
 const RECENT_COUNT = 6;
 
-const FORGE_CONDUIT: Array<{
-  step: string;
-  title: string;
-  detail: string;
-  status: ProjectStatus;
-}> = [
-  {
-    step: "01",
-    title: "Mineral en bruto",
-    detail: "Captura problema, solución y segmento sin autocompletar certezas.",
-    status: "draft",
-  },
-  {
-    step: "02",
-    title: "Temple de estructura",
-    detail: "Bloquea la base mínima y formula consultas verificables.",
-    status: "structured",
-  },
-  {
-    step: "03",
-    title: "Escaneo y contraste",
-    detail: "Extrae hallazgos con citas literales y detecta rivales.",
-    status: "researching",
-  },
-  {
-    step: "04",
-    title: "Cristal tallado",
-    detail: "Separa oportunidades, riesgos, hipótesis e incertidumbre.",
-    status: "analyzed",
-  },
+const STATUS_ICON = {
+  draft: FiEdit3,
+  structured: FiCheckCircle,
+  researching: FiCompass,
+  analyzed: FiActivity,
+};
+
+const STATUS_ACTION: Record<ProjectStatus, { pct: number; action: string; route: string }> = {
+  draft: { pct: 25, action: "Completa la información base de la idea.", route: "" },
+  structured: { pct: 50, action: "Inicia la investigación para encontrar evidencia.", route: "/investigacion" },
+  researching: { pct: 75, action: "Revisa los resultados y las opciones que encontramos.", route: "/hallazgos" },
+  analyzed: { pct: 100, action: "Consulta el veredicto y los siguientes pasos sugeridos.", route: "/reportes" },
+};
+
+const VALIDATION_STEPS = [
+  { number: "01", title: "Cuéntanos tu idea", text: "Qué problema resuelve y para quién.", icon: FiEdit3 },
+  { number: "02", title: "Completa lo básico", text: "Te diremos qué información falta.", icon: FiCheckCircle },
+  { number: "03", title: "Busca información", text: "Revisamos fuentes y otras opciones.", icon: FiCompass },
+  { number: "04", title: "Revisa qué significa", text: "Explora oportunidades, riesgos y dudas.", icon: FiActivity },
+  { number: "05", title: "Lee el veredicto", text: "Consulta la recomendación y los próximos pasos.", icon: FiCheckCircle },
 ];
 
-const STAGE_PROGRESS: Record<ProjectStatus, { pct: number; action: string; material: string }> = {
-  draft: { pct: 25, action: "Confirmar las 3 facetas obligatorias", material: "Piedra translúcida · sin templar" },
-  structured: { pct: 50, action: "Iniciar investigación con fuentes", material: "Aleación de bronce · estructurada" },
-  researching: { pct: 75, action: "Revisar hallazgos y lanzar análisis", material: "Cobre incandescente · en contraste" },
-  analyzed: { pct: 100, action: "Explorar cuadrantes e hipótesis", material: "Cristal tallado · trazable" },
-};
+function FirstProjectGuide() {
+  return (
+    <section aria-labelledby="first-project-guide-title" className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(17rem,0.7fr)]">
+      <GlassPanel className="rounded-3xl p-5 sm:p-7">
+        <p className="section-eyebrow">EMPIEZA POR AQUÍ</p>
+        <h2 id="first-project-guide-title" className="mt-2 text-xl font-semibold tracking-tight sm:text-2xl">
+          No necesitas tenerlo todo resuelto.
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-400">
+          Te guiaremos paso a paso. Puedes cambiar la información de tu proyecto cuando quieras.
+        </p>
+        <ol className="mt-6 grid gap-3 sm:grid-cols-2">
+          {VALIDATION_STEPS.map(({ number, title, text, icon: Icon }) => (
+            <li key={number} className="method-step flex items-start gap-3 rounded-xl p-3.5">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary/8 text-primary">
+                <Icon aria-hidden="true" className="size-4" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold">{title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-400">{text}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </GlassPanel>
 
-const ORBIT_COORDS: Record<ProjectStatus, { angle: string; radius: string }> = {
-  draft: { angle: "29%", radius: "22%" },
-  structured: { angle: "71%", radius: "22%" },
-  researching: { angle: "29%", radius: "76%" },
-  analyzed: { angle: "71%", radius: "76%" },
-};
+      <aside className="surface-panel flex flex-col justify-center rounded-3xl p-5 sm:p-6">
+        <span className="grid size-10 place-items-center rounded-xl bg-amber-100 text-amber-200">
+          <FiCheckCircle aria-hidden="true" className="size-5" />
+        </span>
+        <h3 className="mt-4 text-base font-semibold">Tú tienes la última palabra</h3>
+        <p className="mt-2 text-sm leading-relaxed text-slate-400">
+          La IA propone y organiza información. Tú revisas las fuentes y decides qué conclusiones aceptar.
+        </p>
+      </aside>
+    </section>
+  );
+}
 
 export function DashboardPage() {
   useDocumentTitle("Panel");
   const { user } = useAuth();
-  const firstName = user?.full_name.split(" ")[0] ?? "";
+  const firstName = user?.full_name.trim().split(" ")[0] ?? "";
   const overview = useProjectsOverview();
   const recent = useProjectList({ limit: RECENT_COUNT, offset: 0 });
   const latestProject = recent.data?.items[0];
-  const restProjects = recent.data?.items.slice(1) ?? [];
+  const isFirstProject = overview.isSuccess && overview.data.total === 0;
 
   useEffect(() => {
     const analyzed = overview.data?.by_status.analyzed ?? 0;
@@ -86,159 +101,185 @@ export function DashboardPage() {
   }, [overview.data, latestProject]);
 
   const newProject = (
-    <LinkButton to="/proyectos/nuevo" icon={<FiPlus aria-hidden="true" />}>
-      Nuevo proyecto
+    <LinkButton
+      to="/proyectos/nuevo"
+      icon={<FiPlus aria-hidden="true" />}
+      className={isFirstProject ? "dashboard-hero__primary" : undefined}
+    >
+      {isFirstProject ? "Crear mi primer proyecto" : "Nueva idea"}
     </LinkButton>
   );
 
   return (
-    <div className="flex animate-fade-up flex-col gap-6">
-      {/* Cabecera hero + Sistema Orbital del Portafolio */}
-      <section aria-labelledby="resumen" className="grid gap-5 xl:grid-cols-[1.28fr_1fr]">
-        <h2 id="resumen" className="sr-only">
-          Resumen
-        </h2>
-
-        <div className="stage-3d flex flex-col justify-between gap-7 rounded-3xl p-6 sm:p-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <span className="neo-inset font-mono-tech inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold tracking-wider text-accent-cyan uppercase">
-                <CrucibleGlyph className="size-3.5" /> Crisol de validación empírica
-              </span>
-              <h1 className="font-display mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-                Hola, <span className="text-gradient">{firstName}</span>
-              </h1>
-              <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-300">
-                Aquí cada idea atraviesa calor y evidencia: de la intuición inicial a hallazgos citados, rivales
-                clasificados e incertidumbre explícita.
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-wrap gap-2">
-              {newProject}
-              <LinkButton to="/proyectos" variant="secondary">
-                Portafolio
+    <div className="flex flex-col gap-6">
+      <section aria-labelledby="dashboard-title" className="dashboard-hero relative overflow-hidden rounded-[1.75rem] p-6 sm:p-8">
+        <div aria-hidden="true" className="dashboard-hero__orb dashboard-hero__orb--one" />
+        <div aria-hidden="true" className="dashboard-hero__orb dashboard-hero__orb--two" />
+        <div className="relative z-10 flex flex-col gap-7 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl">
+            <p className="dashboard-eyebrow">
+              <FiActivity aria-hidden="true" />
+              INVESTIGACIÓN DE NEGOCIO
+            </p>
+            <h1 id="dashboard-title" className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl xl:text-[2.75rem]">
+              {isFirstProject ? (
+                <>Empieza con tu idea<span className="dashboard-hero__highlight">.</span></>
+              ) : (
+                <>
+                  {firstName ? `Hola, ${firstName}. ` : ""}
+                  <span className="dashboard-hero__highlight">Decide con evidencia.</span>
+                </>
+              )}
+            </h1>
+            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/75 sm:text-base">
+              {isFirstProject
+                ? "No necesitas experiencia ni una idea perfecta. Cuéntanos qué te gustaría hacer y te ayudaremos a explorarla."
+                : "Organiza tus ideas, encuentra señales del mercado y convierte la investigación en próximos pasos claros."}
+            </p>
+          </div>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            {newProject}
+            {!isFirstProject && (
+              <LinkButton to="/proyectos" variant="secondary" className="dashboard-hero__secondary">
+                Ver proyectos <FiArrowRight aria-hidden="true" />
               </LinkButton>
-            </div>
-          </div>
-
-          {/* Camino continuo (no 4 cajas aisladas) */}
-          <div aria-label="Conducto de forja" className="relative">
-            <div
-              aria-hidden="true"
-              className="filament-line pointer-events-none absolute top-5 right-6 left-6 hidden h-0.5 opacity-55 lg:block"
-            />
-            <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {FORGE_CONDUIT.map(({ step, title, detail, status }) => (
-                <li key={step} className="glass tilt-3d relative flex flex-col gap-2 rounded-2xl p-3.5">
-                  <div className="flex items-center justify-between">
-                    <span className="neo-raised font-mono-tech inline-flex h-7 items-center rounded-lg px-2 text-xs font-semibold text-accent-cyan">
-                      {step}
-                    </span>
-                    <StageSealGlyph status={status} className="size-5 text-accent-violet" />
-                  </div>
-                  <p className="text-sm font-semibold">{title}</p>
-                  <p className="text-xs leading-relaxed text-slate-400">{detail}</p>
-                </li>
-              ))}
-            </ol>
+            )}
           </div>
         </div>
-
-        {/* Sistema Orbital del Portafolio */}
-        <div className="glass flex flex-col justify-between gap-4 rounded-3xl p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="font-mono-tech text-xs font-semibold tracking-wider text-accent-cyan uppercase">
-                Órbita material del portafolio
-              </p>
-              <p className="mt-1 text-xs text-slate-300">
-                Cada cuerpo refleja el estado de forja de tus ideas
-              </p>
-            </div>
-            <FilamentBridgeGlyph className="h-4 w-14 text-accent-violet" />
-          </div>
-
-          {overview.isError ? (
-            <Alert>{errorMessageFrom(overview.error)}</Alert>
-          ) : (
-            <div className="neo-inset relative min-h-64 overflow-hidden rounded-3xl p-4">
-              {/* Anillos orbitales SVG */}
-              <svg
-                viewBox="0 0 320 220"
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 h-full w-full opacity-45"
-              >
-                <ellipse
-                  cx="160"
-                  cy="110"
-                  rx="132"
-                  ry="82"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeDasharray="4 4"
-                  className="text-slate-400"
-                />
-                <ellipse
-                  cx="160"
-                  cy="110"
-                  rx="82"
-                  ry="50"
-                  fill="none"
-                  stroke="currentColor"
-                  className="text-accent-cyan"
-                />
-              </svg>
-
-              {/* Núcleo central con el total */}
-              <div className="neo-raised absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center rounded-2xl px-4 py-2.5 text-center ring-1 ring-accent-cyan/35">
-                <CrucibleGlyph className="size-5 text-accent-cyan" />
-                <p className="font-display mt-0.5 text-2xl leading-none font-bold tabular-nums">
-                  {overview.data?.total ?? "—"}
-                </p>
-                <p className="font-mono-tech text-[10px] tracking-wider text-slate-400 uppercase">Ideas</p>
-              </div>
-
-              {/* 4 cuerpos orbitales por estado */}
-              {PROJECT_STATUSES.map((status) => {
-                const count = overview.data?.by_status[status];
-                const pos = ORBIT_COORDS[status];
-                return (
-                  <Link
-                    key={status}
-                    to={`/proyectos?estado=${status}`}
-                    style={{ left: pos.angle, top: pos.radius }}
-                    className="neo-raised tilt-3d jelly absolute flex max-w-[44%] -translate-x-1/2 -translate-y-1/2 items-center gap-1.5 rounded-2xl px-2.5 py-1.5 text-left sm:max-w-none sm:gap-2.5 sm:px-3 sm:py-2"
-                  >
-                    <StageSealGlyph status={status} className="size-5 shrink-0 text-accent-cyan sm:size-6" />
-                    <div className="min-w-0">
-                      <p className="font-display text-sm leading-none font-bold tabular-nums sm:text-base">
-                        {count ?? "·"}
-                      </p>
-                      <p className="truncate text-[10px] font-medium text-slate-300 sm:text-[11px] sm:whitespace-nowrap">
-                        {STATUS_META[status].label}
-                      </p>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-
-          <div className="neo-inset flex items-center gap-2.5 rounded-2xl px-3.5 py-2.5 text-xs text-slate-300">
-            <FiShield aria-hidden="true" className="shrink-0 text-accent-cyan" />
-            <span>No encontrar competencia no equivale a que no exista: la incertidumbre se declara.</span>
-          </div>
-        </div>
+        <div aria-hidden="true" className="dashboard-hero__rule" />
       </section>
 
-      {/* Actividad reciente */}
-      <section aria-labelledby="recientes" className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
+      {overview.isError && <Alert>{errorMessageFrom(overview.error)}</Alert>}
+      {isFirstProject ? (
+        <FirstProjectGuide />
+      ) : (
+        <>
+      <section aria-label="Resumen de proyectos" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {PROJECT_STATUSES.map((status, index) => {
+          const Icon = STATUS_ICON[status];
+          const value = overview.data?.by_status[status];
+          return (
+            <Link
+              key={status}
+              to={`/proyectos?estado=${status}`}
+              className="summary-tile group flex items-center justify-between gap-4 rounded-2xl p-4"
+            >
+              <div>
+                <p className="text-sm font-medium text-slate-400">{STATUS_META[status].label}</p>
+                <p className="mt-1 font-mono-tech text-3xl font-semibold tracking-tight tabular-nums text-slate-100">
+                  {value ?? "—"}
+                </p>
+                <p className="mt-1 text-xs text-slate-400">
+                  {index === 0 ? "Por definir" : index === 3 ? "Listos para decidir" : "En el proceso"}
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "summary-tile__icon grid size-11 shrink-0 place-items-center rounded-xl",
+                  status === "draft" && "summary-tile__icon--draft",
+                  status === "structured" && "summary-tile__icon--structured",
+                  status === "researching" && "summary-tile__icon--researching",
+                  status === "analyzed" && "summary-tile__icon--analyzed",
+                )}
+              >
+                <Icon aria-hidden="true" className="size-5" />
+              </span>
+            </Link>
+          );
+        })}
+      </section>
+
+      <section aria-label="Tu siguiente paso" className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.85fr)]">
+        <GlassPanel className="flex min-h-64 flex-col justify-between gap-6 rounded-3xl p-5 sm:p-6">
+          {recent.isPending ? (
+            <div role="status" className="flex items-center gap-2 text-sm text-slate-400">
+              <span className="liquid-loader" aria-hidden="true" />
+              Buscando dónde continuar…
+            </div>
+          ) : recent.isError ? (
+            <Alert>{errorMessageFrom(recent.error)}</Alert>
+          ) : latestProject ? (
+            <>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="section-eyebrow">CONTINUAR DONDE LO DEJASTE</p>
+                  <h2 className="mt-2 line-clamp-2 text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">
+                    {latestProject.title}
+                  </h2>
+                  <p className="mt-1.5 text-sm text-slate-400">{STATUS_ACTION[latestProject.status].action}</p>
+                </div>
+                <StatusBadge status={latestProject.status} />
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between text-xs">
+                  <span className="font-medium text-slate-400">Avance de validación</span>
+                  <span className="font-mono-tech font-semibold tabular-nums text-slate-200">
+                    {STATUS_ACTION[latestProject.status].pct}%
+                  </span>
+                </div>
+                <div
+                  className="h-2 overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-700/60"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={STATUS_ACTION[latestProject.status].pct}
+                  aria-label={`Avance de ${latestProject.title}`}
+                >
+                  <div
+                    className="progress-liquid h-full rounded-full transition-[width] duration-500"
+                    style={{ width: `${STATUS_ACTION[latestProject.status].pct}%` }}
+                  />
+                </div>
+                <div className="mt-3 flex items-center justify-between gap-3 text-xs text-slate-400">
+                  <span>Actualizado {formatRelative(latestProject.updated_at)}</span>
+                  <LinkButton
+                    to={`/proyectos/${latestProject.id}${STATUS_ACTION[latestProject.status].route}`}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    Continuar <FiArrowRight aria-hidden="true" />
+                  </LinkButton>
+                </div>
+              </div>
+            </>
+          ) : (
+            <EmptyState
+              icon={FiPlus}
+              title="Empieza con una idea"
+              description="La guía te ayudará a estructurarla y buscar evidencia útil."
+              action={newProject}
+            />
+          )}
+        </GlassPanel>
+
+        <aside className="surface-panel rounded-3xl p-5 sm:p-6">
           <div>
-            <h2 id="recientes" className="text-lg font-semibold">
-              Actividad reciente
+            <p className="section-eyebrow">MÉTODO IDEAFORGE</p>
+            <h2 className="mt-2 text-lg font-semibold tracking-tight">De la intuición a una decisión</h2>
+          </div>
+          <ol className="mt-5 grid grid-cols-2 gap-3">
+            {VALIDATION_STEPS.map(({ number, title, text, icon: Icon }) => (
+              <li key={number} className="method-step rounded-xl p-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-mono-tech text-[11px] font-semibold text-slate-400">{number}</span>
+                  <Icon aria-hidden="true" className="size-4 text-primary" />
+                </div>
+                <p className="mt-3 text-sm font-semibold">{title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-400">{text}</p>
+              </li>
+            ))}
+          </ol>
+        </aside>
+      </section>
+
+      <section aria-labelledby="recent-projects-title" className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="section-eyebrow">PORTAFOLIO</p>
+            <h2 id="recent-projects-title" className="mt-1 text-xl font-semibold tracking-tight">
+              Proyectos recientes
             </h2>
-            <p className="text-xs text-slate-400">Pieza activa en el yunque y resto de proyectos</p>
           </div>
           {!!recent.data?.total && (
             <LinkButton to="/proyectos" variant="ghost" size="sm">
@@ -248,84 +289,28 @@ export function DashboardPage() {
         </div>
 
         {recent.isPending ? (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {Array.from({ length: 3 }, (_, i) => (
-              <ProjectCardSkeleton key={i} />
-            ))}
+          <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+            {Array.from({ length: 3 }, (_, index) => <ProjectCardSkeleton key={index} />)}
           </div>
         ) : recent.isError ? (
           <Alert>{errorMessageFrom(recent.error)}</Alert>
         ) : recent.data.items.length === 0 ? (
           <EmptyState
-            icon={FiFolder}
-            title="Todavía no tienes proyectos"
-            description="Crea tu primer proyecto: describe tu idea con tus palabras y después la estructuraremos juntos."
+            icon={FiActivity}
+            title="Todavía no hay proyectos"
+            description="Crea una idea para comenzar a explorarla con información verificable."
             action={newProject}
           />
         ) : (
-          <div className="grid gap-4 lg:grid-cols-[1.18fr_1fr]">
-            {latestProject && (
-              <Link
-                to={`/proyectos/${latestProject.id}`}
-                className={cn(
-                  "stage-3d tilt-3d jelly group flex flex-col justify-between gap-6 rounded-3xl p-6",
-                  restProjects.length === 0 && "lg:col-span-2",
-                )}
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="neo-inset font-mono-tech inline-flex max-w-full items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-accent-cyan">
-                    <StageSealGlyph status={latestProject.status} className="size-4 shrink-0" />
-                    <span className="truncate">{STAGE_PROGRESS[latestProject.status].material}</span>
-                  </span>
-                  <StatusBadge status={latestProject.status} />
-                </div>
-
-                <div>
-                  <h3 className="font-display text-2xl font-bold tracking-tight group-hover:text-accent-cyan">
-                    {latestProject.title}
-                  </h3>
-                  <p className="mt-1.5 text-sm text-slate-300">
-                    Siguiente golpe de forja:{" "}
-                    <strong className="font-semibold text-slate-100">
-                      {STAGE_PROGRESS[latestProject.status].action}
-                    </strong>
-                  </p>
-                </div>
-
-                <div className="flex flex-col gap-2">
-                  <div className="font-mono-tech flex items-center justify-between text-xs text-slate-400">
-                    <span>TEMPLE DEL PROYECTO</span>
-                    <span className="font-semibold tabular-nums">
-                      {STAGE_PROGRESS[latestProject.status].pct} %
-                    </span>
-                  </div>
-                  <div className="neo-inset h-2.5 overflow-hidden rounded-full">
-                    <div
-                      className="filament-line h-full rounded-full transition-[width] duration-700"
-                      style={{ width: `${STAGE_PROGRESS[latestProject.status].pct}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span>Actualizado {formatRelative(latestProject.updated_at)}</span>
-                  <span className="inline-flex items-center gap-1.5 font-semibold text-accent-cyan">
-                    Entrar al taller <FiArrowRight aria-hidden="true" />
-                  </span>
-                </div>
-              </Link>
-            )}
-
-            {restProjects.length > 0 && (
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
-                {restProjects.slice(0, 3).map((project) => (
-                  <ProjectCard key={project.id} project={project} />
-                ))}
-              </div>
-            )}
+          <div className="grid gap-4 sm:grid-cols-2 2xl:grid-cols-3">
+            {recent.data.items.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
           </div>
         )}
       </section>
+        </>
+      )}
     </div>
   );
 }

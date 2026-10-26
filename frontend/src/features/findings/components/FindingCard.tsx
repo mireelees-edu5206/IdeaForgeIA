@@ -19,15 +19,15 @@ export function FindingCard({ projectId, finding }: { projectId: string; finding
   const remove = useDeleteFinding(projectId);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const headingId = `hallazgo-${finding.id}`;
+  const headingId = `resultado-${finding.id}`;
   const rejected = finding.review_status === "rejected";
   const review = (review_status: ReviewStatus) => update.mutate({ findingId: finding.id, review_status });
 
   if (editing) {
     return (
-      <article aria-labelledby={headingId} className="glass rounded-2xl p-5">
+      <article aria-labelledby={headingId} className="surface-panel rounded-2xl p-5">
         <h3 id={headingId} className="mb-4 font-semibold">
-          Editar hallazgo
+          Editar resultado
         </h3>
         <FindingForm
           initial={{
@@ -41,7 +41,7 @@ export function FindingCard({ projectId, finding }: { projectId: string; finding
           error={update.error}
           note={
             finding.origin === "ai"
-              ? "Al guardar cambios, el hallazgo pasará a ser un dato tuyo; su evidencia se conserva."
+              ? "Al guardar cambios, este resultado quedará como información tuya; la fuente vinculada se conserva."
               : undefined
           }
           onSubmit={(data) =>
@@ -60,7 +60,7 @@ export function FindingCard({ projectId, finding }: { projectId: string; finding
     finding.confidence_level === "high"
       ? "stage-3d ring-1 ring-kind-finding/35"
       : finding.confidence_level === "medium"
-        ? "glass"
+        ? "surface-panel"
         : "fog-uncertain";
 
   return (
@@ -84,7 +84,7 @@ export function FindingCard({ projectId, finding }: { projectId: string; finding
 
       {finding.confidence_rationale && (
         <p className="text-xs text-slate-400">
-          <span className="font-medium text-slate-300">Por qué esta confianza: </span>
+          <span className="font-medium text-slate-300">Por qué parece confiable: </span>
           {finding.confidence_rationale}
         </p>
       )}
@@ -101,9 +101,9 @@ export function FindingCard({ projectId, finding }: { projectId: string; finding
 
       {finding.evidence.length > 0 ? (
         <details className="neo-inset group rounded-xl">
-          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-300 [&::-webkit-details-marker]:hidden">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl px-3 py-2 text-sm text-slate-300 [&::-webkit-details-marker]:hidden">
             <FiChevronDown aria-hidden="true" className="transition-transform group-open:rotate-180" />
-            Evidencia ({finding.evidence.length})
+            Ver fuente y cita ({finding.evidence.length})
           </summary>
           <ul className="flex flex-col gap-3 px-3 pb-3">
             {finding.evidence.map((item) => {
@@ -132,7 +132,7 @@ export function FindingCard({ projectId, finding }: { projectId: string; finding
           </ul>
         </details>
       ) : (
-        <p className="text-xs text-slate-500">Sin evidencia vinculada.</p>
+        <p className="text-xs text-slate-500">Todavía no hay una fuente vinculada.</p>
       )}
 
       {(update.isError || remove.isError) && <Alert>{errorMessageFrom(update.error ?? remove.error)}</Alert>}
@@ -153,14 +153,14 @@ export function FindingCard({ projectId, finding }: { projectId: string; finding
             Deshacer revisión
           </Button>
         )}
-        <Button size="icon" variant="ghost" aria-label="Editar hallazgo" onClick={() => setEditing(true)}>
+        <Button size="icon" variant="ghost" aria-label="Editar resultado" onClick={() => setEditing(true)}>
           <FiEdit2 aria-hidden="true" />
         </Button>
         {finding.origin === "user" && (
           <Button
             size="icon"
             variant="ghost"
-            aria-label="Eliminar hallazgo"
+            aria-label="Eliminar resultado"
             className="hover:text-rose-300"
             onClick={() => setConfirmDelete(true)}
           >
@@ -171,13 +171,13 @@ export function FindingCard({ projectId, finding }: { projectId: string; finding
 
       <ConfirmDialog
         open={confirmDelete}
-        title="¿Eliminar este hallazgo?"
+        title="¿Eliminar este resultado?"
         confirmLabel="Eliminar"
         loading={remove.isPending}
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => remove.mutate(finding.id, { onSettled: () => setConfirmDelete(false) })}
       >
-        <p>Se borrará el hallazgo que aportaste. Esta acción no se puede deshacer.</p>
+        <p>Se borrará el resultado que aportaste. Esta acción no se puede deshacer.</p>
       </ConfirmDialog>
     </article>
   );

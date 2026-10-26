@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { projectKeys } from "../projects/queries";
 import { reportsApi } from "./api";
+import type { GeographicScopeInput } from "./types";
 
 export const reportKeys = {
   list: (projectId: string) => [...projectKeys.detail(projectId), "reports"] as const,
@@ -31,7 +32,7 @@ export function useReport(projectId: string, reportId: string | null) {
 export function useCreateReport(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => reportsApi.create(projectId),
+    mutationFn: (geographicScopes: GeographicScopeInput[]) => reportsApi.create(projectId, geographicScopes),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: reportKeys.list(projectId) }),
   });

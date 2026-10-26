@@ -19,9 +19,9 @@ import { useAnalysis, useCreateAnalysisItem, useStartAnalysis } from "./queries"
 import type { AnalysisItem, AnalysisKindKey } from "./types";
 
 const QUADRANT_MATERIAL: Record<AnalysisKindKey, string> = {
-  opportunities: "stage-3d ring-1 ring-kind-finding/30",
-  risks: "glass ring-1 ring-rose-400/25",
-  hypotheses: "glass ring-1 ring-kind-hypothesis/35",
+  opportunities: "surface-panel ring-1 ring-kind-finding/30",
+  risks: "surface-panel ring-1 ring-rose-400/25",
+  hypotheses: "surface-panel ring-1 ring-kind-hypothesis/35",
   "missing-information": "fog-uncertain",
 };
 
@@ -35,30 +35,30 @@ const ANALYSIS_SECTIONS: Array<{
   {
     kind: "opportunities",
     title: "Oportunidades",
-    description: "Posibilidades de negocio interpretadas a partir de hallazgos; no equivalen por sí solas a hechos comprobados.",
+    description: "Señales que podrían ayudar a que tu idea funcione. Comprueba cada una en sus fuentes.",
     icon: FiTrendingUp,
     plural: "oportunidades",
   },
   {
     kind: "risks",
     title: "Riesgos",
-    description: "Factores que podrían afectar la idea. Revisa los hallazgos y sus fuentes antes de aceptar cada interpretación.",
+    description: "Situaciones que podrían complicar la idea y conviene tener en cuenta.",
     icon: FiAlertTriangle,
     plural: "riesgos",
   },
   {
     kind: "hypotheses",
-    title: "Hipótesis de validación",
-    description: "Suposiciones comprobables, con método y criterio de éxito cuando estén disponibles.",
+    title: "Suposiciones a comprobar",
+    description: "Preguntas que puedes probar con clientes o con una prueba pequeña.",
     icon: FiCheckCircle,
-    plural: "hipótesis",
+    plural: "suposiciones",
   },
   {
     kind: "missing-information",
-    title: "Información faltante",
-    description: "Preguntas sin respuesta suficiente, por qué importan y posibles pasos para investigarlas.",
+    title: "Preguntas sin responder",
+    description: "Información que todavía falta para decidir con más seguridad.",
     icon: FiHelpCircle,
-    plural: "elementos de información faltante",
+    plural: "preguntas",
   },
 ];
 
@@ -110,15 +110,15 @@ export function AnalysisTab() {
     <div className="flex flex-col gap-5">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Análisis</h2>
+          <h2 className="text-lg font-semibold">Qué puede significar para tu idea</h2>
           <p className="max-w-3xl text-sm text-slate-400">
-            Interpretaciones y asuntos por validar, con trazabilidad a los hallazgos disponibles. Una propuesta de IA no es un hecho comprobado.
+            Revisa oportunidades, riesgos y preguntas pendientes. Las sugerencias ayudan a pensar; no son hechos confirmados.
           </p>
         </div>
         {runOptions.length > 0 && (
           <div className="w-full sm:max-w-xs">
             <Select
-              label="Investigación"
+              label="Búsqueda que estás viendo"
               value={runId ?? ""}
               options={runOptions}
               onChange={(value) => setRunChoice(value)}
@@ -131,12 +131,12 @@ export function AnalysisTab() {
         <div className="flex items-start gap-3">
           <FiActivity aria-hidden="true" className="mt-1 size-5 shrink-0 text-accent-cyan" />
           <div>
-            <h3 className="font-medium text-slate-100">Generar análisis desde la investigación</h3>
+            <h3 className="font-medium text-slate-100">Revisar los resultados</h3>
             <p className="text-sm text-slate-400">
-              Usa los hallazgos y competidores disponibles; las oportunidades y riesgos generados deben conservar hallazgos relacionados.
+              Resume lo que encontramos y muestra posibles próximos pasos para tu idea.
             </p>
             {!hasUsableFindings && selectedRun?.status === "completed" && (
-              <p className="mt-1 text-xs text-amber-200">No hay hallazgos sin rechazar para analizar. Revisa los hallazgos o añade uno propio.</p>
+              <p className="mt-1 text-xs text-amber-200">Aún no hay resultados para revisar. Vuelve a resultados o añade información que conozcas.</p>
             )}
           </div>
         </div>
@@ -146,7 +146,7 @@ export function AnalysisTab() {
           disabled={!canStart || start.isPending}
           onClick={() => selectedRun && start.mutate(selectedRun.id)}
         >
-          {polling ? "Analizando…" : "Analizar investigación"}
+          {polling ? "Revisando…" : "Ver próximos pasos"}
         </Button>
         {start.isError && <div className="sm:basis-full"><Alert>{errorMessageFrom(start.error)}</Alert></div>}
       </GlassPanel>

@@ -18,8 +18,9 @@ export function useGeocode() {
 export function useNearbyPlaces(projectId: string, params: GeoSearchParams | null) {
   return useQuery({
     queryKey: geoKeys.places(projectId, params),
-    queryFn: () => geoApi.nearbyPlaces(projectId, params!),
+    queryFn: ({ signal }) => geoApi.nearbyPlaces(projectId, params!, signal),
     enabled: params !== null,
     staleTime: 5 * 60 * 1000,
+    retry: false,
   });
 }

@@ -21,15 +21,15 @@ const THEME_OPTIONS: Array<{
   {
     mode: "light",
     title: "Modo claro",
-    subtitle: "Superficie blanca limpia y tarjetas cristalinas con tonos violeta suaves.",
-    previewClass: "bg-[#fbfaff] text-[#170e2c] border-violet-300/60",
+    subtitle: "Fondo claro, alto contraste y tarjetas limpias para concentrarte en tus datos.",
+    previewClass: "theme-preview theme-preview--light",
     icon: FiSun,
   },
   {
     mode: "dark",
     title: "Modo oscuro",
-    subtitle: "Superficie oscura amatista con paneles translúcidos y acentos violeta.",
-    previewClass: "bg-[#080414] text-[#f3ecff] border-violet-400/40",
+    subtitle: "Superficie navy con texto claro y acentos azules de baja fatiga visual.",
+    previewClass: "theme-preview theme-preview--dark",
     icon: FiMoon,
   },
 ];
@@ -47,12 +47,12 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="flex animate-fade-up flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <GlassPanel className="stage-3d rounded-3xl p-6 sm:p-8">
         <PageHeader
           eyebrow="Preferencias y cuenta"
           title="Configuración"
-          description="Administra tu perfil, elige la atmósfera visual del observatorio y gestiona tu sesión."
+          description="Administra tu perfil, personaliza la interfaz y gestiona tu sesión."
         />
       </GlassPanel>
 

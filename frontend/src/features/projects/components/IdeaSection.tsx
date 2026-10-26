@@ -20,7 +20,7 @@ export function IdeaSection({ project }: { project: ProjectDetail }) {
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (draft.trim().length < RAW_IDEA_MIN_LENGTH) {
-      setError(`Describe tu idea con al menos ${RAW_IDEA_MIN_LENGTH} caracteres.`);
+      setError(`Escribe una frase breve sobre tu idea (al menos ${RAW_IDEA_MIN_LENGTH} caracteres).`);
       return;
     }
     try {
@@ -67,7 +67,11 @@ export function IdeaSection({ project }: { project: ProjectDetail }) {
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             error={error}
-            hint={project.status !== "draft" ? "Al guardar, el proyecto volverá a Borrador." : undefined}
+            hint={
+              project.status !== "draft"
+                ? "Al guardar, revisaremos los datos básicos otra vez antes de buscar información."
+                : undefined
+            }
             autoFocus
           />
           {updateProject.isError && !error && <Alert>{errorMessageFrom(updateProject.error)}</Alert>}

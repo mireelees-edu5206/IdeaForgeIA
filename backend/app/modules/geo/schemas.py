@@ -35,6 +35,7 @@ class GeoPlacesResponse(BaseModel):
     longitude: float
     radius_m: int
     category: GeoCategory
+    keyword: str | None = None
     places: list[GeoBusiness]
     attribution: str = "© OpenStreetMap contributors"
     caveat: str = (

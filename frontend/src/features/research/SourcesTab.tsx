@@ -82,7 +82,7 @@ export function SourcesTab() {
       </div>
 
       <GlassPanel className="stage-3d rounded-3xl p-3">
-        <ul className="divide-y divide-slate-400/15">
+        <ul aria-label="Fuentes consultadas" className="divide-y divide-slate-400/15">
           {visible.map((source) => {
             const href = safeHref(source.url);
             const title = source.title ?? source.domain;

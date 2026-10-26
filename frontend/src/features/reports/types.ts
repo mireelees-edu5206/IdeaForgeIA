@@ -2,6 +2,14 @@ import type { AIProviderName } from "../research/types";
 
 export type ReportStatus = "generating" | "completed" | "failed";
 
+export interface GeographicScopeInput {
+  query: string;
+  latitude?: number;
+  longitude?: number;
+  radius_m?: number;
+  keyword?: string;
+}
+
 export type ReportSectionType =
   | "executive_summary"
   | "idea_overview"
@@ -14,12 +22,38 @@ export type ReportSectionType =
   | "sources"
   | "conclusions";
 
+export interface VerdictInvestment {
+  minimum_mxn: number;
+  maximum_mxn: number;
+  basis: string;
+  assumptions: string[];
+  evidence_refs: string[];
+}
+
+export interface VerdictZone {
+  name: string;
+  reason: string;
+  place_refs: string[];
+  caveat: string;
+}
+
+export interface BusinessVerdict {
+  recommendation: "worth_testing" | "needs_validation" | "do_not_proceed_yet" | "insufficient_information";
+  confidence: "low" | "medium" | "high";
+  summary: string;
+  investment: VerdictInvestment | null;
+  zones: VerdictZone[];
+  missing_information: string[];
+  next_steps: string[];
+}
+
 export interface ReportSection {
   id: string;
   section_type: ReportSectionType;
   position: number;
   title: string;
   content: string;
+  verdict?: BusinessVerdict | null;
 }
 
 export interface Report {

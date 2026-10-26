@@ -12,7 +12,7 @@ interface StartResearchButtonProps {
   onStarted?: (run: ResearchRun) => void;
 }
 
-export function StartResearchButton({ projectId, label = "Iniciar investigación", onStarted }: StartResearchButtonProps) {
+export function StartResearchButton({ projectId, label = "Buscar información", onStarted }: StartResearchButtonProps) {
   const start = useStartResearch(projectId);
   return (
     <div className="flex flex-col gap-2">

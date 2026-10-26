@@ -7,6 +7,7 @@ import { FindingsTab } from "../findings/FindingsTab";
 import { ResearchTab } from "../research/ResearchTab";
 import { SourcesTab } from "../research/SourcesTab";
 import { ReportsTab } from "../reports/ReportsTab";
+import { VisualizationsTab } from "../visualizations/VisualizationsTab";
 import { ProjectDetailPage } from "./ProjectDetailPage";
 import { ProjectIdeaTab } from "./ProjectIdeaTab";
 
@@ -22,6 +23,7 @@ export const projectDetailRoute: RouteObject = {
     { path: "analisis", element: <AnalysisTab /> },
     { path: "asistente", element: <ChatTab /> },
     { path: "fuentes", element: <SourcesTab /> },
+    { path: "visualizaciones", element: <VisualizationsTab /> },
     { path: "reportes", element: <ReportsTab /> },
   ],
 };

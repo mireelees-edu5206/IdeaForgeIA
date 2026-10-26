@@ -9,6 +9,7 @@ from app.modules.ai.errors import AIRateLimitError, AIUnavailableError
 from app.modules.ai.providers.base import AIProvider
 from app.modules.ai.providers.fake import FakeProvider
 from app.modules.ai.types import AIMessage, CitationSpan, GroundedResult, GroundedSource
+from app.modules.geo.providers.base import GeoProvider
 from tests.api.helpers import user_headers
 from tests.api.test_projects import BASE, add_attribute, confirm, create_project, fill_required
 from tests.conftest import fetch_scalar, make_settings, run_sql
@@ -21,9 +22,16 @@ ACTIVE_RUN_SQL = (
 
 @contextmanager
 def research_client(
-    db_url: str, provider: AIProvider | None = None, **settings: object
+    db_url: str,
+    provider: AIProvider | None = None,
+    geo_provider: GeoProvider | None = None,
+    **settings: object,
 ) -> Iterator[TestClient]:
-    app = create_app(make_settings(database_url=db_url, **settings), ai_provider=provider)
+    app = create_app(
+        make_settings(database_url=db_url, **settings),
+        ai_provider=provider,
+        geo_provider=geo_provider,
+    )
     with TestClient(app) as client:
         yield client
 

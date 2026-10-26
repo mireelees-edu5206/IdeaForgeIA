@@ -172,7 +172,7 @@ export function AttributeSection({ projectId, type, values, required }: Attribut
                 : "bg-accent-cyan/10 text-accent-cyan ring-accent-cyan/30"
             }
           >
-            {hasConfirmed ? "Faceta encendida" : "Obligatorio"}
+            {hasConfirmed ? "Completo" : "Pendiente"}
           </Badge>
         )}
       </div>

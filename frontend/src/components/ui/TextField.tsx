@@ -29,7 +29,6 @@ export function TextField({ label, error, hint, type = "text", className, ...pro
           className={cn(
             "neo-inset h-11 w-full rounded-xl px-4 text-slate-100 placeholder:text-slate-500",
             "transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-cyan/70",
-            isPassword && "pr-12",
             error && "ring-2 ring-rose-400/70",
           )}
           {...props}
@@ -39,9 +38,10 @@ export function TextField({ label, error, hint, type = "text", className, ...pro
             type="button"
             onClick={() => setRevealed((value) => !value)}
             aria-label={revealed ? "Ocultar contraseña" : "Mostrar contraseña"}
-            className="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-xl text-slate-400 hover:text-slate-100"
+            className="jelly mt-1 inline-flex min-h-11 w-fit items-center gap-2 rounded-lg px-2 text-sm font-medium text-primary transition hover:bg-primary/5"
           >
-            {revealed ? <FiEyeOff aria-hidden="true" /> : <FiEye aria-hidden="true" />}
+            {revealed ? <FiEyeOff aria-hidden="true" className="size-4" /> : <FiEye aria-hidden="true" className="size-4" />}
+            <span>{revealed ? "Ocultar contraseña" : "Mostrar contraseña"}</span>
           </button>
         )}
       </div>

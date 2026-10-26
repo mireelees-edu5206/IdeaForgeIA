@@ -2,6 +2,8 @@ import { createBrowserRouter } from "react-router";
 
 import { AppShell } from "../components/layout/AppShell";
 import { AdminPage } from "../features/admin/AdminPage";
+import { AdminLabLogicPage } from "../features/admin/lab/AdminLabLogicPage";
+import { AdminLabPage } from "../features/admin/lab/AdminLabPage";
 import { GuestOnly, LOGIN_PATH, RequireAdmin, RequireAuth } from "../features/auth/guards";
 import { LoginPage } from "../features/auth/LoginPage";
 import { RegisterPage } from "../features/auth/RegisterPage";
@@ -36,7 +38,14 @@ export const router = createBrowserRouter([
               { path: "configuracion", element: <SettingsPage /> },
               {
                 element: <RequireAdmin />,
-                children: [{ path: "admin", element: <AdminPage /> }],
+                children: [
+                  { path: "admin", element: <AdminPage /> },
+                  { path: "admin/laboratorio", element: <AdminLabPage /> },
+                  {
+                    path: "admin/laboratorio/proposiciones",
+                    element: <AdminLabLogicPage />,
+                  },
+                ],
               },
               projectDetailRoute,
             ],

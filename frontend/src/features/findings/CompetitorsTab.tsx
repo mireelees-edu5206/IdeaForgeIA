@@ -143,8 +143,8 @@ function EntityRow({ projectId, entity }: { projectId: string; entity: Entity })
       <div className="min-w-0">
         <p className="font-medium text-slate-100">{entity.name}</p>
         <p className="text-xs text-slate-400">
-          {ENTITY_TYPE_LABELS[entity.entity_type]} · en {entity.finding_count}{" "}
-          {entity.finding_count === 1 ? "hallazgo" : "hallazgos"}
+          {ENTITY_TYPE_LABELS[entity.entity_type]} · aparece en {entity.finding_count}{" "}
+          {entity.finding_count === 1 ? "resultado" : "resultados"}
         </p>
         {create.isError && (
           <div className="mt-2">
@@ -153,14 +153,14 @@ function EntityRow({ projectId, entity }: { projectId: string; entity: Entity })
         )}
       </div>
       <div className="flex items-end gap-2">
-        <Select label={`Tipo de competidor para ${entity.name}`} hideLabel value={type} options={TYPE_OPTIONS} onChange={setType} />
+        <Select label={`Qué tan parecida es la opción ${entity.name}`} hideLabel value={type} options={TYPE_OPTIONS} onChange={setType} />
         <Button
           size="sm"
           variant="secondary"
           loading={create.isPending}
           onClick={() => create.mutate({ entity_id: entity.id, competitor_type: type })}
         >
-          Marcar como competidor
+          Añadir como opción
         </Button>
       </div>
     </li>
@@ -177,7 +177,7 @@ export function CompetitorsTab() {
   if (competitors.isPending) {
     return (
       <div role="status" className="flex items-center justify-center gap-3 py-16 text-slate-300">
-        <Spinner className="size-5 text-accent-cyan" /> Cargando competidores…
+        <Spinner className="size-5 text-accent-cyan" /> Cargando opciones…
       </div>
     );
   }
@@ -198,10 +198,9 @@ export function CompetitorsTab() {
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold">Competidores</h2>
+          <h2 className="text-lg font-semibold">Otras opciones del mercado</h2>
           <p className="text-sm text-slate-400">
-            Empresas y alternativas detectadas en las fuentes. La clasificación y la amenaza son un análisis: ajústalas si
-            no estás de acuerdo.
+            Negocios o alternativas que resuelven un problema parecido. Aparecer aquí no confirma que sean competencia: revisa cada caso.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -212,12 +211,12 @@ export function CompetitorsTab() {
               icon={showConstellation ? <FiList aria-hidden="true" /> : <FiGrid aria-hidden="true" />}
               onClick={() => setShowConstellation((current) => !current)}
             >
-              {showConstellation ? "Ocultar constelación" : "Ver constelación"}
+              {showConstellation ? "Ocultar mapa de opciones" : "Ver mapa de opciones"}
             </Button>
           )}
           {!creating && (
             <Button icon={<FiPlus aria-hidden="true" />} onClick={() => setCreating(true)}>
-              Añadir competidor
+              Añadir opción
             </Button>
           )}
         </div>
@@ -225,7 +224,7 @@ export function CompetitorsTab() {
 
       {creating && (
         <GlassPanel className="p-5">
-          <h3 className="mb-4 font-semibold">Nuevo competidor</h3>
+          <h3 className="mb-4 font-semibold">Añade una opción que conozcas</h3>
           <CompetitorForm projectId={project.id} onDone={() => setCreating(false)} />
         </GlassPanel>
       )}
@@ -235,8 +234,8 @@ export function CompetitorsTab() {
       {competitors.data.length === 0 ? (
         <EmptyState
           icon={FiUsers}
-          title="Aún no hay competidores"
-          description="Aparecerán al completar una investigación. También puedes añadir los que conozcas."
+          title="Aún no hay opciones registradas"
+          description="Puedes buscarlas en el mapa o añadir negocios y alternativas que ya conozcas."
         />
       ) : (
         <>
@@ -268,9 +267,9 @@ export function CompetitorsTab() {
         <section aria-labelledby="otras-entidades" className="flex flex-col gap-3">
           <div>
             <h3 id="otras-entidades" className="font-semibold">
-              Otras entidades mencionadas
+              Otros nombres mencionados
             </h3>
-            <p className="text-xs text-slate-400">Aparecen en los hallazgos, pero no se han clasificado como competidores.</p>
+            <p className="text-xs text-slate-400">Aparecen en los resultados, pero todavía no se han añadido como opciones.</p>
           </div>
           <GlassPanel className="p-2">
             <ul className="divide-y divide-slate-400/15">

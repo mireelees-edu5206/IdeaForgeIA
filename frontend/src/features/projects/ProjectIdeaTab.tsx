@@ -22,10 +22,13 @@ export function ProjectIdeaTab() {
 
       <section aria-labelledby="nucleo-idea" className="flex flex-col gap-3">
         <div>
-          <p className="text-xs font-semibold tracking-wider text-accent-cyan uppercase">Núcleo obligatorio</p>
+          <p className="section-eyebrow">PASO 1 · INFORMACIÓN BÁSICA</p>
           <h2 id="nucleo-idea" className="text-lg font-semibold">
-            Atributos esenciales para investigar
+            Cuéntanos estos tres puntos
           </h2>
+          <p className="max-w-2xl text-sm text-slate-400">
+            Para buscar información útil necesitamos saber qué problema resuelves, cómo y para quién.
+          </p>
         </div>
         <div className="grid gap-4 lg:grid-cols-3">
           {REQUIRED_ATTRIBUTES.map((type) => (
@@ -36,10 +39,13 @@ export function ProjectIdeaTab() {
 
       <section aria-labelledby="contexto-idea" className="flex flex-col gap-3">
         <div>
-          <p className="text-xs font-semibold tracking-wider text-accent-violet uppercase">Contexto estratégico</p>
+          <p className="section-eyebrow">OPCIONAL · PARA OBTENER MEJORES RESULTADOS</p>
           <h2 id="contexto-idea" className="text-lg font-semibold">
-            Atributos complementarios de la idea
+            Añade otros detalles que ya conozcas
           </h2>
+          <p className="max-w-2xl text-sm text-slate-400">
+            Canales, precios o zona de operación ayudan a encontrar información más cercana a tu caso.
+          </p>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
           {OPTIONAL_ATTRIBUTES.map((type) => (

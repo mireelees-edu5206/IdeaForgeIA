@@ -74,12 +74,12 @@ describe("Asistente contextual del proyecto", () => {
     const fetchMock = renderChat();
     const user = userEvent.setup();
 
-    await screen.findByRole("heading", { name: "Asistente del proyecto" });
+    await screen.findByRole("heading", { name: "Pregunta sobre tu idea" });
     await user.type(screen.getByLabelText("Tu mensaje"), "¿Qué evidencia respalda la oportunidad?");
     await user.click(screen.getByRole("button", { name: "Enviar" }));
 
     expect(await screen.findByText(`${REPLY.answer} (1)`)).toBeInTheDocument();
-    expect(screen.getAllByText("Asistente", { exact: true })).toHaveLength(2);
+    expect(screen.getAllByText("Asistente", { exact: true })).toHaveLength(1);
     expect(screen.getByRole("link", { name: /Estudio sectorial/ })).toHaveAttribute(
       "href",
       "https://fuente.example/mercado",

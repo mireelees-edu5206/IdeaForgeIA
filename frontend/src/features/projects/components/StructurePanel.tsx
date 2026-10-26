@@ -34,14 +34,14 @@ export function StructurePanel({ project }: { project: ProjectDetail }) {
             <FiLayers aria-hidden="true" className="text-accent-cyan" />
           </span>
           <div>
-            <h2 className="font-semibold">Estructura de la idea</h2>
-            <p className="text-xs text-slate-400">Mínimo necesario para investigar</p>
+            <h2 className="font-semibold">Antes de investigar</h2>
+            <p className="text-xs text-slate-400">Completa estos tres datos básicos</p>
           </div>
         </div>
         <FacetTriadGlyph lit={litFacets} />
       </div>
 
-      <ul className="flex flex-col gap-2" aria-label="Atributos obligatorios">
+      <ul className="flex flex-col gap-2" aria-label="Datos básicos para continuar">
         {REQUIRED_ATTRIBUTES.map((type) => {
           const done = !structure.missing.includes(type);
           return (
@@ -59,9 +59,9 @@ export function StructurePanel({ project }: { project: ProjectDetail }) {
       </ul>
 
       {structure.pending_suggestions > 0 && (
-        <p className="flex items-start gap-2 rounded-xl bg-kind-hypothesis/10 p-3 text-sm text-kind-hypothesis">
-          <FiAlertCircle aria-hidden="true" className="mt-0.5 shrink-0" />
-          Tienes {structure.pending_suggestions} sugerencia(s) de IA sin revisar. Confírmalas o elimínalas.
+          <p className="flex items-start gap-2 rounded-xl bg-kind-hypothesis/10 p-3 text-sm text-kind-hypothesis">
+            <FiAlertCircle aria-hidden="true" className="mt-0.5 shrink-0" />
+            Hay {structure.pending_suggestions} propuesta(s) automáticas por revisar. Confírmalas o elimínalas antes de continuar.
         </p>
       )}
 
@@ -69,22 +69,22 @@ export function StructurePanel({ project }: { project: ProjectDetail }) {
         <>
           <div role="status" className="rounded-xl bg-emerald-400/10 p-3 text-sm text-emerald-200">
             <p className="flex items-center gap-2 font-medium">
-              <FiCheckCircle aria-hidden="true" /> Estructura confirmada
+              <FiCheckCircle aria-hidden="true" /> ¡Listo para buscar información!
             </p>
             <p className="mt-1 text-emerald-100/80">
-              Siguiente paso: investigar la idea. Si cambias la idea o sus atributos, el proyecto volverá a Borrador.
+              Revisaremos fuentes públicas. Si cambias la idea, podrás confirmar estos datos otra vez.
             </p>
           </div>
           <StartResearchButton
             projectId={project.id}
+            label="Buscar información en internet"
             onStarted={() => navigate(`/proyectos/${project.id}/investigacion`)}
           />
         </>
       ) : !editable ? (
         <div className="flex flex-col gap-3">
           <p className="rounded-xl bg-amber-400/10 p-3 text-sm text-amber-100">
-            Esta idea ya se investigó. Si la modificas, el proyecto volverá a Borrador y tendrás que confirmar la
-            estructura de nuevo; las investigaciones anteriores se conservan.
+            Esta idea ya tiene una búsqueda. Si la editas, te pediremos confirmar estos datos otra vez; los resultados anteriores se conservan.
           </p>
           <LinkButton
             to={`/proyectos/${project.id}/investigacion`}
@@ -104,11 +104,11 @@ export function StructurePanel({ project }: { project: ProjectDetail }) {
               loading={confirmStructure.isPending}
               icon={<FiCheckCircle aria-hidden="true" />}
             >
-              Confirmar estructura
+              Guardar y continuar
             </Button>
             {!structure.ready && (
               <p className="text-xs text-slate-400">
-                Confirma al menos un valor de cada atributo obligatorio para continuar.
+                Completa Problema, Solución y Cliente. Confirma al menos una respuesta en cada apartado.
               </p>
             )}
           </>
@@ -116,7 +116,7 @@ export function StructurePanel({ project }: { project: ProjectDetail }) {
       )}
 
       <div className="border-t border-slate-400/15 pt-4">
-        <p className="mb-2 text-xs font-medium text-slate-400">Cómo leer las etiquetas</p>
+        <p className="mb-2 text-xs font-medium text-slate-400">¿Quién añadió cada dato?</p>
         <div className="flex flex-wrap gap-2">
           <OriginBadge origin="user" confirmed />
           <OriginBadge origin="ai" confirmed={false} />

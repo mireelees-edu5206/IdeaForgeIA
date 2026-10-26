@@ -15,9 +15,9 @@ Antes de prender el proyecto por primera vez, asegúrate de tener instalados:
 2. **Node.js (v22 o superior)** y **npm**: [https://nodejs.org](https://nodejs.org)
 3. **PostgreSQL 18** corriendo en el puerto `5432`: [https://www.postgresql.org/download/](https://www.postgresql.org/download/)
 4. **Ollama** (para usar el modelo local gratis en CPU): [https://ollama.com/download](https://ollama.com/download)
-   - Una vez instalado Ollama, descarga el modelo ejecutando en una terminal:
+   - Una vez instalado Ollama, descarga el modelo Llama 3 ejecutando en una terminal:
      ```powershell
-     ollama pull qwen3:4b
+     ollama pull llama3.2:3b
      ```
 
 ---
@@ -45,7 +45,7 @@ SECRET_KEY=clave-secreta-local-de-al-menos-32-caracteres-seguros
 AI_PROVIDER=ollama
 AI_FALLBACK_PROVIDER=gemini
 OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=qwen3:4b
+OLLAMA_MODEL=llama3.2:3b
 OLLAMA_THINK=false
 AI_TIMEOUT_SECONDS=240
 
@@ -124,7 +124,7 @@ npm run dev
 2. **«La investigación con Ollama tarda o dice que el proveedor no está disponible»**
    - Verifica que la app de **Ollama** esté abierta junto al reloj de Windows y que hayas descargado el modelo con:
      ```powershell
-     ollama pull qwen3:4b
+     ollama pull llama3.2:3b
      ```
 
 3. **«Quiero crear o promover mi usuario a Administrador para ver el panel `/admin`»**

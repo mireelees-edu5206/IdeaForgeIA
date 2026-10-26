@@ -44,8 +44,8 @@ def test_chat_prompt_keeps_project_content_as_escaped_data() -> None:
     assert "unidades × costo unitario" in messages[0].content
     assert "Empieza por responder" in messages[0].content
     assert "no asumas que hace falta rentar un local" in messages[0].content
-    assert "\\u003c/project_context\\u003e" in messages[-1].content
-    assert messages[-1].content.endswith("Resume los riesgos.")
+    assert "\\u003c/project_context\\u003e" in messages[0].content
+    assert "Resume los riesgos." in messages[-1].content
 
 
 def test_fake_provider_returns_an_explicitly_simulated_chat_answer() -> None:

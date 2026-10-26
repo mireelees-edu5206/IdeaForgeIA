@@ -54,7 +54,7 @@ export function AnalysisItemCard({ projectId, kind, item, findings }: AnalysisIt
 
   if (editing) {
     return (
-      <article aria-labelledby={headingId} className="glass rounded-2xl p-5">
+      <article aria-labelledby={headingId} className="surface-panel rounded-2xl p-5">
         <h3 id={headingId} className="mb-4 font-semibold">Editar análisis</h3>
         <AnalysisItemForm
           kind={kind}
@@ -77,7 +77,7 @@ export function AnalysisItemCard({ projectId, kind, item, findings }: AnalysisIt
 
   const title = "title" in item ? item.title : "statement" in item ? item.statement : (item as MissingInformation).question;
   return (
-    <article aria-labelledby={headingId} className={cn("glass flex flex-col gap-3 rounded-2xl p-5", rejected && "opacity-60")}>
+    <article aria-labelledby={headingId} className={cn("surface-panel flex flex-col gap-3 rounded-2xl p-5", rejected && "opacity-60")}>
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           <span className={cn("rounded-full px-2.5 py-1 text-xs ring-1", item.origin === "ai" ? "bg-violet-400/10 text-violet-200 ring-violet-300/25" : "bg-slate-400/10 text-slate-300 ring-slate-300/20")}>
@@ -175,12 +175,12 @@ function MissingInformationDetails({ item, onChange, pending }: { item: MissingI
 
 function EvidenceLinks({ itemFindings, allFindings, fromAi }: { itemFindings: FindingBrief[]; allFindings: Finding[]; fromAi: boolean }) {
   return (
-    <section className="neo-inset rounded-xl p-3" aria-label="Trazabilidad de evidencia">
+    <section className="neo-inset rounded-xl p-3" aria-label="Fuentes relacionadas">
       <p className="mb-2 text-xs font-semibold text-slate-300">
-        {fromAi ? "Interpretación de IA, no un hecho comprobado" : "Hallazgos relacionados"}
+        {fromAi ? "Sugerencia de IA · revisa las fuentes antes de aceptarla" : "Resultados relacionados"}
       </p>
       {itemFindings.length === 0 ? (
-        <p className="text-xs text-amber-200">Pendiente de comprobar: no hay hallazgos asociados.</p>
+        <p className="text-xs text-amber-200">Todavía no hay resultados relacionados para comprobar esta sugerencia.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {itemFindings.map((brief) => {
@@ -206,7 +206,7 @@ function EvidenceLinks({ itemFindings, allFindings, fromAi }: { itemFindings: Fi
                       );
                     })}
                   </ul>
-                ) : <p className="mt-1 text-xs text-slate-500">El hallazgo no tiene evidencia externa vinculada.</p>}
+                ) : <p className="mt-1 text-xs text-slate-500">Este resultado aún no tiene una fuente externa asociada.</p>}
               </li>
             );
           })}

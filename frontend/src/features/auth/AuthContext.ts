@@ -2,7 +2,7 @@ import { createContext, useContext } from "react";
 
 import type { LoginInput, RegisterInput, User } from "./types";
 
-/** unavailable: hay sesión guardada pero el servidor no responde (se ofrece reintentar). */
+/** unavailable: no se pudo configurar Supabase o verificar el perfil en el backend. */
 export type AuthStatus = "loading" | "authenticated" | "anonymous" | "unavailable";
 
 export interface AuthContextValue {
@@ -10,7 +10,8 @@ export interface AuthContextValue {
   user: User | null;
   sessionExpired: boolean;
   login: (data: LoginInput) => Promise<void>;
-  register: (data: RegisterInput) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  register: (data: RegisterInput) => Promise<boolean>;
   logout: () => Promise<void>;
   retry: () => void;
 }

@@ -1,19 +1,24 @@
+import { useState } from "react";
 import {
   FiActivity,
   FiAlertCircle,
+  FiBookOpen,
   FiCheckCircle,
   FiCpu,
   FiFolder,
   FiRefreshCw,
   FiShield,
+  FiTrash2,
   FiUsers,
 } from "react-icons/fi";
 
 import { Alert } from "../../components/ui/Alert";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
+import { ConfirmDialog } from "../../components/ui/ConfirmDialog";
 import { CrucibleGlyph } from "../../components/ui/ForgeGlyphs";
 import { GlassPanel } from "../../components/ui/GlassPanel";
+import { LinkButton } from "../../components/ui/LinkButton";
 import { Spinner } from "../../components/ui/Spinner";
 import { formatDateTime } from "../../lib/formatDate";
 import { errorMessageFrom } from "../../lib/formErrors";
@@ -23,7 +28,7 @@ import { PageHeader } from "../projects/components/PageHeader";
 import { STATUS_META } from "../projects/constants";
 import type { ProjectStatus } from "../projects/types";
 import { PROVIDER_LABELS } from "../research/constants";
-import { useAdminOverview, useAdminUsers, useUpdateAdminUser } from "./queries";
+import { useAdminOverview, useAdminUsers, useDeleteAdminUser, useUpdateAdminUser } from "./queries";
 import type { AIOperation, AdminUser } from "./types";
 
 const OPERATION_LABELS: Record<AIOperation, string> = {
@@ -67,6 +72,8 @@ function MetricTile({
 
 function UserRow({ item, currentUserId }: { item: AdminUser; currentUserId?: string }) {
   const updateUser = useUpdateAdminUser();
+  const deleteUser = useDeleteAdminUser();
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const isSelf = item.id === currentUserId;
 
   return (
@@ -118,7 +125,7 @@ function UserRow({ item, currentUserId }: { item: AdminUser; currentUserId?: str
         <Button
           size="sm"
           variant={item.is_active ? "danger" : "secondary"}
-          disabled={isSelf || updateUser.isPending}
+          disabled={isSelf || updateUser.isPending || deleteUser.isPending}
           onClick={() =>
             updateUser.mutate({
               userId: item.id,
@@ -128,7 +135,35 @@ function UserRow({ item, currentUserId }: { item: AdminUser; currentUserId?: str
         >
           {item.is_active ? "Desactivar" : "Reactivar"}
         </Button>
+        <Button
+          size="sm"
+          variant="danger"
+          icon={<FiTrash2 aria-hidden="true" />}
+          disabled={isSelf || deleteUser.isPending}
+          onClick={() => setConfirmDelete(true)}
+        >
+          Eliminar cuenta
+        </Button>
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="¿Eliminar esta cuenta definitivamente?"
+        confirmLabel="Eliminar cuenta"
+        loading={deleteUser.isPending}
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => deleteUser.mutate(item.id, { onSuccess: () => setConfirmDelete(false) })}
+      >
+        <p>
+          Se eliminará la cuenta de <strong className="text-slate-100">{item.full_name}</strong> y también sus
+          proyectos, investigaciones, resultados e informes. Esta acción no se puede deshacer.
+        </p>
+        {deleteUser.isError && (
+          <div className="mt-3">
+            <Alert>{errorMessageFrom(deleteUser.error)}</Alert>
+          </div>
+        )}
+      </ConfirmDialog>
     </li>
   );
 }
@@ -169,24 +204,34 @@ export function AdminPage() {
   const data = overview.data;
 
   return (
-    <div className="flex animate-fade-up flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <GlassPanel className="stage-3d rounded-3xl p-6 sm:p-8">
         <PageHeader
           eyebrow="Centro de control · Rol Administrador"
           title="Panel de Administración"
           description="Supervisa cuentas de investigadores, métricas globales de validación y telemetría de llamadas a proveedores de IA (Gemini y Ollama)."
           actions={
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<FiRefreshCw aria-hidden="true" />}
-              onClick={() => {
-                void overview.refetch();
-                void users.refetch();
-              }}
-            >
-              Actualizar métricas
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <LinkButton
+                to="/admin/laboratorio"
+                variant="secondary"
+                size="sm"
+                icon={<FiBookOpen aria-hidden="true" />}
+              >
+                Laboratorio académico
+              </LinkButton>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<FiRefreshCw aria-hidden="true" />}
+                onClick={() => {
+                  void overview.refetch();
+                  void users.refetch();
+                }}
+              >
+                Actualizar métricas
+              </Button>
+            </div>
           }
         />
       </GlassPanel>

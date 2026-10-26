@@ -1,8 +1,10 @@
 import uuid
 from datetime import datetime
 from enum import StrEnum
+from typing import Any
 
-from sqlalchemy import CheckConstraint, ForeignKey, SmallInteger, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, SmallInteger, String, UniqueConstraint, text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.core.enums import AIProviderName
@@ -41,6 +43,7 @@ class Report(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
     run_id: Mapped[uuid.UUID | None]
     version: Mapped[int]
     title: Mapped[str] = mapped_column(String(200))
+    geographic_scopes: Mapped[list[str]] = mapped_column(JSONB, server_default=text("'[]'::jsonb"))
     status: Mapped[ReportStatus] = mapped_column(
         str_enum(ReportStatus, "status", 15), server_default=ReportStatus.GENERATING.value
     )
@@ -65,3 +68,4 @@ class ReportSection(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
     title: Mapped[str] = mapped_column(String(200))
     # Markdown; el frontend lo renderiza sin permitir HTML crudo.
     content: Mapped[str]
+    verdict: Mapped[dict[str, Any] | None] = mapped_column(JSONB)

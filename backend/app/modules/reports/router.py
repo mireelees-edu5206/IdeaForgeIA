@@ -1,11 +1,11 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Request, status
 
 from app.api.deps import CurrentUser, DbSession
 from app.modules.reports.runner import ReportRunner
-from app.modules.reports.schemas import ReportDetail, ReportListItem, ReportRead
+from app.modules.reports.schemas import ReportCreate, ReportDetail, ReportListItem, ReportRead
 from app.modules.reports.service import ReportService
 
 router = APIRouter(prefix="/projects/{project_id}/reports", tags=["reports"])
@@ -21,6 +21,7 @@ def get_report_runner(request: Request) -> ReportRunner:
 
 Service = Annotated[ReportService, Depends(get_report_service)]
 Runner = Annotated[ReportRunner, Depends(get_report_runner)]
+ReportBody = Annotated[ReportCreate | None, Body()]
 
 
 @router.post("", response_model=ReportRead, status_code=status.HTTP_202_ACCEPTED)
@@ -30,8 +31,14 @@ async def create_report(
     service: Service,
     runner: Runner,
     background: BackgroundTasks,
+    data: ReportBody = None,
 ) -> ReportRead:
-    report = await service.start(user, project_id, runner.provider)
+    report = await service.start(
+        user,
+        project_id,
+        runner.provider,
+        data.geographic_scopes if data is not None else None,
+    )
     background.add_task(runner.run, report.id)
     return report
 

@@ -1,29 +1,32 @@
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 
 import { cn } from "../../lib/cn";
+import { initLiquidGlass } from "../../lib/liquidGlass";
 import { Spinner } from "./Spinner";
+
+initLiquidGlass();
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 export type ButtonSize = "sm" | "md" | "lg" | "icon";
 
 export const buttonVariants: Record<ButtonVariant, string> = {
   primary:
-    "bg-linear-to-r from-accent-cyan to-accent-violet text-white font-semibold " +
-    "shadow-[0_14px_30px_-14px_var(--color-accent-violet)] ring-1 ring-white/25 hover:brightness-105",
-  secondary: "neo-raised font-medium text-slate-100 hover:text-accent-cyan",
-  ghost: "text-slate-300 hover:bg-slate-400/10 hover:text-slate-100",
-  danger: "bg-rose-500/12 text-rose-200 ring-1 ring-rose-400/30 hover:bg-rose-500/20",
+    "liquid-btn-primary bg-accent text-on-accent font-semibold " +
+    "shadow-[0_12px_26px_-12px_var(--color-accent)] ring-1 ring-white/35 hover:brightness-105",
+  secondary: "liquid-btn-glass neo-raised font-medium text-slate-100 hover:text-accent-cyan",
+  ghost: "liquid-btn-ghost text-slate-300 hover:bg-slate-400/12 hover:text-slate-100",
+  danger: "liquid-btn-glass bg-rose-500/14 text-rose-200 ring-1 ring-rose-400/35 hover:bg-rose-500/22",
 };
 
 export const buttonSizes: Record<ButtonSize, string> = {
-  sm: "h-9 px-3 text-sm gap-1.5",
+  sm: "h-11 px-3 text-sm gap-1.5",
   md: "h-11 px-5 text-sm gap-2",
   lg: "h-12 px-6 text-base gap-2",
-  icon: "size-9 shrink-0",
+  icon: "size-11 shrink-0",
 };
 
 export const buttonBase =
-  "jelly inline-flex items-center justify-center rounded-xl transition duration-200 " +
+  "jelly liquid-host inline-flex items-center justify-center rounded-xl transition duration-200 " +
   "disabled:cursor-not-allowed disabled:opacity-60";
 
 type Variant = ButtonVariant;

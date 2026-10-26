@@ -17,7 +17,7 @@ export function QueryCard({ query, defaultOpen }: { query: ResearchQuery; defaul
   const cited = query.sources.filter((s) => s.was_cited).length;
 
   return (
-    <details open={defaultOpen} className="glass group rounded-3xl">
+    <details open={defaultOpen} className="surface-panel group rounded-2xl">
       <summary className="flex cursor-pointer list-none items-start gap-3 rounded-3xl p-4 focus-visible:outline-2 sm:p-5 [&::-webkit-details-marker]:hidden">
         <div className="flex min-w-0 flex-1 flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">

@@ -60,12 +60,12 @@ describe("Nuevo proyecto", () => {
 
     await user.type(screen.getByLabelText("Nombre del proyecto"), "  Agro Conecta ");
     await user.type(screen.getByLabelText("Tu idea"), "Muy corta");
-    await user.click(screen.getByRole("button", { name: "Crear proyecto" }));
-    expect(screen.getByText("Describe tu idea con al menos 20 caracteres.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Crear y continuar" }));
+    expect(screen.getByText("Escribe una frase breve sobre tu idea (al menos 20 caracteres).")).toBeInTheDocument();
     expect(fetchMock).not.toHaveBeenCalled();
 
     await user.type(screen.getByLabelText("Tu idea"), " pero ahora ya es suficiente");
-    await user.click(screen.getByRole("button", { name: "Crear proyecto" }));
+    await user.click(screen.getByRole("button", { name: "Crear y continuar" }));
 
     await waitFor(() => expect(router.state.location.pathname).toBe("/proyectos/p1"));
     const body = JSON.parse(fetchMock.mock.calls[0]![1]!.body as string) as Record<string, string>;
@@ -84,12 +84,41 @@ describe("Lista de proyectos", () => {
     const user = userEvent.setup();
 
     await screen.findByText("Todavía no tienes proyectos");
-    await user.click(screen.getByRole("button", { name: "Borrador" }));
+    await user.click(screen.getByRole("button", { name: "Idea por completar" }));
 
     await waitFor(() => expect(router.state.location.search).toBe("?estado=draft"));
-    expect(screen.getByRole("button", { name: "Borrador" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Idea por completar" })).toHaveAttribute("aria-pressed", "true");
     const lastUrl = String(fetchMock.mock.calls.at(-1)![0]);
     expect(lastUrl).toContain("status=draft");
+  });
+
+  it("permite eliminar un proyecto desde la lista después de confirmar", async () => {
+    let exists = true;
+    const fetchMock = mockFetch((rawUrl, init) => {
+      const url = new URL(rawUrl, "http://localhost");
+      if (url.pathname === "/api/v1/projects" && init.method !== "DELETE") {
+        const items = exists
+          ? [{ id: "p1", title: "Agro Conecta", status: "draft", created_at: NOW, updated_at: NOW }]
+          : [];
+        return jsonResponse(200, { items, total: items.length, limit: 12, offset: 0 });
+      }
+      if (url.pathname === "/api/v1/projects/p1" && init.method === "DELETE") {
+        exists = false;
+        return jsonResponse(204);
+      }
+      return jsonResponse(404);
+    });
+    renderRoutes([{ path: "/proyectos", element: <ProjectsPage /> }], "/proyectos");
+    const user = userEvent.setup();
+
+    await screen.findByRole("heading", { name: "Agro Conecta" });
+    await user.click(screen.getByRole("button", { name: "Eliminar proyecto" }));
+    const dialog = screen.getByRole("dialog", { name: "¿Eliminar este proyecto?" });
+    await user.click(within(dialog).getByRole("button", { name: "Eliminar definitivamente" }));
+
+    await waitFor(() => expect(exists).toBe(false));
+    expect(await screen.findByText("Todavía no tienes proyectos")).toBeInTheDocument();
+    expect(fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(true);
   });
 });
 
@@ -102,6 +131,23 @@ describe("Detalle del proyecto", () => {
     return fetchMock;
   }
 
+  it("muestra los pasos principales y guarda las herramientas opcionales en un menú", async () => {
+    renderDetail(project());
+    const navigation = await screen.findByRole("navigation", { name: "Secciones del proyecto" });
+
+    expect(within(navigation).getByRole("link", { name: /Idea/ })).toBeInTheDocument();
+    expect(within(navigation).getByRole("link", { name: /Investigar/ })).toBeInTheDocument();
+    expect(within(navigation).getByRole("link", { name: /Resultados/ })).toBeInTheDocument();
+    expect(within(navigation).getByRole("link", { name: /Analizar/ })).toBeInTheDocument();
+    expect(within(navigation).getByRole("link", { name: /Veredicto/ })).toBeInTheDocument();
+    const toolsMenu = within(navigation).getByText("Más herramientas").closest("details");
+    expect(toolsMenu).not.toHaveAttribute("open");
+
+    await userEvent.setup().click(within(navigation).getByText("Más herramientas"));
+    expect(toolsMenu).toHaveAttribute("open");
+    expect(within(navigation).getByRole("link", { name: "Gráficos" })).toBeInTheDocument();
+  });
+
   it("muestra qué falta y no deja confirmar la estructura incompleta", async () => {
     renderDetail(
       project({
@@ -111,10 +157,10 @@ describe("Detalle del proyecto", () => {
     );
 
     expect(await screen.findByText("Intermediarios caros")).toBeInTheDocument();
-    const required = screen.getByRole("list", { name: "Atributos obligatorios" });
+    const required = screen.getByRole("list", { name: "Datos básicos para continuar" });
     expect(within(required).getByText("(confirmado)")).toBeInTheDocument();
     expect(within(required).getAllByText("(pendiente)")).toHaveLength(2);
-    expect(screen.getByRole("button", { name: "Confirmar estructura" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Guardar y continuar" })).toBeDisabled();
   });
 
   it("confirma la estructura cuando está lista", async () => {
@@ -128,7 +174,7 @@ describe("Detalle del proyecto", () => {
     ]);
     const user = userEvent.setup();
 
-    await user.click(await screen.findByRole("button", { name: "Confirmar estructura" }));
+    await user.click(await screen.findByRole("button", { name: "Guardar y continuar" }));
     await waitFor(() =>
       expect(fetchMock.mock.calls.some(([url, init]) => String(url).endsWith("/confirm-structure") && init?.method === "POST")).toBe(true),
     );
