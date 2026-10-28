@@ -5,6 +5,16 @@
 **/backend/.env
 **/frontend/.env
 
+# Material de trabajo y datos locales que no se publican
+/AGENTS.md
+/ESTRUCTURA_CODIGO_IDEAFORGE_AI.html
+/PROMPT_MAESTRO.md
+/README.md
+/ideaforge_database.sql
+/ideaforge_insercion_datos.sql
+/Consultas_de_ideaforge.sql
+/ideaforge_tablas_estructura.sql
+
 # Python
 __pycache__/
 *.py[cod]
