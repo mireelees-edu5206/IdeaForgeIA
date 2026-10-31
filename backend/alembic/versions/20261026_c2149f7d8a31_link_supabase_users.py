@@ -1,3 +1,5 @@
+"""Migracion de esquema: c2149f7d8a31 link supabase users."""
+
 import sqlalchemy as sa
 
 from alembic import op
@@ -9,10 +11,12 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Gestiona el flujo en migracion."""
     op.add_column("users", sa.Column("supabase_user_id", sa.Uuid(), nullable=True))
     op.create_unique_constraint("uq_users_supabase_user_id", "users", ["supabase_user_id"])
 
 
 def downgrade() -> None:
+    """Gestiona el flujo en migracion."""
     op.drop_constraint("uq_users_supabase_user_id", "users", type_="unique")
     op.drop_column("users", "supabase_user_id")

@@ -33,6 +33,7 @@ def register_fake_response(schema: type[BaseModel]) -> Callable[[FakeResponder],
     """Cada módulo registra cómo simular la respuesta estructurada de sus esquemas."""
 
     def decorator(responder: FakeResponder) -> FakeResponder:
+        """Gestiona decorator."""
         _responders[schema] = responder
         return responder
 
@@ -40,6 +41,7 @@ def register_fake_response(schema: type[BaseModel]) -> Callable[[FakeResponder],
 
 
 def _usage(messages: Sequence[AIMessage], output: str, searches: int = 0) -> AIUsage:
+    """Gestiona usage."""
     prompt_chars = sum(len(m.content) for m in messages)
     return AIUsage(
         input_tokens=prompt_chars // 4,
@@ -50,17 +52,22 @@ def _usage(messages: Sequence[AIMessage], output: str, searches: int = 0) -> AIU
 
 
 class FakeProvider(AIProvider):
+    """Adaptador que ofrece servicios de fake."""
+
     name = AIProviderName.FAKE
     model = "fake-1"
 
     def __init__(self, latency_ms: int = 0) -> None:
+        """Gestiona la inicializacion para inteligencia artificial."""
         self.latency = latency_ms / 1000
 
     async def generate_structured[T: BaseModel](
         self, messages: Sequence[AIMessage], schema: type[T]
     ) -> StructuredResult[T]:
+        """Gestiona generate structured."""
         await asyncio.sleep(self.latency)
         responder = _responders.get(schema)
+        # Rama condicional: se cumple responder is None.
         if responder is None:
             raise AIInvalidResponseError(f"Sin respuesta simulada para {schema.__name__}")
         data = schema.model_validate(responder(messages).model_dump())
@@ -72,6 +79,7 @@ class FakeProvider(AIProvider):
         )
 
     async def generate_grounded(self, messages: Sequence[AIMessage]) -> GroundedResult:
+        """Gestiona generate fundamentada."""
         await asyncio.sleep(self.latency)
         question = messages[-1].content.split("\n", 1)[0][:160]
         slug = hashlib.sha1(question.encode()).hexdigest()[:8]
@@ -88,9 +96,11 @@ class FakeProvider(AIProvider):
             ("Interpretación: estos datos son ficticios y solo sirven para probar el flujo.", ()),
         ]
         text, citations = "", []
+        # Itera (sentence, indexes) sobre parts.
         for sentence, indexes in parts:
             start = len(text)
             text += sentence
+            # Rama condicional: se cumple indexes.
             if indexes:
                 citations.append(CitationSpan(start, len(text.rstrip()), indexes))
         sources = [

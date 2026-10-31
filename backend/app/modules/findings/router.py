@@ -1,3 +1,5 @@
+"""Expone endpoints HTTP del dominio. Area: resultados/evidencia."""
+
 import uuid
 from typing import Annotated
 
@@ -12,6 +14,7 @@ router = APIRouter(prefix="/projects/{project_id}/findings", tags=["findings"])
 
 
 def get_finding_service(db: DbSession) -> FindingService:
+    """Obtiene finding service en resultados."""
     return FindingService(db)
 
 
@@ -27,6 +30,7 @@ async def list_findings(
     finding_type: ResearchCategory | None = None,
     review_status: Annotated[ReviewStatus | None, Query()] = None,
 ) -> list[FindingRead]:
+    """Lista findings en resultados."""
     return await service.list_findings(user, project_id, run_id, finding_type, review_status)
 
 
@@ -34,6 +38,7 @@ async def list_findings(
 async def create_finding(
     project_id: uuid.UUID, data: FindingCreate, user: CurrentUser, service: Service
 ) -> FindingRead:
+    """Crea finding en resultados."""
     return await service.create_finding(user, project_id, data)
 
 
@@ -45,6 +50,7 @@ async def update_finding(
     user: CurrentUser,
     service: Service,
 ) -> FindingRead:
+    """Actualiza finding en resultados."""
     return await service.update_finding(user, project_id, finding_id, data)
 
 
@@ -52,4 +58,5 @@ async def update_finding(
 async def delete_finding(
     project_id: uuid.UUID, finding_id: uuid.UUID, user: CurrentUser, service: Service
 ) -> None:
+    """Elimina finding en resultados."""
     await service.delete_finding(user, project_id, finding_id)

@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de analisis. */
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,7 +11,9 @@ import type { ResearchRun } from "../research/types";
 import type { Finding } from "../findings/types";
 import type { AnalysisOverview, Opportunity, Risk } from "./types";
 
+/** Define NOW para el bloque de analisis. */
 const NOW = "2026-10-01T10:00:00Z";
+/** Define PROJECT para el bloque de analisis. */
 const PROJECT: ProjectDetail = {
   id: "p1",
   title: "Agro Conecta",
@@ -21,6 +24,7 @@ const PROJECT: ProjectDetail = {
   attributes: [],
   structure: { ready: true, missing: [], pending_suggestions: 0 },
 };
+/** Define RUN para el bloque de analisis. */
 const RUN: ResearchRun = {
   id: "r1",
   status: "completed",
@@ -34,6 +38,7 @@ const RUN: ResearchRun = {
   finished_at: NOW,
   created_at: NOW,
 };
+/** Define FINDING para el bloque de analisis. */
 const FINDING: Finding = {
   id: "f1",
   run_id: "r1",
@@ -55,6 +60,7 @@ const FINDING: Finding = {
   ],
   entities: [],
 };
+/** Define OPPORTUNITY para el bloque de analisis. */
 const OPPORTUNITY: Opportunity = {
   id: "o1",
   run_id: "r1",
@@ -67,6 +73,7 @@ const OPPORTUNITY: Opportunity = {
   description: "La frecuencia de compra podría favorecer una relación comercial continua.",
   potential: "medium",
 };
+/** Define OVERVIEW para el bloque de analisis. */
 const OVERVIEW: AnalysisOverview = {
   opportunities: [OPPORTUNITY],
   risks: [],
@@ -74,6 +81,7 @@ const OVERVIEW: AnalysisOverview = {
   missing_information: [],
 };
 
+/** Renderiza render de analisis. */
 function render(routes: Parameters<typeof apiRoutes>[0]) {
   const fetchMock = mockFetch(
     apiRoutes([
@@ -88,12 +96,15 @@ function render(routes: Parameters<typeof apiRoutes>[0]) {
   return fetchMock;
 }
 
+/** Define bodyOf para el bloque de analisis. */
 const bodyOf = (fetchMock: ReturnType<typeof mockFetch>, method: string) =>
   JSON.parse(fetchMock.mock.calls.find(([, init]) => init?.method === method)![1]!.body as string) as unknown;
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Escenario de prueba: Pestaña de análisis. */
 describe("Pestaña de análisis", () => {
+  /** Escenario de prueba: muestra una oportunidad como interpretación y enlaza el hallazgo con su fue. */
   it("muestra una oportunidad como interpretación y enlaza el hallazgo con su fuente", async () => {
     render([]);
     const card = await screen.findByRole("article", { name: OPPORTUNITY.title });
@@ -103,6 +114,7 @@ describe("Pestaña de análisis", () => {
     expect(within(card).getByRole("link", { name: /Informe sectorial/ })).toHaveAttribute("href", "https://fuente.example/informe");
   });
 
+  /** Escenario de prueba: crea un riesgo manual y conserva el vínculo al hallazgo seleccionado. */
   it("crea un riesgo manual y conserva el vínculo al hallazgo seleccionado", async () => {
     const created: Risk = {
       id: "risk1",

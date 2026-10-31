@@ -1,3 +1,5 @@
+"""Expone endpoints HTTP del dominio. Area: investigacion web."""
+
 import uuid
 from typing import Annotated
 
@@ -12,10 +14,12 @@ router = APIRouter(prefix="/projects/{project_id}", tags=["research"])
 
 
 def get_research_service(db: DbSession) -> ResearchService:
+    """Obtiene investigacion servicio."""
     return ResearchService(db)
 
 
 def get_orchestrator(request: Request) -> ResearchOrchestrator:
+    """Obtiene orchestrator."""
     return request.app.state.research_orchestrator
 
 
@@ -32,6 +36,7 @@ async def start_research(
     settings: AppSettings,
     background: BackgroundTasks,
 ) -> ResearchRunRead:
+    """Inicia investigacion."""
     run = await service.start_run(user, project_id, orchestrator.provider, settings)
     background.add_task(orchestrator.run, run.id)
     return run
@@ -41,6 +46,7 @@ async def start_research(
 async def list_research_runs(
     project_id: uuid.UUID, user: CurrentUser, service: Service
 ) -> list[ResearchRunRead]:
+    """Lista investigacion ejecuciones."""
     return await service.list_runs(user, project_id)
 
 
@@ -48,6 +54,7 @@ async def list_research_runs(
 async def get_research_run(
     project_id: uuid.UUID, run_id: uuid.UUID, user: CurrentUser, service: Service
 ) -> ResearchRunDetail:
+    """Obtiene investigacion ejecucion."""
     return await service.get_run(user, project_id, run_id)
 
 
@@ -55,4 +62,5 @@ async def get_research_run(
 async def list_sources(
     project_id: uuid.UUID, user: CurrentUser, service: Service
 ) -> list[SourceRead]:
+    """Lista fuentes."""
     return await service.list_sources(user, project_id)

@@ -20,6 +20,7 @@ _TEMPLATES = [
 
 @register_fake_response(ResearchPlan)
 def fake_research_plan(messages: Sequence[AIMessage]) -> ResearchPlan:
+    """Gestiona fake investigacion plan."""
     match = re.search(r"^Título: (.+)$", messages[-1].content, re.MULTILINE)
     title = (match.group(1) if match else "la idea")[:80]
     return ResearchPlan(

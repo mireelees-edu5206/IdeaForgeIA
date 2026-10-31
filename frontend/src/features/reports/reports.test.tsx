@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de informes. */
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +9,9 @@ import { projectDetailRoute } from "../projects/routes";
 import type { ProjectDetail } from "../projects/types";
 import type { Report, ReportDetail, ReportListItem } from "./types";
 
+/** Define NOW para el bloque de informes. */
 const NOW = "2026-10-15T10:00:00Z";
+/** Define PROJECT para el bloque de informes. */
 const PROJECT: ProjectDetail = {
   id: "p1",
   title: "Agro Conecta",
@@ -30,6 +33,7 @@ const PROJECT: ProjectDetail = {
   ],
   structure: { ready: true, missing: [], pending_suggestions: 0 },
 };
+/** Define REPORT para el bloque de informes. */
 const REPORT: Report = {
   id: "report1",
   project_id: "p1",
@@ -43,7 +47,9 @@ const REPORT: Report = {
   created_at: NOW,
   completed_at: null,
 };
+/** Define REPORT_LIST para el bloque de informes. */
 const REPORT_LIST: ReportListItem = { ...REPORT, section_count: 10, status: "completed" };
+/** Define DETAIL para el bloque de informes. */
 const DETAIL: ReportDetail = {
   ...REPORT,
   status: "completed",
@@ -77,7 +83,9 @@ const DETAIL: ReportDetail = {
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Escenario de prueba: Informes del proyecto. */
 describe("Informes del proyecto", () => {
+  /** Escenario de prueba: genera y muestra el documento con sus enlaces de fuente. */
   it("genera y muestra el documento con sus enlaces de fuente", async () => {
     const user = userEvent.setup();
     let reportLists = 0;

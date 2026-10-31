@@ -1,3 +1,5 @@
+"""Une los routers de dominio y publica el perfil versionado de la sesión actual."""
+
 from fastapi import APIRouter
 
 from app.api.deps import CurrentUser
@@ -30,4 +32,5 @@ api_router.include_router(admin_router)
 
 @api_router.get("/perfil", response_model=UserRead, tags=["users"])
 async def read_profile(user: CurrentUser) -> UserRead:
+    """Devuelve el perfil de la persona conectada."""
     return UserRead.model_validate(user)

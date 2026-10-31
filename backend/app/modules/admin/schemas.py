@@ -1,3 +1,5 @@
+"""Valida contratos de entrada/salida. Area: administracion."""
+
 import uuid
 from datetime import datetime
 from decimal import Decimal
@@ -12,6 +14,8 @@ from app.modules.users.models import UserRole
 
 
 class ProviderMetrics(BaseModel):
+    """Representa proveedor metrics."""
+
     provider: AIProviderName
     total_calls: int
     success_calls: int
@@ -24,6 +28,8 @@ class ProviderMetrics(BaseModel):
 
 
 class AdminAILogRead(BaseModel):
+    """Contrato de datos para administrador ailog read."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -44,6 +50,8 @@ class AdminAILogRead(BaseModel):
 
 
 class AdminOverview(BaseModel):
+    """Representa administrador overview."""
+
     total_users: int
     active_users: int
     admin_users: int
@@ -60,6 +68,8 @@ class AdminOverview(BaseModel):
 
 
 class AdminUserRead(BaseModel):
+    """Contrato de datos para administrador usuario read."""
+
     id: uuid.UUID
     email: str
     full_name: str
@@ -72,5 +82,7 @@ class AdminUserRead(BaseModel):
 
 
 class AdminUserUpdate(PatchModel):
+    """Representa administrador usuario actualizacion."""
+
     role: UserRole | None = None
     is_active: bool | None = None

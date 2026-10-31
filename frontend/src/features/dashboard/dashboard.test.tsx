@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de panel inicial. */
 import { screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
@@ -23,7 +24,9 @@ vi.mock("../projects/queries", () => ({
   }),
 }));
 
+/** Escenario de prueba: Panel de inicio. */
 describe("Panel de inicio", () => {
+  /** Escenario de prueba: guía a una persona nueva para crear su primera idea sin mostrar métricas va. */
   it("guía a una persona nueva para crear su primera idea sin mostrar métricas vacías", async () => {
     renderRoutes([{ path: "/", element: <DashboardPage /> }], "/");
 

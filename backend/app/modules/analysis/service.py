@@ -1,3 +1,5 @@
+"""Aplica reglas de negocio y permisos. Area: analisis."""
+
 import uuid
 from collections import defaultdict
 from typing import Any
@@ -31,15 +33,21 @@ ANALYSIS_PROGRESS = 50
 
 
 class AnalysisItemNotFoundError(NotFoundError):
+    """Error que representa analisis elemento no found."""
+
     code = "analysis_item_not_found"
 
 
 def _clean(field: str, value: Any) -> Any:
+    """Gestiona el flujo en analisis."""
     return (value or None) if field in NULLABLE_TEXT else value
 
 
 class AnalysisService:
+    """Servicio de reglas de negocio para analisis."""
+
     def __init__(self, session: AsyncSession) -> None:
+        """Gestiona la inicializacion para analisis."""
         self.session = session
         self.runs = ResearchRunRepository(session)
 
@@ -51,25 +59,32 @@ class AnalysisService:
         """
         project = await get_owned_project(self.session, user, project_id)
         run = await self.runs.get(project.id, run_id)
+        # Rama condicional: se cumple run is None.
         if run is None:
             raise ResearchRunNotFoundError()
+        # Rama condicional: evalua project.status not in (ProjectStatus.RESEARCHING,
+        # ProjectStatus.ANALYZED.
         if project.status not in (ProjectStatus.RESEARCHING, ProjectStatus.ANALYZED):
             raise ConflictError(
                 "La idea cambió desde la investigación: confirma la estructura "
                 "e investiga de nuevo.",
                 code="project_not_researched",
             )
+        # Rama condicional: se cumple run.status != RunStatus.COMPLETED.
         if run.status != RunStatus.COMPLETED:
+            # Rama condicional: se cumple run.status in (RunStatus.PENDING, RunStatus.RUNNING).
             if run.status in (RunStatus.PENDING, RunStatus.RUNNING):
                 raise ResearchInProgressError()
             raise ConflictError(
                 "Solo se puede analizar una investigación completada.", code="run_not_completed"
             )
         latest = (await self.runs.list_for_project(project.id))[0]
+        # Rama condicional: se cumple latest.id != run.id.
         if latest.id != run.id:
             raise ConflictError(
                 "Solo se puede analizar la investigación más reciente.", code="run_not_latest"
             )
+        # Rama condicional: se cumple not await self._count_usable_findings(project.id, run.id).
         if not await self._count_usable_findings(project.id, run.id):
             raise ConflictError(
                 "No hay hallazgos sin rechazar que analizar. Revisa los hallazgos "
@@ -81,14 +96,17 @@ class AnalysisService:
         run.progress_pct = ANALYSIS_PROGRESS
         run.error_code = None
         run.error_message = None
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             await self.session.commit()
+        # Maneja el error IntegrityError sin detener el flujo esperado.
         except IntegrityError as exc:  # otra ejecución se activó a la vez
             await self.session.rollback()
             raise ResearchInProgressError() from exc
         return ResearchRunRead.model_validate(run)
 
     async def _count_usable_findings(self, project_id: uuid.UUID, run_id: uuid.UUID) -> int:
+        """Cuenta usable findings en analisis."""
         count = await self.session.scalar(
             select(func.count()).where(
                 Finding.project_id == project_id,
@@ -101,7 +119,9 @@ class AnalysisService:
     # ─────────────── Lectura ───────────────
 
     async def _to_read(self, kind: AnalysisKind, items: list[Any]) -> list[AnalysisItemRead]:
+        """Gestiona read en analisis."""
         findings: dict[uuid.UUID, list[FindingBrief]] = defaultdict(list)
+        # Rama condicional: se cumple kind.link_model is not None and items.
         if kind.link_model is not None and items:
             fk = getattr(kind.link_model, kind.link_fk)
             rows = await self.session.execute(
@@ -110,6 +130,7 @@ class AnalysisService:
                 .where(fk.in_([i.id for i in items]))
                 .order_by(Finding.created_at)
             )
+            # Itera (item_id, finding) sobre rows.tuples().
             for item_id, finding in rows.tuples():
                 findings[item_id].append(
                     FindingBrief(
@@ -128,8 +149,10 @@ class AnalysisService:
     async def _list(
         self, kind: AnalysisKind, project_id: uuid.UUID, run_id: uuid.UUID | None
     ) -> list[AnalysisItemRead]:
+        """Lista el flujo en analisis."""
         model = kind.model
         conditions = [model.project_id == project_id]
+        # Rama condicional: se cumple run_id is not None.
         if run_id is not None:
             # Lo aportado por el usuario no pertenece a ninguna ejecución: siempre se incluye.
             conditions.append(or_(model.run_id == run_id, model.origin == Origin.USER))
@@ -141,6 +164,7 @@ class AnalysisService:
     async def overview(
         self, user: User, project_id: uuid.UUID, run_id: uuid.UUID | None
     ) -> AnalysisRead:
+        """Gestiona el flujo en analisis."""
         project = await get_owned_project(self.session, user, project_id)
         return AnalysisRead(
             opportunities=await self._list(OPPORTUNITIES, project.id, run_id),
@@ -154,10 +178,12 @@ class AnalysisService:
     async def _get(
         self, kind: AnalysisKind, user: User, project_id: uuid.UUID, item_id: uuid.UUID
     ) -> Any:
+        """Obtiene el flujo en analisis."""
         project = await get_owned_project(self.session, user, project_id)
         item = await self.session.scalar(
             select(kind.model).where(kind.model.id == item_id, kind.model.project_id == project.id)
         )
+        # Rama condicional: se cumple item is None.
         if item is None:
             raise AnalysisItemNotFoundError(f"{kind.label} no existe.")
         return item
@@ -165,9 +191,11 @@ class AnalysisService:
     async def create(
         self, kind: AnalysisKind, user: User, project_id: uuid.UUID, data: BaseModel
     ) -> AnalysisItemRead:
+        """Crea el flujo en analisis."""
         project = await get_owned_project(self.session, user, project_id)
         values = data.model_dump()
         finding_ids = set(values.pop("finding_ids", []))
+        # Rama condicional: se cumple finding_ids.
         if finding_ids:
             # Las tablas intermedias no llevan project_id: la pertenencia se comprueba aquí.
             found = await self.session.scalars(
@@ -175,6 +203,7 @@ class AnalysisService:
                     Finding.project_id == project.id, Finding.id.in_(finding_ids)
                 )
             )
+            # Rama condicional: se cumple set(found) != finding_ids.
             if set(found) != finding_ids:
                 raise AppError("Algún hallazgo no existe en este proyecto.", code="invalid_finding")
         item = kind.model(
@@ -185,6 +214,7 @@ class AnalysisService:
         )
         self.session.add(item)
         await self.session.flush()
+        # Rama condicional: se cumple kind.link_model is not None.
         if kind.link_model is not None:
             self.session.add_all(
                 kind.link_model(**{kind.link_fk: item.id, "finding_id": f}) for f in finding_ids
@@ -200,18 +230,24 @@ class AnalysisService:
         item_id: uuid.UUID,
         data: BaseModel,
     ) -> AnalysisItemRead:
+        """Actualiza el flujo en analisis."""
         item = await self._get(kind, user, project_id, item_id)
         changes = {k: _clean(k, v) for k, v in data.model_dump(exclude_unset=True).items()}
         content = {k: v for k, v in changes.items() if k in kind.content_fields}
+        # Rama condicional: se cumple any((getattr(item, k) != v for k, v in content.items())).
         if any(getattr(item, k) != v for k, v in content.items()):
+            # Itera (field, value) sobre content.items().
             for field, value in content.items():
                 setattr(item, field, value)
             # El usuario asume el contenido: deja de ser una propuesta de la IA.
             item.origin = Origin.USER
             item.review_status = ReviewStatus.ACCEPTED
+        # Itera field sobre kind.tracking_fields.
         for field in kind.tracking_fields:
+            # Rama condicional: se cumple field in changes.
             if field in changes:
                 setattr(item, field, changes[field])
+        # Rama condicional: se cumple 'review_status' in changes.
         if "review_status" in changes:
             item.review_status = changes["review_status"]
         await self.session.commit()
@@ -220,7 +256,9 @@ class AnalysisService:
     async def delete(
         self, kind: AnalysisKind, user: User, project_id: uuid.UUID, item_id: uuid.UUID
     ) -> None:
+        """Elimina el flujo en analisis."""
         item = await self._get(kind, user, project_id, item_id)
+        # Rama condicional: se cumple item.origin != Origin.USER.
         if item.origin != Origin.USER:
             raise ConflictError(
                 "Lo propuesto por la IA no se borra para conservar la trazabilidad; recházalo.",

@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para findings."""
+
 from collections.abc import Sequence
 
 import pytest
@@ -15,21 +17,25 @@ from tests.conftest import fetch_scalar, run_sql
 
 @pytest.fixture
 def headers(db_client: TestClient) -> dict[str, str]:
+    """Gestiona encabezados."""
     return user_headers(db_client)
 
 
 @pytest.fixture
 def researched(db_client: TestClient, headers: dict) -> dict:
+    """Gestiona researched."""
     project = structured_project(db_client, headers)
     assert start(db_client, headers, project["id"]).status_code == 202
     return project
 
 
 def findings_url(project_id: str) -> str:
+    """Gestiona hallazgos URL."""
     return f"{BASE}/{project_id}/findings"
 
 
 def competitors_url(project_id: str) -> str:
+    """Gestiona alternativas URL."""
     return f"{BASE}/{project_id}/competitors"
 
 
@@ -39,6 +45,7 @@ def competitors_url(project_id: str) -> str:
 def test_extraction_creates_findings_backed_by_evidence(
     db_client: TestClient, headers: dict, researched: dict, migrated_db: str
 ) -> None:
+    """Prueba el escenario: extraction creates hallazgos backed por evidencia."""
     pid = researched["id"]
     run = latest_run(db_client, headers, pid)
     assert run["status"] == "completed"
@@ -74,6 +81,7 @@ def test_extraction_creates_findings_backed_by_evidence(
 def test_extraction_deduplicates_entities_and_drops_invented_ones(
     db_client: TestClient, headers: dict, researched: dict
 ) -> None:
+    """Prueba el escenario: extraction deduplicates entidades and drops invented ones."""
     pid = researched["id"]
     entities = db_client.get(f"{BASE}/{pid}/entities", headers=headers).json()
     assert [e["name"] for e in entities] == ["Competidor Simulado"]
@@ -94,6 +102,7 @@ def test_extraction_deduplicates_entities_and_drops_invented_ones(
 def test_rerun_respects_reviewed_competitors(
     db_client: TestClient, headers: dict, researched: dict
 ) -> None:
+    """Prueba el escenario: rerun respects reviewed alternativas."""
     pid = researched["id"]
     competitor = db_client.get(competitors_url(pid), headers=headers).json()[0]
     db_client.patch(
@@ -115,13 +124,19 @@ def test_rerun_respects_reviewed_competitors(
 
 
 class ExtractionFails(FakeProvider):
+    """Representa extraction fails."""
+
     async def generate_structured(self, messages: Sequence[AIMessage], schema):
+        """Gestiona generate structured."""
+        # Rama condicional: se cumple schema is ExtractionResult.
         if schema is ExtractionResult:
             raise AIInvalidResponseError()
         return await super().generate_structured(messages, schema)
 
 
 def test_extraction_failure_keeps_search_results(migrated_db: str) -> None:
+    """Prueba el escenario: extraction fallo keeps busqueda resultados."""
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, ExtractionFails()) as client:
         headers = user_headers(client)
         project = structured_project(client, headers)
@@ -145,6 +160,7 @@ def test_extraction_failure_keeps_search_results(migrated_db: str) -> None:
 
 
 def test_review_and_edit_ai_finding(db_client: TestClient, headers: dict, researched: dict) -> None:
+    """Prueba el escenario: review and edit ai hallazgo."""
     pid = researched["id"]
     finding = db_client.get(findings_url(pid), headers=headers).json()[0]
     url = f"{findings_url(pid)}/{finding['id']}"
@@ -169,6 +185,7 @@ def test_review_and_edit_ai_finding(db_client: TestClient, headers: dict, resear
 def test_ai_finding_cannot_be_deleted(
     db_client: TestClient, headers: dict, researched: dict
 ) -> None:
+    """Prueba el escenario: ai hallazgo cannot be deleted."""
     pid = researched["id"]
     finding = db_client.get(findings_url(pid), headers=headers).json()[0]
     response = db_client.delete(f"{findings_url(pid)}/{finding['id']}", headers=headers)
@@ -179,6 +196,7 @@ def test_ai_finding_cannot_be_deleted(
 def test_create_manual_finding_with_own_evidence(
     db_client: TestClient, headers: dict, researched: dict
 ) -> None:
+    """Prueba el escenario: creacion manual hallazgo con own evidencia."""
     pid = researched["id"]
     ai_finding = db_client.get(findings_url(pid), headers=headers).json()[0]
     evidence_id = ai_finding["evidence"][0]["evidence_id"]
@@ -216,10 +234,13 @@ def test_create_manual_finding_with_own_evidence(
 def test_manual_finding_rejects_evidence_from_other_project(
     db_client: TestClient, headers: dict, researched: dict
 ) -> None:
+    """Prueba el escenario: manual hallazgo rejects evidencia from otro proyecto."""
     evidence_id = db_client.get(findings_url(researched["id"]), headers=headers).json()[0][
         "evidence"
     ][0]["evidence_id"]
     other = create_project(db_client, headers, "Otro")
+    # Itera (payload, code) sobre (({un valor: [{un valor: evidence_id}]}, un valor), ({un valor:
+    # [evidenc.
     for payload, code in (
         ({"evidence": [{"evidence_id": evidence_id}]}, "invalid_evidence"),
         ({"entity_ids": [evidence_id]}, "invalid_entity"),
@@ -235,6 +256,7 @@ def test_manual_finding_rejects_evidence_from_other_project(
 
 
 def test_manual_finding_validation(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: manual hallazgo validacion."""
     project = create_project(db_client, headers)
     response = db_client.post(
         findings_url(project["id"]),
@@ -250,6 +272,7 @@ def test_manual_finding_validation(db_client: TestClient, headers: dict) -> None
 
 
 def test_manual_competitors(db_client: TestClient, headers: dict, researched: dict) -> None:
+    """Prueba el escenario: manual alternativas."""
     pid = researched["id"]
     url = competitors_url(pid)
     response = db_client.post(
@@ -292,6 +315,7 @@ def test_manual_competitors(db_client: TestClient, headers: dict, researched: di
 def test_competitor_from_existing_entity(
     db_client: TestClient, headers: dict, researched: dict, migrated_db: str
 ) -> None:
+    """Prueba el escenario: alternativa from existing entidad."""
     pid = researched["id"]
     entity_id = db_client.get(f"{BASE}/{pid}/entities", headers=headers).json()[0]["id"]
     url = competitors_url(pid)
@@ -318,6 +342,7 @@ def test_competitor_from_existing_entity(
 def test_competitor_cannot_link_entity_from_another_project(
     db_client: TestClient, headers: dict
 ) -> None:
+    """Prueba el escenario: alternativa cannot link entidad from another proyecto."""
     source_project = create_project(db_client, headers, "Proyecto de origen")
     source_competitor = db_client.post(
         competitors_url(source_project["id"]),
@@ -343,6 +368,7 @@ def test_competitor_cannot_link_entity_from_another_project(
 def test_competitor_review_keeps_origin(
     db_client: TestClient, headers: dict, researched: dict
 ) -> None:
+    """Prueba el escenario: alternativa review keeps procedencia."""
     pid = researched["id"]
     competitor = db_client.get(competitors_url(pid), headers=headers).json()[0]
     url = f"{competitors_url(pid)}/{competitor['id']}"
@@ -360,10 +386,12 @@ def test_competitor_review_keeps_origin(
 def test_findings_and_competitors_are_private(
     db_client: TestClient, headers: dict, researched: dict
 ) -> None:
+    """Prueba el escenario: hallazgos and alternativas are private."""
     pid = researched["id"]
     finding = db_client.get(findings_url(pid), headers=headers).json()[0]
     competitor = db_client.get(competitors_url(pid), headers=headers).json()[0]
     other = user_headers(db_client, "otra@ideaforge.dev")
+    # Itera response sobre (db_client.get(findings_url(pid), headers=other), db_client.patch(fun va.
     for response in (
         db_client.get(findings_url(pid), headers=other),
         db_client.patch(

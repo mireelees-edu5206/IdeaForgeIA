@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para supabase auth."""
+
 import json
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -15,6 +17,7 @@ SUPABASE_SECRET = "supabase-test-secret-" + "x" * 32
 
 
 def make_token(email: str, subject: uuid.UUID | None = None, **claims: object) -> str:
+    """Construye token."""
     now = datetime.now(UTC)
     payload = {
         "iss": f"{SUPABASE_URL}/auth/v1",
@@ -31,20 +34,27 @@ def make_token(email: str, subject: uuid.UUID | None = None, **claims: object) -
 
 
 class FakeAuthResponse:
+    """Representa fake autenticacion respuesta."""
+
     def __init__(self, user: dict) -> None:
+        """Gestiona la inicializacion para pruebas."""
         self.user = user
 
     def __enter__(self) -> "FakeAuthResponse":
+        """Gestiona la entrada al contexto para pruebas."""
         return self
 
     def __exit__(self, *_args: object) -> None:
+        """Gestiona la salida del contexto para pruebas."""
         return None
 
     def read(self) -> bytes:
+        """Lee el flujo principal."""
         return json.dumps(self.user).encode()
 
 
 def mock_supabase_user(app, auth_user: dict, monkeypatch: pytest.MonkeyPatch):
+    """Gestiona mock supabase usuario."""
     settings = make_settings(
         supabase_url=SUPABASE_URL,
         supabase_publishable_key="test-publishable-key",
@@ -61,6 +71,7 @@ def mock_supabase_user(app, auth_user: dict, monkeypatch: pytest.MonkeyPatch):
 
 
 def test_public_root_and_protected_profile(db_client: TestClient) -> None:
+    """Prueba el escenario: public root and protected profile."""
     assert db_client.get("/").status_code == 200
     missing = db_client.get("/api/v1/perfil")
     assert missing.status_code == 401
@@ -71,6 +82,7 @@ def test_public_root_and_protected_profile(db_client: TestClient) -> None:
 def test_supabase_login_provisions_local_profile(
     db_client: TestClient, migrated_db: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Prueba el escenario: supabase acceso provisions local profile."""
     subject = uuid.uuid4()
     email = "ana.supabase@example.com"
     auth_user = {
@@ -103,6 +115,7 @@ def test_supabase_login_provisions_local_profile(
 def test_supabase_login_links_existing_admin_and_keeps_role(
     db_client: TestClient, migrated_db: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Prueba el escenario: supabase acceso links existing administrador and keeps rol."""
     assert register(db_client, email=EMAIL).status_code == 201
     run_sql(migrated_db, "UPDATE users SET role = 'admin' WHERE email = :email", {"email": EMAIL})
     subject = uuid.uuid4()
@@ -135,6 +148,7 @@ def test_supabase_login_links_existing_admin_and_keeps_role(
 def test_unconfirmed_email_is_rejected_but_google_identity_is_allowed(
     db_client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Prueba el escenario: unconfirmed correo is rejected but google identity is allowed."""
     email = "pending@example.com"
     subject = uuid.uuid4()
     pending = {
@@ -171,6 +185,7 @@ def test_unconfirmed_email_is_rejected_but_google_identity_is_allowed(
 def test_bad_supabase_signature_is_rejected(
     db_client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Prueba el escenario: bad supabase signature is rejected."""
     subject = uuid.uuid4()
     token = jwt.encode(
         {

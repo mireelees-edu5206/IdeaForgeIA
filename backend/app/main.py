@@ -1,3 +1,5 @@
+"""Ensamblaje de FastAPI, middleware, proveedores y tareas de fondo."""
+
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -35,6 +37,7 @@ def create_app(
     ai_provider: AIProvider | None = None,
     geo_provider: GeoProvider | None = None,
 ) -> FastAPI:
+    """Crea aplicacion."""
     settings = settings or get_settings()
     configure_logging(settings.log_level)
     # Se construye aquí para fallar al arrancar si AI_PROVIDER no es válido.
@@ -43,6 +46,7 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+        """Inicializa y libera conexiones, proveedores y tareas del ciclo de vida."""
         # El engine no abre conexiones hasta la primera consulta.
         engine = build_engine(settings.database_url.get_secret_value())
         app.state.sessionmaker = build_sessionmaker(engine)
@@ -52,10 +56,15 @@ def create_app(
         app.state.analysis_runner = AnalysisRunner(app.state.sessionmaker, provider, settings)
         app.state.report_runner = ReportRunner(app.state.sessionmaker, provider, settings, geo)
         app.state.geo_provider = geo
+        # Rama condicional: se cumple settings.research_recover_on_startup.
         if settings.research_recover_on_startup:
+            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
+                # Rama condicional: evalua (recovered := (await
+                # recover_interrupted_runs(app.state.sessionmaker))).
                 if recovered := await recover_interrupted_runs(app.state.sessionmaker):
                     logger.warning("%d investigaciones marcadas como interrumpidas", recovered)
+            # Maneja el error (OSError, SQLAlchemyError) sin detener el flujo esperado.
             except (OSError, SQLAlchemyError):
                 logger.warning("No se pudieron revisar las investigaciones interrumpidas")
         yield
@@ -95,6 +104,7 @@ def create_app(
     async def add_security_headers(
         request: Request, call_next: RequestResponseEndpoint
     ) -> Response:
+        """Agrega security encabezados."""
         response = await call_next(request)
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
@@ -106,13 +116,16 @@ def create_app(
 
     @app.get("/", tags=["health"])
     async def root() -> dict[str, str]:
+        """Gestiona root."""
         return {"service": settings.app_name, "status": "ok"}
 
     @app.get("/perfil", response_model=UserRead, tags=["users"])
     async def read_profile(user: CurrentUser) -> UserRead:
+        """Lee profile."""
         return UserRead.model_validate(user)
 
     app.include_router(api_router, prefix=settings.api_v1_prefix)
+    # Rama condicional: se cumple settings.legacy_auth_enabled.
     if settings.legacy_auth_enabled:
         app.include_router(legacy_auth_router, prefix=settings.api_v1_prefix)
         app.include_router(legacy_password_router, prefix=settings.api_v1_prefix)

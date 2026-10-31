@@ -1,3 +1,5 @@
+"""Expone endpoints HTTP del dominio. Area: perfiles."""
+
 from fastapi import APIRouter
 
 from app.api.deps import AppSettings, CurrentUser, DbSession
@@ -11,11 +13,13 @@ legacy_password_router = APIRouter(prefix="/users", tags=["users"])
 
 @router.get("/me", response_model=UserRead)
 async def read_me(user: CurrentUser) -> UserRead:
+    """Devuelve el perfil de la persona conectada."""
     return UserRead.model_validate(user)
 
 
 @router.patch("/me", response_model=UserRead)
 async def update_me(data: UserUpdate, user: CurrentUser, db: DbSession) -> UserRead:
+    """Actualiza los datos del perfil propio."""
     return UserRead.model_validate(await UserService(db).update_profile(user, data))
 
 
@@ -23,4 +27,5 @@ async def update_me(data: UserUpdate, user: CurrentUser, db: DbSession) -> UserR
 async def change_password(
     data: PasswordChange, user: CurrentUser, db: DbSession, settings: AppSettings
 ) -> None:
+    """Gestiona change contrasena."""
     await AuthService(db, settings).change_password(user, data)

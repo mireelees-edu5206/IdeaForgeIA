@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para admin."""
+
 import uuid
 
 import pytest
@@ -11,6 +13,7 @@ from tests.conftest import run_sql
 def admin_headers(
     client: TestClient, migrated_db: str, email: str = "admin@ideaforge.dev"
 ) -> dict[str, str]:
+    """Gestiona administrador encabezados."""
     assert register(client, email=email).status_code == 201
     run_sql(migrated_db, "UPDATE users SET role = 'admin' WHERE email = :e", {"e": email})
     tokens = login(client, email=email).json()
@@ -18,6 +21,7 @@ def admin_headers(
 
 
 def test_admin_endpoints_reject_standard_users(db_client: TestClient) -> None:
+    """Prueba el escenario: administrador endpoints reject standard usuarios."""
     headers = user_headers(db_client)
     assert db_client.get("/api/v1/admin/overview", headers=headers).status_code == 403
     assert db_client.get("/api/v1/admin/users", headers=headers).status_code == 403
@@ -33,6 +37,7 @@ def test_admin_endpoints_reject_standard_users(db_client: TestClient) -> None:
 def test_admin_overview_and_user_management_revokes_deactivated_sessions(
     db_client: TestClient, migrated_db: str
 ) -> None:
+    """Verifica metricas admin y revocacion de sesiones de cuentas desactivadas."""
     researcher_headers = user_headers(db_client, email="investigador@ideaforge.dev")
     create_project(db_client, researcher_headers, "Idea supervisada")
     admin_hdrs = admin_headers(db_client, migrated_db)
@@ -73,6 +78,7 @@ def test_admin_overview_and_user_management_revokes_deactivated_sessions(
 def test_admin_can_delete_another_users_account_and_owned_projects(
     db_client: TestClient, migrated_db: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Verifica que admin elimine otra cuenta y sus proyectos asociados."""
     researcher_headers = user_headers(db_client, email="borrar@ideaforge.dev")
     create_project(db_client, researcher_headers, "Idea para eliminar")
     supabase_user_id = uuid.uuid4()
@@ -106,6 +112,7 @@ def test_admin_can_delete_another_users_account_and_owned_projects(
 
 
 def test_admin_cannot_delete_own_account(db_client: TestClient, migrated_db: str) -> None:
+    """Prueba el escenario: administrador cannot borrado own account."""
     admin_hdrs = admin_headers(db_client, migrated_db)
     admin_user = next(
         user
@@ -125,6 +132,7 @@ def test_admin_cannot_delete_own_account(db_client: TestClient, migrated_db: str
 def test_deleting_supabase_linked_user_requires_server_key(
     db_client: TestClient, migrated_db: str
 ) -> None:
+    """Prueba el escenario: deleting supabase linked usuario requires server clave."""
     researcher_headers = user_headers(db_client, email="linked@ideaforge.dev")
     supabase_user_id = uuid.uuid4()
     run_sql(

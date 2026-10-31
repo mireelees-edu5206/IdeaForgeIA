@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para auth."""
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -9,6 +11,7 @@ from tests.conftest import fetch_scalar, run_sql
 
 
 def test_register_creates_user_without_exposing_hash(db_client: TestClient) -> None:
+    """Prueba el escenario: register creates usuario without exposing hash."""
     response = register(db_client, email="Ana@IdeaForge.dev")
     assert response.status_code == 201
     body = response.json()
@@ -19,6 +22,7 @@ def test_register_creates_user_without_exposing_hash(db_client: TestClient) -> N
 
 
 def test_register_stores_argon2id_hash(db_client: TestClient, migrated_db: str) -> None:
+    """Prueba el escenario: register stores argon2id hash."""
     register(db_client)
     stored = fetch_scalar(
         migrated_db, "SELECT password_hash FROM users WHERE email = :e", {"e": EMAIL}
@@ -28,6 +32,7 @@ def test_register_stores_argon2id_hash(db_client: TestClient, migrated_db: str) 
 
 
 def test_register_duplicate_email_case_insensitive(db_client: TestClient) -> None:
+    """Prueba el escenario: register duplicado correo case insensitive."""
     register(db_client)
     response = register(db_client, email=EMAIL.upper())
     assert response.status_code == 409
@@ -35,6 +40,7 @@ def test_register_duplicate_email_case_insensitive(db_client: TestClient) -> Non
 
 
 def test_register_cannot_set_role(db_client: TestClient) -> None:
+    """Prueba el escenario: register cannot set rol."""
     response = db_client.post(
         "/api/v1/auth/register",
         json={"email": EMAIL, "password": PASSWORD, "full_name": "Ana", "role": "admin"},
@@ -43,6 +49,7 @@ def test_register_cannot_set_role(db_client: TestClient) -> None:
 
 
 def test_register_validation_messages_in_spanish(db_client: TestClient) -> None:
+    """Prueba el escenario: register validacion messages in spanish."""
     response = db_client.post(
         "/api/v1/auth/register", json={"email": "no-es-email", "password": "corta"}
     )
@@ -59,6 +66,7 @@ def test_register_validation_messages_in_spanish(db_client: TestClient) -> None:
 
 
 def test_login_and_access_protected_route(db_client: TestClient) -> None:
+    """Prueba el escenario: acceso and access protected ruta."""
     tokens = registered_tokens(db_client)
     assert tokens["token_type"] == "bearer"
     assert tokens["expires_in"] == 30 * 60
@@ -68,6 +76,7 @@ def test_login_and_access_protected_route(db_client: TestClient) -> None:
 
 
 def test_login_errors_do_not_reveal_whether_email_exists(db_client: TestClient) -> None:
+    """Prueba el escenario: acceso errores do no reveal whether correo exists."""
     register(db_client)
     wrong_password = login(db_client, password="incorrecta")
     unknown_email = login(db_client, email="nadie@ideaforge.dev")
@@ -77,6 +86,7 @@ def test_login_errors_do_not_reveal_whether_email_exists(db_client: TestClient) 
 
 
 def test_protected_route_requires_valid_token(db_client: TestClient) -> None:
+    """Prueba el escenario: protected ruta requires valid token."""
     missing = db_client.get("/api/v1/users/me")
     assert missing.status_code == 401
     assert missing.headers["www-authenticate"] == "Bearer"
@@ -86,7 +96,9 @@ def test_protected_route_requires_valid_token(db_client: TestClient) -> None:
 
 
 def test_login_rate_limited_after_failures(db_client: TestClient) -> None:
+    """Prueba el escenario: acceso rate limited restante failures."""
     register(db_client)
+    # Itera _ sobre range(5).
     for _ in range(5):
         assert login(db_client, password="incorrecta").status_code == 401
     blocked = login(db_client)  # incluso con la contraseña correcta
@@ -95,6 +107,7 @@ def test_login_rate_limited_after_failures(db_client: TestClient) -> None:
 
 
 def test_inactive_user_cannot_login_or_use_tokens(db_client: TestClient, migrated_db: str) -> None:
+    """Prueba el escenario: inactive usuario cannot acceso or use tokens."""
     tokens = registered_tokens(db_client)
     run_sql(migrated_db, "UPDATE users SET is_active = false")
     assert login(db_client).json()["error"]["code"] == "account_disabled"
@@ -110,6 +123,7 @@ def test_inactive_user_cannot_login_or_use_tokens(db_client: TestClient, migrate
 
 
 def test_refresh_rotates_tokens(db_client: TestClient) -> None:
+    """Prueba el escenario: renovacion rotates tokens."""
     tokens = registered_tokens(db_client)
     response = db_client.post(
         "/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
@@ -122,6 +136,7 @@ def test_refresh_rotates_tokens(db_client: TestClient) -> None:
 
 
 def test_refresh_token_reuse_revokes_all_sessions(db_client: TestClient) -> None:
+    """Prueba el escenario: renovacion token reuse revokes all sessions."""
     tokens = registered_tokens(db_client)
     rotated = db_client.post(
         "/api/v1/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
@@ -135,6 +150,7 @@ def test_refresh_token_reuse_revokes_all_sessions(db_client: TestClient) -> None
 
 
 def test_logout_revokes_refresh_token(db_client: TestClient) -> None:
+    """Prueba el escenario: logout revokes renovacion token."""
     tokens = registered_tokens(db_client)
     body = {"refresh_token": tokens["refresh_token"]}
     assert db_client.post("/api/v1/auth/logout", json=body).status_code == 204
@@ -143,6 +159,7 @@ def test_logout_revokes_refresh_token(db_client: TestClient) -> None:
 
 
 def test_expired_refresh_token_rejected(db_client: TestClient, migrated_db: str) -> None:
+    """Prueba el escenario: expired renovacion token rejected."""
     tokens = registered_tokens(db_client)
     run_sql(
         migrated_db,
@@ -159,6 +176,7 @@ def test_expired_refresh_token_rejected(db_client: TestClient, migrated_db: str)
 
 
 def test_update_profile(db_client: TestClient) -> None:
+    """Prueba el escenario: actualizacion profile."""
     tokens = registered_tokens(db_client)
     response = db_client.patch(
         "/api/v1/users/me",
@@ -170,6 +188,7 @@ def test_update_profile(db_client: TestClient) -> None:
 
 
 def test_change_password_revokes_sessions(db_client: TestClient) -> None:
+    """Prueba el escenario: change contrasena revokes sessions."""
     tokens = registered_tokens(db_client)
     headers = auth_header(tokens["access_token"])
     wrong = db_client.put(
@@ -198,10 +217,14 @@ def test_change_password_revokes_sessions(db_client: TestClient) -> None:
 
 
 def test_require_admin(db_app: FastAPI, migrated_db: str) -> None:
+    """Verifica que solo el rol admin pueda acceder a rutas administrativas."""
+
     @db_app.get("/_test/admin")
     async def admin_only(user: AdminUser) -> dict[str, str]:
+        """Gestiona administrador only."""
         return {"role": user.role}
 
+    # Abre y libera los recursos declarados en este bloque.
     with TestClient(db_app) as client:
         headers = auth_header(registered_tokens(client)["access_token"])
         assert client.get("/_test/admin", headers=headers).status_code == 403

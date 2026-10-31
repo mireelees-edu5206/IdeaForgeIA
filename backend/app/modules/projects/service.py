@@ -1,3 +1,5 @@
+"""Aplica reglas de negocio y permisos. Area: proyectos."""
+
 import uuid
 
 from sqlalchemy.exc import IntegrityError
@@ -35,6 +37,7 @@ _EDITABLE_STATUSES = (ProjectStatus.DRAFT, ProjectStatus.STRUCTURED)
 
 
 def check_structure(attributes: list[IdeaAttribute]) -> StructureCheck:
+    """Comprueba que la idea tenga los atributos necesarios para investigarse."""
     confirmed = {a.attribute_type for a in attributes if a.is_confirmed}
     missing = [t for t in REQUIRED_ATTRIBUTES if t not in confirmed]
     pending = sum(1 for a in attributes if a.origin == Origin.AI and not a.is_confirmed)
@@ -44,11 +47,15 @@ def check_structure(attributes: list[IdeaAttribute]) -> StructureCheck:
 
 
 class ProjectNotFoundError(NotFoundError):
+    """Error que representa proyecto no found."""
+
     code = "project_not_found"
     message = "El proyecto no existe."
 
 
 class AttributeNotFoundError(NotFoundError):
+    """Error que representa atributo no found."""
+
     code = "attribute_not_found"
     message = "El atributo no existe."
 
@@ -56,26 +63,34 @@ class AttributeNotFoundError(NotFoundError):
 async def get_owned_project(session: AsyncSession, user: User, project_id: uuid.UUID) -> Project:
     """Para los módulos que cuelgan de un proyecto: 404 si no existe o es de otro usuario."""
     project = await ProjectRepository(session).get_owned(project_id, user.id)
+    # Rama condicional: se cumple project is None.
     if project is None:
         raise ProjectNotFoundError()
     return project
 
 
 class ProjectService:
+    """Servicio de reglas de negocio para proyecto."""
+
     def __init__(self, session: AsyncSession) -> None:
+        """Gestiona la inicializacion para proyectos."""
         self.session = session
         self.projects = ProjectRepository(session)
         self.attributes = IdeaAttributeRepository(session)
         self.research_runs = ResearchRunRepository(session)
 
     async def _get_owned(self, user: User, project_id: uuid.UUID) -> Project:
+        """Devuelve solo proyectos propios y oculta si el ID ajeno existe."""
         # 404 tanto si no existe como si es de otro usuario: no se revela su existencia.
         project = await self.projects.get_owned(project_id, user.id)
+        # Rama condicional: se cumple project is None.
         if project is None:
             raise ProjectNotFoundError()
         return project
 
     async def _ensure_no_active_research(self, project: Project) -> None:
+        """Impide cambios mientras una investigacion siga activa."""
+        # Rama condicional: se cumple await self.research_runs.has_active(project.id).
         if await self.research_runs.has_active(project.id):
             raise ConflictError(
                 "Hay una investigación en curso. Espera a que termine para modificar el proyecto.",
@@ -89,6 +104,7 @@ class ProjectService:
         si hay una investigación en curso, el error descarta los cambios pendientes.
         """
         await self._ensure_no_active_research(project)
+        # Rama condicional: se cumple project.status != ProjectStatus.DRAFT.
         if project.status != ProjectStatus.DRAFT:
             project.status = ProjectStatus.DRAFT
         await self.projects.touch(project.id)
@@ -96,12 +112,14 @@ class ProjectService:
     # ─────────────── Proyectos ───────────────
 
     async def overview(self, user: User) -> ProjectsOverview:
+        """Gestiona overview."""
         by_status = await self.projects.count_by_status(user.id)
         return ProjectsOverview(total=sum(by_status.values()), by_status=by_status)
 
     async def list_projects(
         self, user: User, params: PageParams, status: ProjectStatus | None
     ) -> Page[ProjectSummary]:
+        """Lista proyectos."""
         items, total = await self.projects.list_owned(user.id, status, params.limit, params.offset)
         return Page(
             items=[ProjectSummary.model_validate(p) for p in items],
@@ -111,12 +129,14 @@ class ProjectService:
         )
 
     async def create_project(self, user: User, data: ProjectCreate) -> ProjectRead:
+        """Crea proyecto."""
         project = Project(user_id=user.id, title=data.title, raw_idea=data.raw_idea)
         self.projects.add(project)
         await self.session.commit()
         return ProjectRead.model_validate(project)
 
     async def get_project(self, user: User, project_id: uuid.UUID) -> ProjectDetail:
+        """Obtiene proyecto."""
         project = await self._get_owned(user, project_id)
         attributes = await self.attributes.list_for_project(project.id)
         return ProjectDetail.model_validate(
@@ -130,27 +150,35 @@ class ProjectService:
     async def update_project(
         self, user: User, project_id: uuid.UUID, data: ProjectUpdate
     ) -> ProjectRead:
+        """Actualiza proyecto."""
         project = await self._get_owned(user, project_id)
+        # Rama condicional: se cumple data.raw_idea is not None and data.raw_idea !=
+        # project.raw_idea.
         if data.raw_idea is not None and data.raw_idea != project.raw_idea:
             await self._mark_modified(project)
+        # Itera (field, value) sobre data.model_dump(exclude_unset=True).items().
         for field, value in data.model_dump(exclude_unset=True).items():
             setattr(project, field, value)
         await self.session.commit()
         return ProjectRead.model_validate(project)
 
     async def confirm_structure(self, user: User, project_id: uuid.UUID) -> ProjectDetail:
+        """Gestiona confirm estructura."""
         project = await self._get_owned(user, project_id)
+        # Rama condicional: se cumple project.status not in _EDITABLE_STATUSES.
         if project.status not in _EDITABLE_STATUSES:
             raise ConflictError(
                 "El proyecto ya está en investigación y su estructura no puede cambiarse.",
                 code="invalid_status",
             )
         structure = check_structure(await self.attributes.list_for_project(project.id))
+        # Rama condicional: se cumple not structure.ready.
         if not structure.ready:
             details = [
                 {"field": t.value, "message": "Falta al menos un valor confirmado."}
                 for t in structure.missing
             ]
+            # Rama condicional: se cumple structure.pending_suggestions.
             if structure.pending_suggestions:
                 details.append(
                     {
@@ -168,6 +196,7 @@ class ProjectService:
         return await self.get_project(user, project_id)
 
     async def delete_project(self, user: User, project_id: uuid.UUID) -> None:
+        """Elimina proyecto."""
         project = await self._get_owned(user, project_id)
         await self._ensure_no_active_research(project)
         await self.projects.delete(project)
@@ -176,6 +205,7 @@ class ProjectService:
     # ─────────────── Atributos de la idea ───────────────
 
     async def list_attributes(self, user: User, project_id: uuid.UUID) -> list[IdeaAttributeRead]:
+        """Lista atributos."""
         project = await self._get_owned(user, project_id)
         attributes = await self.attributes.list_for_project(project.id)
         return [IdeaAttributeRead.model_validate(a) for a in attributes]
@@ -183,10 +213,12 @@ class ProjectService:
     async def add_attribute(
         self, user: User, project_id: uuid.UUID, data: IdeaAttributeCreate
     ) -> IdeaAttributeRead:
+        """Agrega atributo."""
         project = await self._get_owned(user, project_id)
         count, position = await self.attributes.count_and_next_position(
             project.id, data.attribute_type
         )
+        # Rama condicional: se cumple count >= MAX_VALUES_PER_ATTRIBUTE.
         if count >= MAX_VALUES_PER_ATTRIBUTE:
             raise AppError(
                 f"Se permiten como máximo {MAX_VALUES_PER_ATTRIBUTE} valores por atributo.",
@@ -203,8 +235,10 @@ class ProjectService:
         )
         self.attributes.add(attribute)
         await self._mark_modified(project)
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             await self.session.commit()
+        # Maneja el error IntegrityError sin detener el flujo esperado.
         except IntegrityError as exc:  # dos altas simultáneas obtuvieron la misma posición
             await self.session.rollback()
             raise ConflictError("El atributo cambió mientras se guardaba. Reinténtalo.") from exc
@@ -213,15 +247,19 @@ class ProjectService:
     async def update_attribute(
         self, user: User, project_id: uuid.UUID, attribute_id: uuid.UUID, data: IdeaAttributeUpdate
     ) -> IdeaAttributeRead:
+        """Actualiza atributo."""
         project = await self._get_owned(user, project_id)
         attribute = await self.attributes.get(project.id, attribute_id)
+        # Rama condicional: se cumple attribute is None.
         if attribute is None:
             raise AttributeNotFoundError()
+        # Rama condicional: se cumple data.value is not None and data.value != attribute.value.
         if data.value is not None and data.value != attribute.value:
             # Si el usuario reescribe una sugerencia de la IA, pasa a ser dato del usuario.
             attribute.value = data.value
             attribute.origin = Origin.USER
             attribute.is_confirmed = True
+        # Rama condicional: se cumple data.is_confirmed is not None.
         if data.is_confirmed is not None:
             attribute.is_confirmed = data.is_confirmed
         await self._mark_modified(project)
@@ -231,8 +269,10 @@ class ProjectService:
     async def delete_attribute(
         self, user: User, project_id: uuid.UUID, attribute_id: uuid.UUID
     ) -> None:
+        """Elimina atributo."""
         project = await self._get_owned(user, project_id)
         attribute = await self.attributes.get(project.id, attribute_id)
+        # Rama condicional: se cumple attribute is None.
         if attribute is None:
             raise AttributeNotFoundError()
         await self.attributes.delete(attribute)

@@ -1,3 +1,5 @@
+"""Valida contratos de entrada/salida. Area: resultados/evidencia."""
+
 import uuid
 from datetime import datetime
 from typing import Annotated
@@ -15,6 +17,8 @@ Rationale = Annotated[str, StringConstraints(strip_whitespace=True, max_length=2
 
 
 class EvidenceSourceRead(BaseModel):
+    """Contrato de datos para evidencia fuente read."""
+
     id: uuid.UUID
     url: str
     domain: str
@@ -23,6 +27,8 @@ class EvidenceSourceRead(BaseModel):
 
 
 class FindingEvidenceRead(BaseModel):
+    """Contrato de datos para hallazgo evidencia read."""
+
     evidence_id: uuid.UUID
     stance: EvidenceStance
     content: str
@@ -30,12 +36,16 @@ class FindingEvidenceRead(BaseModel):
 
 
 class FindingEntityRead(BaseModel):
+    """Contrato de datos para hallazgo entidad read."""
+
     id: uuid.UUID
     name: str
     entity_type: EntityType
 
 
 class FindingRead(BaseModel):
+    """Contrato de datos para hallazgo read."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -53,6 +63,8 @@ class FindingRead(BaseModel):
 
 
 class EvidenceLink(BaseModel):
+    """Representa evidencia link."""
+
     model_config = ConfigDict(extra="forbid")
 
     evidence_id: uuid.UUID
@@ -73,6 +85,8 @@ class FindingCreate(BaseModel):
 
 
 class FindingUpdate(PatchModel):
+    """Representa hallazgo actualizacion."""
+
     review_status: ReviewStatus | None = None
     finding_type: ResearchCategory | None = None
     statement: Statement | None = None

@@ -1,3 +1,5 @@
+"""Configura Alembic para ejecutar migraciones sincronas y asincronas del esquema."""
+
 import asyncio
 from logging.config import fileConfig
 
@@ -20,11 +22,13 @@ target_metadata = Base.metadata
 
 
 def get_url() -> str:
+    """Selecciona la URL de base de datos inyectada o la configuracion normal."""
     # Los tests inyectan la URL de la BD de pruebas; si no, se usa DATABASE_URL.
     return config.attributes.get("database_url") or get_settings().database_url.get_secret_value()
 
 
 def run_migrations_offline() -> None:
+    """Ejecuta migrations offline en migracion."""
     context.configure(
         url=get_url(),
         target_metadata=target_metadata,
@@ -32,23 +36,29 @@ def run_migrations_offline() -> None:
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
     )
+    # Abre y libera los recursos declarados en este bloque.
     with context.begin_transaction():
         context.run_migrations()
 
 
 def do_run_migrations(connection: Connection) -> None:
+    """Gestiona run migrations en migracion."""
     context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
+    # Abre y libera los recursos declarados en este bloque.
     with context.begin_transaction():
         context.run_migrations()
 
 
 async def run_async_migrations() -> None:
+    """Ejecuta async migrations en migracion."""
     engine = create_async_engine(get_url(), poolclass=pool.NullPool)
+    # Abre y libera los recursos declarados en este bloque.
     async with engine.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await engine.dispose()
 
 
+# Rama condicional: se cumple context.is_offline_mode().
 if context.is_offline_mode():
     run_migrations_offline()
 else:

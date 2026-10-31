@@ -1,3 +1,5 @@
+"""Aplica reglas de negocio y permisos. Area: administracion."""
+
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -27,16 +29,22 @@ from app.modules.users.models import User, UserRole
 
 
 class UserNotFoundError(NotFoundError):
+    """Error que representa usuario no found."""
+
     code = "user_not_found"
     message = "El usuario solicitado no existe."
 
 
 class AdminService:
+    """Servicio de reglas de negocio para administrador."""
+
     def __init__(self, session: AsyncSession, settings: Settings) -> None:
+        """Gestiona la inicializacion para administracion."""
         self.session = session
         self.settings = settings
 
     async def overview(self) -> AdminOverview:
+        """Gestiona el flujo en administracion."""
         user_row = (
             await self.session.execute(
                 select(
@@ -137,6 +145,7 @@ class AdminService:
         )
 
     async def list_users(self) -> list[AdminUserRead]:
+        """Lista users en administracion."""
         project_counts = (
             select(Project.user_id, func.count(Project.id).label("project_count"))
             .group_by(Project.user_id)
@@ -176,27 +185,36 @@ class AdminService:
     async def update_user(
         self, actor: User, target_id: uuid.UUID, data: AdminUserUpdate
     ) -> AdminUserRead:
+        """Actualiza user en administracion."""
         target = await self.session.get(User, target_id)
+        # Rama condicional: se cumple target is None.
         if target is None:
             raise UserNotFoundError()
 
         changes = data.model_dump(exclude_unset=True)
+        # Rama condicional: se cumple target.id == actor.id.
         if target.id == actor.id:
+            # Rama condicional: se cumple changes.get('is_active') is False.
             if changes.get("is_active") is False:
                 raise ConflictError(
                     "No puedes desactivar tu propia cuenta de administrador.",
                     code="cannot_deactivate_self",
                 )
+            # Rama condicional: se cumple changes.get('role') == UserRole.USER.
             if changes.get("role") == UserRole.USER:
                 raise ConflictError(
                     "No puedes quitarte el rol de administrador a ti mismo.",
                     code="cannot_demote_self",
                 )
 
+        # Rama condicional: se cumple 'role' in changes and changes['role'] is not None.
         if "role" in changes and changes["role"] is not None:
             target.role = changes["role"]
+        # Rama condicional: se cumple 'is_active' in changes and changes['is_active'] is not
+        # None.
         if "is_active" in changes and changes["is_active"] is not None:
             target.is_active = changes["is_active"]
+            # Rama condicional: se cumple not target.is_active.
             if not target.is_active:
                 await RefreshTokenRepository(self.session).revoke_all_active(
                     target.id, datetime.now(UTC)
@@ -207,6 +225,7 @@ class AdminService:
         return next(item for item in users if item.id == target.id)
 
     async def delete_user(self, actor: User, target_id: uuid.UUID) -> uuid.UUID | None:
+        """Elimina user en administracion."""
         active_admin_ids = list(
             await self.session.scalars(
                 select(User.id)
@@ -218,15 +237,19 @@ class AdminService:
         target = await self.session.scalar(
             select(User).where(User.id == target_id).with_for_update()
         )
+        # Rama condicional: se cumple target is None.
         if target is None:
             raise UserNotFoundError()
+        # Rama condicional: se cumple target.id == actor.id.
         if target.id == actor.id:
             raise ConflictError(
                 "No puedes eliminar tu propia cuenta de administrador.",
                 code="cannot_delete_self",
             )
 
+        # Rama condicional: se cumple target.role == UserRole.ADMIN and target.is_active.
         if target.role == UserRole.ADMIN and target.is_active:
+            # Rama condicional: se cumple len(active_admin_ids) <= 1.
             if len(active_admin_ids) <= 1:
                 raise ConflictError(
                     "No se puede eliminar la última cuenta de administrador activa.",
@@ -251,17 +274,21 @@ class AdminService:
             )
             .limit(1)
         )
+        # Rama condicional: se cumple active_run is not None or generating_report is not None.
         if active_run is not None or generating_report is not None:
             raise ConflictError(
                 "Espera a que terminen las tareas del usuario antes de eliminar su cuenta.",
                 code="user_has_active_jobs",
             )
 
+        # Rama condicional: se cumple target.supabase_user_id is not None.
         if target.supabase_user_id is not None:
+            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 await run_in_threadpool(
                     SupabaseAdminClient(self.settings).delete_user, target.supabase_user_id
                 )
+            # Maneja el error SupabaseAuthUnavailableError sin detener el flujo esperado.
             except SupabaseAuthUnavailableError as exc:
                 raise ServiceUnavailableError(
                     str(exc), code="supabase_account_deletion_unavailable"

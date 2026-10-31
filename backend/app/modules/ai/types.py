@@ -9,12 +9,16 @@ from app.core.enums import AIProviderName
 
 @dataclass(frozen=True, slots=True)
 class AIMessage:
+    """Representa aimessage."""
+
     role: Literal["system", "user", "assistant"]
     content: str
 
 
 @dataclass(frozen=True, slots=True)
 class AIUsage:
+    """Representa aiusage."""
+
     input_tokens: int | None = None
     output_tokens: int | None = None
     search_queries_count: int = 0
@@ -23,6 +27,8 @@ class AIUsage:
 
 @dataclass(frozen=True, slots=True)
 class AIProviderAttempt:
+    """Representa aiprovider attempt."""
+
     provider: AIProviderName
     model: str
     status: Literal["success", "error"]
@@ -33,6 +39,8 @@ class AIProviderAttempt:
 
 @dataclass(frozen=True, slots=True)
 class StructuredResult[T]:
+    """Representa structured resultado."""
+
     data: T
     usage: AIUsage = field(default_factory=AIUsage)
     provider: AIProviderName | None = None
@@ -61,6 +69,8 @@ class CitationSpan:
 
 @dataclass(frozen=True, slots=True)
 class GroundedResult:
+    """Representa fundamentada resultado."""
+
     text: str
     sources: list[GroundedSource] = field(default_factory=list)
     citations: list[CitationSpan] = field(default_factory=list)

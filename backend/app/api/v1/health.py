@@ -1,3 +1,5 @@
+"""Utilidad de soporte. Area: aplicacion."""
+
 import logging
 from typing import Literal
 
@@ -14,18 +16,24 @@ router = APIRouter(tags=["health"])
 
 
 class HealthResponse(BaseModel):
+    """Representa health respuesta."""
+
     status: Literal["ok"]
 
 
 @router.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
+    """Indica si el servidor está activo."""
     return HealthResponse(status="ok")
 
 
 @router.get("/health/db", response_model=HealthResponse)
 async def health_db(db: DbSession) -> HealthResponse:
+    """Indica si el servidor puede conectarse a la base de datos."""
+    # Protege la operacion y dirige sus errores a manejadores explicitos.
     try:
         await db.execute(text("SELECT 1"))
+    # Maneja el error Exception sin detener el flujo esperado.
     except Exception as exc:
         # El detalle solo va al log: puede contener host o usuario de la BD.
         logger.warning("Base de datos no disponible: %s", type(exc).__name__)

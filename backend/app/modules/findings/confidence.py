@@ -10,6 +10,8 @@ _ORDER = {Level.UNDETERMINED: 0, Level.LOW: 1, Level.MEDIUM: 2, Level.HIGH: 3}
 
 @dataclass(frozen=True, slots=True)
 class ConfidenceDecision:
+    """Representa confidence decision."""
+
     level: Level
     capped: bool
     reason: str | None  # explicación en español si se aplicó el tope
@@ -25,10 +27,13 @@ def cap_confidence(
     """
     level = Level.LOW if proposed == Level.UNDETERMINED else proposed
     reasons = []
+    # Rama condicional: se cumple len(supporting_domains) < 2.
     if len(supporting_domains) < 2:
         reasons.append("solo una fuente independiente la respalda")
+    # Rama condicional: se cumple EvidenceStance.CONTRADICTS in stances.
     if EvidenceStance.CONTRADICTS in stances:
         reasons.append("hay evidencia en contra")
+    # Rama condicional: se cumple reasons and _ORDER[level] > _ORDER[Level.MEDIUM].
     if reasons and _ORDER[level] > _ORDER[Level.MEDIUM]:
         return ConfidenceDecision(
             Level.MEDIUM, True, "Nivel limitado a 'media' por reglas: " + " y ".join(reasons) + "."

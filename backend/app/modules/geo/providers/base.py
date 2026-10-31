@@ -1,3 +1,5 @@
+"""Define el contrato comun de adaptadores. Area: geografia."""
+
 from abc import ABC, abstractmethod
 
 from app.modules.geo.schemas import GeoBusiness, GeoCategory, GeoPlace

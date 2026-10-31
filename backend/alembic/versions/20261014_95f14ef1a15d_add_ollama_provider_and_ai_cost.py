@@ -20,6 +20,9 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    """Gestiona el flujo en migracion."""
+    # Itera (table, column) sobre ((un valor, un valor), (un valor, un valor), (un valor, un
+    # valor)).
     for table, column in (
         ("research_runs", "ai_provider"),
         ("reports", "ai_provider"),
@@ -32,6 +35,8 @@ def upgrade() -> None:
     op.execute("UPDATE reports SET ai_provider = 'legacy' WHERE ai_provider = 'grok'")
     op.execute("UPDATE ai_api_logs SET provider = 'legacy' WHERE provider = 'grok'")
 
+    # Itera (table, column) sobre ((un valor, un valor), (un valor, un valor), (un valor, un
+    # valor)).
     for table, column in (
         ("research_runs", "ai_provider"),
         ("reports", "ai_provider"),
@@ -57,6 +62,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Gestiona el flujo en migracion."""
     bind = op.get_bind()
     has_ollama_data = bind.execute(
         sa.text(
@@ -68,11 +74,14 @@ def downgrade() -> None:
     has_cost_data = bind.execute(
         sa.text("SELECT EXISTS (SELECT 1 FROM ai_api_logs WHERE estimated_cost_usd IS NOT NULL)")
     ).scalar_one()
+    # Rama condicional: se cumple has_ollama_data or has_cost_data.
     if has_ollama_data or has_cost_data:
         raise RuntimeError(
             "No se puede revertir: hay registros Ollama o costos estimados que se perderían."
         )
 
+    # Itera (table, column) sobre ((un valor, un valor), (un valor, un valor), (un valor, un
+    # valor)).
     for table, column in (
         ("research_runs", "ai_provider"),
         ("reports", "ai_provider"),
@@ -85,6 +94,8 @@ def downgrade() -> None:
     op.execute("UPDATE reports SET ai_provider = 'grok' WHERE ai_provider = 'legacy'")
     op.execute("UPDATE ai_api_logs SET provider = 'grok' WHERE provider = 'legacy'")
 
+    # Itera (table, column) sobre ((un valor, un valor), (un valor, un valor), (un valor, un
+    # valor)).
     for table, column in (
         ("research_runs", "ai_provider"),
         ("reports", "ai_provider"),

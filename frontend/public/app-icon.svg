@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fondo azul de marca. -->
   <rect width="512" height="512" rx="116" fill="#1e40af"/>
+  <!-- Estructura hexagonal blanca que identifica el simbolo Forge. -->
   <path d="M256 72 407 164v184L256 440 105 348V164L256 72Z" fill="none" stroke="#fff" stroke-width="18" stroke-linejoin="round"/>
+  <!-- Trazos internos que representan conexiones y evidencia. -->
   <path d="M256 72v368M105 164l302 184M407 164 105 348" fill="none" stroke="#bfdbfe" stroke-width="12" stroke-opacity=".78"/>
+  <!-- Punto ambar para la accion/idea central. -->
   <circle cx="256" cy="256" r="34" fill="#fbbf24"/>
 </svg>

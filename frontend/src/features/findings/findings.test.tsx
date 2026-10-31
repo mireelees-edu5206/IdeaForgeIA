@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de resultados. */
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -9,8 +10,10 @@ import type { ProjectDetail } from "../projects/types";
 import type { ResearchRun } from "../research/types";
 import type { Competitor, Entity, Finding } from "./types";
 
+/** Define NOW para el bloque de resultados. */
 const NOW = "2026-09-24T10:00:00Z";
 
+/** Define PROJECT para el bloque de resultados. */
 const PROJECT: ProjectDetail = {
   id: "p1",
   title: "Agro Conecta",
@@ -22,6 +25,7 @@ const PROJECT: ProjectDetail = {
   structure: { ready: true, missing: [], pending_suggestions: 0 },
 };
 
+/** Define RUN para el bloque de resultados. */
 const RUN: ResearchRun = {
   id: "r1",
   status: "completed",
@@ -36,6 +40,7 @@ const RUN: ResearchRun = {
   created_at: NOW,
 };
 
+/** Gestiona finding de resultados. */
 function finding(overrides: Partial<Finding> = {}): Finding {
   return {
     id: "f1",
@@ -61,6 +66,7 @@ function finding(overrides: Partial<Finding> = {}): Finding {
   };
 }
 
+/** Gestiona competitor de resultados. */
 function competitor(overrides: Partial<Competitor> = {}): Competitor {
   return {
     id: "c1",
@@ -78,6 +84,7 @@ function competitor(overrides: Partial<Competitor> = {}): Competitor {
   };
 }
 
+/** Renderiza render de resultados. */
 function render(path: string, routes: Parameters<typeof apiRoutes>[0]) {
   const fetchMock = mockFetch(
     apiRoutes([
@@ -90,12 +97,15 @@ function render(path: string, routes: Parameters<typeof apiRoutes>[0]) {
   return fetchMock;
 }
 
+/** Define bodyOf para el bloque de resultados. */
 const bodyOf = (fetchMock: ReturnType<typeof mockFetch>, method: string) =>
   JSON.parse(fetchMock.mock.calls.find(([, init]) => init?.method === method)![1]!.body as string) as unknown;
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Escenario de prueba: Pestaña de hallazgos. */
 describe("Pestaña de hallazgos", () => {
+  /** Escenario de prueba: muestra los hallazgos de la última investigación con su evidencia y permite. */
   it("muestra los hallazgos de la última investigación con su evidencia y permite aceptarlos", async () => {
     const fetchMock = render("/proyectos/p1/hallazgos", [
       { path: "/api/v1/projects/p1/findings", respond: () => jsonResponse(200, [finding()]) },
@@ -123,6 +133,7 @@ describe("Pestaña de hallazgos", () => {
     await waitFor(() => expect(bodyOf(fetchMock, "PATCH")).toEqual({ review_status: "accepted" }));
   });
 
+  /** Escenario de prueba: crea un resultado propio validando el formulario. */
   it("crea un resultado propio validando el formulario", async () => {
     const fetchMock = render("/proyectos/p1/hallazgos", [
       { path: "/api/v1/projects/p1/findings", respond: () => jsonResponse(200, []) },
@@ -153,6 +164,7 @@ describe("Pestaña de hallazgos", () => {
     );
   });
 
+  /** Escenario de prueba: los resultados del usuario se identifican y se pueden eliminar. */
   it("los resultados del usuario se identifican y se pueden eliminar", async () => {
     render("/proyectos/p1/hallazgos", [
       {
@@ -167,7 +179,9 @@ describe("Pestaña de hallazgos", () => {
   });
 });
 
+/** Escenario de prueba: Pestaña de competidores. */
 describe("Pestaña de competidores", () => {
+  /** Escenario de prueba: agrupa por tipo, marca el análisis de la IA y permite reclasificar. */
   it("agrupa por tipo, marca el análisis de la IA y permite reclasificar", async () => {
     const entities: Entity[] = [
       { id: "n1", entity_type: "company", name: "AgroYa", website: null, description: null, finding_count: 2, competitor_id: "c1" },

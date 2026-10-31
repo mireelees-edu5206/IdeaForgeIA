@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de chat del proyecto. */
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +9,9 @@ import { projectDetailRoute } from "../projects/routes";
 import type { ProjectDetail } from "../projects/types";
 import type { ChatReply } from "./types";
 
+/** Define NOW para el bloque de chat. */
 const NOW = "2026-10-14T10:00:00Z";
+/** Define PROJECT para el bloque de chat. */
 const PROJECT: ProjectDetail = {
   id: "p1",
   title: "Agro Conecta",
@@ -19,6 +22,7 @@ const PROJECT: ProjectDetail = {
   attributes: [],
   structure: { ready: true, missing: [], pending_suggestions: 0 },
 };
+/** Define REPLY para el bloque de chat. */
 const REPLY: ChatReply = {
   answer: "El hallazgo apunta a compras recurrentes; es una interpretación, no una garantía de demanda.",
   references: [
@@ -44,6 +48,7 @@ const REPLY: ChatReply = {
   model: "qwen3:4b",
 };
 
+/** Renderiza render chat de chat. */
 function renderChat() {
   let sends = 0;
   const fetchMock = mockFetch(
@@ -63,13 +68,16 @@ function renderChat() {
   return fetchMock;
 }
 
+/** Gestiona body of de chat. */
 function bodyOf(fetchMock: ReturnType<typeof mockFetch>, index: number): unknown {
   return JSON.parse(fetchMock.mock.calls.filter(([, init]) => init?.method === "POST")[index]![1]!.body as string) as unknown;
 }
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Escenario de prueba: Asistente contextual del proyecto. */
 describe("Asistente contextual del proyecto", () => {
+  /** Escenario de prueba: envía el historial y muestra referencias verificables sin renderizar HTML. */
   it("envía el historial y muestra referencias verificables sin renderizar HTML", async () => {
     const fetchMock = renderChat();
     const user = userEvent.setup();

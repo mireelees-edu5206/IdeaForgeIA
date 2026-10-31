@@ -1,3 +1,4 @@
+/** Pantalla o componente React del flujo de preferencias. */
 import { useState } from "react";
 import { FiCheck, FiLogOut, FiMail, FiMoon, FiShield, FiSun, FiUser } from "react-icons/fi";
 
@@ -11,6 +12,7 @@ import { useDocumentTitle } from "../../lib/useDocumentTitle";
 import { useAuth } from "../auth/AuthContext";
 import { PageHeader } from "../projects/components/PageHeader";
 
+/** Configuracion visual de THEME_OPTIONS para ubicar colores/animaciones de preferencias. */
 const THEME_OPTIONS: Array<{
   mode: ThemeMode;
   title: string;
@@ -34,6 +36,7 @@ const THEME_OPTIONS: Array<{
   },
 ];
 
+/** Expone la funcion settings page para el flujo de settings. */
 export function SettingsPage() {
   useDocumentTitle("Configuración");
   const { user, logout } = useAuth();
@@ -41,6 +44,7 @@ export function SettingsPage() {
   const [leaving, setLeaving] = useState(false);
   const initial = user?.full_name.trim().charAt(0).toUpperCase() ?? "?";
 
+  /** Selecciona select theme de preferencias. */
   function selectTheme(next: ThemeMode) {
     setTheme(next);
     applyTheme(next);

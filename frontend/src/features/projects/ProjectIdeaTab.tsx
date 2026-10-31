@@ -1,13 +1,17 @@
+/** Pantalla o componente React del flujo de proyectos. */
 import { AttributeSection } from "./components/AttributeSection";
 import { IdeaSection } from "./components/IdeaSection";
 import { StructurePanel } from "./components/StructurePanel";
 import { ATTRIBUTE_TYPES, REQUIRED_ATTRIBUTES } from "./constants";
 import { useProjectOutlet } from "./outlet";
 
+/** Define OPTIONAL_ATTRIBUTES para el bloque de proyectos. */
 const OPTIONAL_ATTRIBUTES = ATTRIBUTE_TYPES.filter((type) => !REQUIRED_ATTRIBUTES.includes(type));
 
+/** Expone la funcion project idea tab para el flujo de projects. */
 export function ProjectIdeaTab() {
   const { project } = useProjectOutlet();
+  /** Define valuesOf para el bloque de proyectos. */
   const valuesOf = (type: (typeof ATTRIBUTE_TYPES)[number]) =>
     project.attributes.filter((attribute) => attribute.attribute_type === type);
 

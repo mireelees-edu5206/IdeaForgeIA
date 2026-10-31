@@ -1,3 +1,5 @@
+/* Cachea recursos del shell offline y excluye la API privada. */
+// Versionar estas constantes fuerza una caché nueva cuando cambia el shell.
 const CACHE_PREFIX = "ideaforge-shell-";
 const CACHE_NAME = `${CACHE_PREFIX}v1`;
 const APP_SHELL = [
@@ -10,6 +12,7 @@ const APP_SHELL = [
 const STATIC_DESTINATIONS = new Set(["script", "style", "image", "font"]);
 
 self.addEventListener("install", (event) => {
+  // Prepara solo recursos publicos y toma control tras descargar el shell.
   event.waitUntil(
     caches
       .open(CACHE_NAME)
@@ -19,6 +22,7 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  // Borra versiones anteriores de esta app sin tocar cachés de otros sitios.
   event.waitUntil(
     caches
       .keys()
@@ -34,6 +38,7 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
+  // Solo GET publicos: nunca interceptar respuestas privadas o solicitudes autenticadas.
   const request = event.request;
   if (request.method !== "GET" || request.headers.has("Authorization")) return;
 
@@ -47,6 +52,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (request.mode === "navigate") {
+    // La pagina offline es el respaldo de navegacion; no sustituye datos de la API.
     event.respondWith(
       fetch(request).catch(async () => (await caches.match("/offline.html")) ?? Response.error()),
     );
@@ -55,6 +61,7 @@ self.addEventListener("fetch", (event) => {
 
   if (!STATIC_DESTINATIONS.has(request.destination)) return;
 
+  // Devuelve primero una copia local y actualiza el recurso estatico en segundo plano.
   event.respondWith(
     caches.open(CACHE_NAME).then(async (cache) => {
       const cached = await cache.match(request);

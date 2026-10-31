@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 
 
 class ReportRunner:
+    """Representa informe runner."""
+
     def __init__(
         self,
         sessionmaker: async_sessionmaker[AsyncSession],
@@ -35,6 +37,7 @@ class ReportRunner:
         settings: Settings,
         geo_provider: GeoProvider | None = None,
     ) -> None:
+        """Gestiona la inicializacion para informes."""
         self.sessionmaker = sessionmaker
         self.provider = provider
         self.settings = settings
@@ -42,27 +45,37 @@ class ReportRunner:
 
     async def run(self, report_id: uuid.UUID) -> None:
         """La tarea de fondo registra fallos sin propagar excepciones al servidor."""
+        # Abre y libera los recursos declarados en este bloque.
         async with self.sessionmaker() as session:
+            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 await self._execute(session, report_id)
+            # Maneja el error Exception sin detener el flujo esperado.
             except Exception as exc:
                 code = exc.code if isinstance(exc, AIProviderError) else "report_generation_failed"
+                # Rama condicional: se cumple isinstance(exc, AIProviderError).
                 if isinstance(exc, AIProviderError):
                     logger.warning("El informe %s falló: %s", report_id, code)
                 else:
                     logger.exception("Error no controlado al generar el informe %s", report_id)
+                # Protege la operacion y dirige sus errores a manejadores explicitos.
                 try:
                     await session.rollback()
                     await self._mark_failed(session, report_id, code)
+                # Maneja el error Exception sin detener el flujo esperado.
                 except Exception:
                     logger.exception("No se pudo registrar el fallo del informe %s", report_id)
 
     async def _execute(self, session: AsyncSession, report_id: uuid.UUID) -> None:
+        """Gestiona el flujo en informes."""
         report = await session.get(Report, report_id)
+        # Rama condicional: se cumple report is None or report.status !=
+        # ReportStatus.GENERATING.
         if report is None or report.status != ReportStatus.GENERATING:
             return
         project = await session.get(Project, report.project_id)
         run = await session.get(ResearchRun, report.run_id) if report.run_id else None
+        # Rama condicional: se cumple project is None or run is None.
         if project is None or run is None:
             await self._mark_failed(session, report.id, "report_context_missing")
             return
@@ -92,6 +105,7 @@ class ReportRunner:
                 outcome.result.usage if outcome.result else None,
             )
         )
+        # Rama condicional: se cumple outcome.result is None.
         if outcome.result is None:
             error = outcome.error or AIProviderError()
             report.status = ReportStatus.FAILED
@@ -120,7 +134,10 @@ class ReportRunner:
         await session.commit()
 
     async def _mark_failed(self, session: AsyncSession, report_id: uuid.UUID, code: str) -> None:
+        """Gestiona failed en informes."""
         report = await session.get(Report, report_id)
+        # Rama condicional: se cumple report is None or report.status !=
+        # ReportStatus.GENERATING.
         if report is None or report.status != ReportStatus.GENERATING:
             return
         report.status = ReportStatus.FAILED

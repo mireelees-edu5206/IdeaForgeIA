@@ -1,7 +1,9 @@
+/** Configura la instancia compartida de TanStack Query. */
 import { QueryClient } from "@tanstack/react-query";
 
 import { ApiError } from "./apiClient";
 
+/** Expone la funcion create query client para el flujo de shared frontend. */
 export function createQueryClient(): QueryClient {
   return new QueryClient({
     defaultOptions: {

@@ -1,38 +1,60 @@
 @import "tailwindcss";
 
 /* ─────────────── Sistema de diseño IdeaForge: investigación clara + cristal de navegación ─────────────── */
+/* Bloque @theme: aquí se definen las variables globales del diseño (fuentes, colores y animaciones). Tailwind las convierte en clases utilizables, por ejemplo bg-accent o font-display. */
 @theme {
+  /* Letra para títulos. El navegador prueba cada nombre de izquierda a derecha y usa la primera que tenga instalada; sans-serif es la última opción de respaldo. */
   --font-display: "Fira Sans", "Plus Jakarta Sans", "Segoe UI Variable", sans-serif;
+  /* Letra para el texto normal, con la misma regla de respaldo de izquierda a derecha. */
   --font-sans: "Fira Sans", "Plus Jakarta Sans", "Segoe UI Variable", system-ui, sans-serif;
+  /* Letra de ancho fijo (como una máquina de escribir moderna) para números y datos técnicos. */
   --font-mono: "Fira Code", "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
 
+  /* NOTA: el nombre 'night' (noche) no coincide con el modo claro: estos colores son claros. Van del más claro (950) al más oscuro (700). */
   /* Superficies base */
   --color-night-950: #f8fafc;
   --color-night-900: #eef2f7;
   --color-night-800: #ffffff;
   --color-night-700: #e2e8f0;
 
+  /* Colores de marca: ember = ámbar/naranja (#d97706), copper = azul brillante (#2563eb), chrome = azul marino oscuro (#1e3a8a). */
   /* Azul de investigación, tinta navy y ámbar para acciones importantes */
   --color-brand-ember: #d97706;
   --color-brand-copper: #2563eb;
   --color-brand-chrome: #1e3a8a;
 
+  /* Color cian/azul de enlaces y acentos (nombre heredado). NOTA: aunque se llama cian, su valor #1e40af es azul oscuro. */
   --color-accent-cyan: #1e40af;
+  /* Acento violeta (nombre heredado). NOTA: su valor #3b82f6 es azul medio, no violeta. */
   --color-accent-violet: #3b82f6;
+  /* Color principal de la app: botones principales, enlaces y elementos activos (#1e40af, azul). */
   --color-primary: #1e40af;
+  /* Color principal cuando el mouse pasa encima: un azul un poco más oscuro (#1e3a8a). */
   --color-primary-hover: #1e3a8a;
+  /* Color secundario: un azul más claro (#3b82f6) para acciones de apoyo. */
   --color-secondary: #3b82f6;
+  /* Color de acción importante: ámbar (#d97706). Se usa en las acciones clave que queremos que la persona note. */
   --color-accent: #d97706;
+  /* Color del texto que va SOBRE el ámbar: casi negro (#0f172a) para que se lea bien. */
   --color-on-accent: #0f172a;
+  /* Color de fondo de toda la página: gris muy claro (#f8fafc). */
   --color-background: #f8fafc;
+  /* Color del texto principal: azul-negro muy oscuro (#0f172a). */
   --color-foreground: #0f172a;
+  /* Color de las tarjetas: blanco puro. */
   --color-card: #ffffff;
+  /* Fondo apagado para zonas secundarias: gris azulado muy suave. */
   --color-muted: #e9eef6;
+  /* Texto secundario, gris medio: para descripciones y textos de ayuda. */
   --color-muted-foreground: #475569;
+  /* Color de los bordes: azul muy pálido, casi invisible. */
   --color-border: #dbeafe;
+  /* Color del anillo de foco: el marco azul que aparece al navegar con teclado. */
   --color-ring: #1e40af;
 
+  /* Colores por tipo de elemento. NOTA: el comentario original dice 5 colores, pero hay 6 (el último es 'incertidumbre'). */
   /* Los 5 colores semánticos del dominio */
+  /* Dato (celeste) · Hallazgo (verde) · Evidencia (verde oliva) · Análisis (azul) · Hipótesis (ámbar oscuro) · Incertidumbre (gris). */
   --color-kind-data: #0284c7;
   --color-kind-finding: #047857;
   --color-kind-evidence: #4d7c0f;
@@ -40,121 +62,159 @@
   --color-kind-hypothesis: #a16207;
   --color-kind-uncertain: #475569;
 
+  /* Curva 'resorte': controla la velocidad de las animaciones. Empieza rápido y termina con un rebote suave. Los cuatro números son puntos de la curva. */
   --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
 
+  /* Nombre corto 'animate-fade-up' para usarlo en el código: la animación dura 0.62 segundos y usa la curva resorte. */
   --animate-fade-up: fade-up 0.62s var(--ease-spring);
+  /* animate-jelly: rebote de gelatina de 0.48 segundos; se usa al tocar algo. */
   --animate-jelly: jelly 0.48s var(--ease-spring);
+  /* animate-forge-pulse: latido que se repite sin parar cada 2.6 segundos (infinite), para el núcleo de la forja. */
   --animate-forge-pulse: forge-pulse 2.6s ease-in-out infinite;
+  /* animate-liquid-drift: movimiento lento de ida y vuelta de 26 segundos (alternate) para las bolas de luz del fondo. */
   --animate-liquid-drift: liquid-drift 26s ease-in-out infinite alternate;
 
+  /* fade-up: el elemento aparece poco a poco (opacidad de 0 a 1), sube 18 px desde abajo y crece de 98.6% a 100%. Hace que los bloques entren suavemente. */
   @keyframes fade-up {
+    /* Inicio de fade-up: invisible (opacidad 0), 18 px más abajo y un poco más pequeño. */
     0% {
       opacity: 0;
       translate: 0 18px;
       scale: 0.986;
     }
+    /* A 65% del tiempo ya está totalmente visible; el resto del tiempo solo termina de acomodarse. */
     65% {
       opacity: 1;
     }
   }
 
+  /* liquid-screen-in: como fade-up pero más suave: sube 16 px y crece desde 98.8%. Es la animación que usa la clase .animate-liquid-screen al cambiar de pantalla (ver AppShell.tsx). */
   @keyframes liquid-screen-in {
+    /* Inicio de liquid-screen-in: invisible y un poco más abajo. */
     0% {
       opacity: 0;
       translate: 0 16px;
       scale: 0.988;
     }
+    /* Al 60% ya es visible por completo. */
     60% {
       opacity: 1;
     }
   }
 
+  /* liquid-route-sheen: un destello de luz que baja y se aleja, de arriba hacia abajo. Sirve como brillo al cambiar de ruta. */
   @keyframes liquid-route-sheen {
+    /* Inicio del destello: invisible, arriba y muy aplastado. */
     0% {
       opacity: 0;
       transform: translate3d(0, -18px, 0) scale3d(0.72, 0.55, 1);
     }
+    /* A 38% el brillo está casi al máximo (opacidad 0.85). */
     38% {
       opacity: 0.85;
     }
+    /* Final del destello: se desvanece mientras baja y se agranda un poco. */
     100% {
       opacity: 0;
       transform: translate3d(0, 36px, 0) scale3d(1.22, 1.08, 1);
     }
   }
 
+  /* jelly: rebote de gelatina; el elemento se estira un poco a lo ancho y se aplasta a lo alto, y luego vuelve a su tamaño normal. Se usa en botones (clase .jelly). */
   @keyframes jelly {
+    /* Inicio y final de jelly: tamaño normal (scale3d 1, 1, 1 = 100%). */
     0%,
     100% {
       transform: scale3d(1, 1, 1);
     }
+    /* A 35%: se estira 2.2% a lo ancho y se aplasta 1.5% a lo alto. */
     35% {
       transform: scale3d(1.022, 0.985, 1);
     }
+    /* A 68%: rebota al otro lado, un poco más angosto y más alto. */
     68% {
       transform: scale3d(0.994, 1.008, 1);
     }
   }
 
+  /* liquid-drift: movimiento suave de un lado a otro con un pequeño cambio de tamaño; pensado para las bolas de luz del fondo. */
   @keyframes liquid-drift {
+    /* Punto de partida: se mueve un poco a la izquierda y abajo (-14 px, +10 px). */
     from {
       transform: translate3d(-14px, 10px, 0) scale(1);
     }
+    /* Punto final: se mueve a la derecha y arriba (+20 px, -16 px) y crece 6%. */
     to {
       transform: translate3d(20px, -16px, 0) scale(1.06);
     }
   }
 
+  /* liquid-wave-expand: una onda circular que crece desde el centro. Empieza casi invisible y pequeña y termina del tamaño completo y transparente. */
   @keyframes liquid-wave-expand {
+    /* Inicio de la onda: muy pequeña (4%) y casi opaca. */
     0% {
       opacity: 0.95;
       transform: translate3d(-50%, -50%, 0) scale3d(0.04, 0.04, 1);
     }
+    /* A la mitad: todavía visible pero más transparente. */
     55% {
       opacity: 0.65;
     }
+    /* Final de la onda: tamaño completo y transparente, así desaparece. */
     100% {
       opacity: 0;
       transform: translate3d(-50%, -50%, 0) scale3d(1, 1, 1);
     }
   }
 
+  /* liquid-drop-splash: la gota que aparece al tocar: nace pequeña, crece y se desvanece. */
   @keyframes liquid-drop-splash {
+    /* Inicio de la gota: mínima (8%) y casi opaca. */
     0% {
       opacity: 0.9;
       transform: translate3d(-50%, -50%, 0) scale3d(0.08, 0.08, 1);
     }
+    /* A 40%: crece hasta 42% con transparencia media. */
     40% {
       opacity: 0.55;
       transform: translate3d(-50%, -50%, 0) scale3d(0.42, 0.42, 1);
     }
+    /* Final de la gota: 78% de tamaño y transparente. */
     100% {
       opacity: 0;
       transform: translate3d(-50%, -50%, 0) scale3d(0.78, 0.78, 1);
     }
   }
 
+  /* liquid-surface-wobble: la superficie se mueve como agua: se aplasta, se estira y se estabiliza. */
   @keyframes liquid-surface-wobble {
+    /* Inicio: aplastada (97.5% a lo ancho y 95% a lo alto). */
     0% {
       transform: scale3d(0.975, 0.95, 1);
     }
+    /* A 38%: se estira un poco por encima de su tamaño (102.4% y 103%). */
     38% {
       transform: scale3d(1.024, 1.03, 1);
     }
+    /* A 70%: vuelve un poco por debajo del tamaño normal. */
     70% {
       transform: scale3d(0.994, 0.99, 1);
     }
+    /* Final: tamaño normal (100%). */
     100% {
       transform: scale3d(1, 1, 1);
     }
   }
 
+  /* forge-pulse: latido que cambia la opacidad entre 65% y 100% y el tamaño entre 98% y 104%. Se repite sin parar (animate-forge-pulse). */
   @keyframes forge-pulse {
+    /* Inicio y final del latido: un poco apagado y pequeño. */
     0%,
     100% {
       opacity: 0.65;
       transform: scale(0.98);
     }
+    /* A la mitad del latido: totalmente encendido y un poco más grande. */
     50% {
       opacity: 1;
       transform: scale(1.04);
@@ -162,8 +222,13 @@
   }
 }
 
+/* Bloque :root: variables globales de color y sombra para el modo CLARO (el tema por defecto). Cuando se activa el modo oscuro, estas mismas variables se cambian en [data-theme='dark'], más abajo. */
+/* Variables de tema para :root; aqui se cambian colores y superficies. */
+/* :root es la etiqueta <html> de la página: todo lo que se define aquí está disponible en toda la aplicación. */
 :root {
+  /* Le dice al navegador que use controles claros (barras de desplazamiento, campos de texto) en este modo. */
   color-scheme: light;
+  /* NOTA: estos colores se repiten en @theme a propósito: @theme los registra para las clases de Tailwind, y :root los deja disponibles como var(--nombre) en CSS normal. Si cambias uno, cambia también el otro. */
   --color-primary: #1e40af;
   --color-primary-hover: #1e3a8a;
   --color-on-primary: #ffffff;
@@ -178,67 +243,102 @@
   --color-border: #dbeafe;
   --color-ring: #1e40af;
 
+  /* Color del lienzo (fondo de la página). Toma el mismo valor que el fondo general. */
   --surface-canvas: var(--color-background);
+  /* Color de las tarjetas (blanco). */
   --surface-card: var(--color-card);
+  /* Tarjeta apagada: gris muy claro (#f1f5f9). */
   --surface-card-muted: #f1f5f9;
+  /* Superficie elevada semitransparente (56% blanco): base de los paneles de cristal. */
   --surface-elevated: rgb(255 255 255 / 0.56);
+  /* Versión más opaca (94% blanco) para que el texto se lea mejor. */
   --surface-elevated-strong: rgb(255 255 255 / 0.94);
+  /* Inicio del degradado de relieve: blanco casi opaco. */
   --surface-raised-start: rgb(255 255 255 / 0.96);
+  /* Final del degradado de relieve: gris claro. */
   --surface-raised-end: rgb(241 245 249 / 0.88);
+  /* Superficie hundida: da el efecto de algo presionado dentro de un hueco. */
   --surface-inset: rgb(241 245 249 / 0.82);
+  /* Borde suave gris azulado. */
   --border-subtle: rgb(203 213 225 / 0.82);
+  /* Borde fuerte azul (58% de opacidad). */
   --border-strong: rgb(37 99 235 / 0.58);
+  /* Brillo blanco en el borde: simula la luz que pasa por la orilla del cristal. */
   --border-highlight: rgb(255 255 255 / 0.95);
+  /* Reflejo blanco general del cristal. */
   --glass-reflection: rgb(255 255 255 / 0.88);
+  /* Brillo medio transparente que cruza la superficie. */
   --glass-sheen-mid: rgb(255 255 255 / 0.30);
+  /* Reflejo de luz arriba (especular = brillo tipo espejo). */
   --glass-specular-top: rgb(255 255 255 / 0.96);
+  /* Sombra azul muy suave en la parte de abajo. */
   --glass-specular-bottom: rgb(30 64 175 / 0.12);
+  /* Reflejo de luz en los lados del cristal. */
   --glass-specular-side: rgb(255 255 255 / 0.72);
+  /* Tinte azul de la refracción: cómo el vidrio dobla la luz. */
   --glass-refraction: rgb(59 130 246 / 0.13);
+  /* Tinte ámbar de la refracción secundaria. */
   --glass-refraction-secondary: rgb(217 119 6 / 0.10);
+  /* Halo blanco que sigue al cursor sobre el cristal. */
   --glass-cursor-glow: rgb(255 255 255 / 0.50);
+  /* Color de la bola de luz cáustica del fondo (la usa Backdrop.tsx). */
   --glass-caustic-orb: rgb(59 130 246 / 0.14);
+  /* Color del anillo principal de las ondas al tocar un botón. */
   --wave-ring-primary: rgb(30 64 175 / 0.76);
+  /* Color del anillo secundario de las ondas. */
   --wave-ring-secondary: rgb(59 130 246 / 0.68);
+  /* Brillo azul alrededor de la onda. */
   --wave-glow: rgb(37 99 235 / 0.28);
+  /* Color de la gota central de la onda (blanco). */
   --wave-drop: rgb(255 255 255 / 0.88);
 
+  /* Sombra de las tarjetas: una sombra difusa hacia abajo y una línea fina pegada al borde. */
+  /* NOTA: --shadow-panel aparece DOS veces en el tema claro (aquí y más abajo). Cuando una variable se repite, gana la última; revisar cuál se quiere conservar. */
   --shadow-panel:
     0 8px 24px -16px rgb(15 23 42 / 0.16),
     0 1px 2px rgb(15 23 42 / 0.04);
+  /* Sombra de ambiente: sombra grande y suave, con brillos internos (inset) que dan volumen. */
   --shadow-ambient:
     0 24px 56px -22px rgb(30 58 138 / 0.13),
     0 10px 24px -10px rgb(37 99 235 / 0.10),
     inset 0 2px 1px rgb(255 255 255 / 0.96),
     inset 0 -1.5px 2px rgb(30 64 175 / 0.12);
+  /* Sombra de los botones levantados (efecto de relieve). */
   --shadow-raised:
     0 10px 24px -10px rgb(30 58 138 / 0.14),
     0 3px 8px -2px rgb(37 99 235 / 0.08),
     inset 0 2px 1px rgb(255 255 255 / 0.98),
     inset 0 -1.5px 2px rgb(30 64 175 / 0.12);
+  /* Sombra de las tarjetas de cristal cuando el mouse pasa encima: más grande y con un brillo celeste abajo. */
   --shadow-glass-hover:
     0 24px 48px -20px rgb(30 58 138 / 0.20),
     0 10px 22px -10px rgb(37 99 235 / 0.16),
     inset 0 2px 2px rgb(255 255 255 / 1),
     inset 0 -2px 4px rgb(56 189 248 / 0.22);
+  /* Sombra hacia adentro (inset): hace que una zona parezca hundida, como un hueco. */
   --shadow-inset:
     inset 0 2px 6px rgb(30 58 138 / 0.07),
     inset 0 1px 0 rgb(255 255 255 / 0.86);
+  /* Esta segunda definición de --shadow-panel reemplaza a la primera (la última gana). Ver NOTA de la línea 296. */
   --shadow-panel:
     0 12px 28px -24px rgb(15 23 42 / 0.24),
     0 2px 5px rgb(15 23 42 / 0.035);
 
+  /* Color de las líneas de la rejilla de fondo: muy tenue (3.5% de opacidad). */
   --grid-line: rgb(30 64 175 / 0.035);
+  /* Colores de las tres bolas de luz del fondo (azul, ámbar y celeste), con poca opacidad para que no molesten. */
   --orb-primary: rgb(37 99 235 / 0.09);
   --orb-secondary: rgb(217 119 6 / 0.07);
   --orb-tertiary: rgb(14 165 233 / 0.06);
 
+  /* NOTA: esta paleta de grises 'slate' reemplaza la de Tailwind y sus valores están INVERTIDOS respecto al nombre: en modo claro slate-50 es casi negro (#0f172a) y slate-500 es gris claro. Por eso el texto claro de la app se escribe con nombres 'oscuros' como slate-100. */
   --color-slate-50: #0f172a;
   --color-slate-100: #172033;
   --color-slate-200: #27344a;
   --color-slate-300: #475569;
   --color-slate-400: #64748b;
   --color-slate-500: #8793a5;
+  /* Tonos de verde, celeste, ámbar, naranja, rosa y violeta para etiquetas y mensajes. Los nombres vienen de Tailwind, pero los valores se ajustaron a este tema. */
   --color-emerald-100: #ecfdf5;
   --color-emerald-200: #047857;
   --color-emerald-300: #10b981;
@@ -253,28 +353,39 @@
   --color-violet-200: #1e40af;
 }
 
+/* Bloque del modo OSCURO: se aplica cuando la etiqueta <html> tiene data-theme='dark' (lo pone ThemeToggle.tsx). Reemplaza las variables del modo claro por tonos oscuros. */
 :root[data-theme="dark"] {
+  /* Hace que los controles del navegador (barras de desplazamiento, campos) también se vean oscuros. */
   color-scheme: dark;
+  /* En modo oscuro los nombres 'night' sí son oscuros: del más oscuro (950, #0b1220) al más claro (700). */
   --color-night-950: #0b1220;
   --color-night-900: #111c2e;
   --color-night-800: #172338;
   --color-night-700: #24334a;
 
+  /* Color principal en modo oscuro: azul claro (#93c5fd), para que se vea bien sobre el fondo oscuro. */
   --color-primary: #93c5fd;
   --color-primary-hover: #bfdbfe;
   --color-on-primary: #0b1220;
   --color-secondary: #60a5fa;
+  /* Ámbar más brillante (#fbbf24) para que destaque sobre el fondo oscuro. */
   --color-accent: #fbbf24;
   --color-on-accent: #0b1220;
+  /* Fondo de la página en modo oscuro: azul casi negro (#0b1220). */
   --color-background: #0b1220;
+  /* Texto principal en modo oscuro: casi blanco (#f1f5f9). */
   --color-foreground: #f1f5f9;
+  /* Color de las tarjetas en modo oscuro: azul muy oscuro (#111c2e). */
   --color-card: #111c2e;
   --color-card-foreground: #f1f5f9;
   --color-muted: #172338;
+  /* Texto secundario en modo oscuro: gris claro azulado. */
   --color-muted-foreground: #a7b4c6;
+  /* Color de los bordes en modo oscuro: gris azulado oscuro. */
   --color-border: #334155;
   --color-ring: #93c5fd;
 
+  /* Superficies del modo oscuro: mismos nombres que en el claro, pero con tonos oscuros y transparencias. El cristal oscuro usa blanco muy suave para simular reflejos. */
   --surface-canvas: var(--color-background);
   --surface-card: var(--color-card);
   --surface-card-muted: #172338;
@@ -300,12 +411,14 @@
   --wave-glow: rgb(59 130 246 / 0.52);
   --wave-drop: rgb(255 255 255 / 0.92);
 
+  /* Colores de marca y de tipos de elemento, ajustados para verse bien en fondo oscuro. */
   --color-brand-ember: #fbbf24;
   --color-brand-copper: #60a5fa;
   --color-brand-chrome: #f8fafc;
   --color-accent-cyan: #93c5fd;
   --color-accent-violet: #60a5fa;
 
+  /* Colores por tipo de elemento en modo oscuro: dato, hallazgo, evidencia, análisis, hipótesis e incertidumbre. */
   --color-kind-data: #7dd3fc;
   --color-kind-finding: #34d399;
   --color-kind-evidence: #a3e635;
@@ -313,6 +426,7 @@
   --color-kind-hypothesis: #fbbf24;
   --color-kind-uncertain: #94a3b8;
 
+  /* Sombras del modo oscuro: son más negras y fuertes, porque en un fondo oscuro una sombra gris casi no se nota. */
   --shadow-ambient:
     0 32px 76px -26px rgb(0 0 0 / 0.85),
     0 14px 36px -16px rgb(37 99 235 / 0.24),
@@ -333,15 +447,18 @@
   --shadow-inset:
     inset 4px 5px 12px rgb(0 0 0 / 0.76),
     inset -3px -3px 8px rgb(147 197 253 / 0.05);
+  /* Sombra de las tarjetas en modo oscuro: más oscura y con poca luz azul. */
   --shadow-panel:
     0 18px 42px -30px rgb(0 0 0 / 0.8),
     0 2px 8px rgb(0 0 0 / 0.28);
 
+  /* Rejilla y bolas de luz del fondo en modo oscuro: más visibles que en el claro para que se noten sobre lo oscuro. */
   --grid-line: rgb(148 163 184 / 0.045);
   --orb-primary: rgb(37 99 235 / 0.18);
   --orb-secondary: rgb(217 119 6 / 0.12);
   --orb-tertiary: rgb(14 165 233 / 0.11);
 
+  /* NOTA: en modo oscuro la paleta slate también está invertida frente a Tailwind (slate-50 es casi blanco aquí). Mismo criterio que en modo claro. */
   --color-slate-50: #f8fafc;
   --color-slate-100: #f1f5f9;
   --color-slate-200: #e2e8f0;
@@ -362,13 +479,16 @@
   --color-violet-200: #e9d5ff;
 }
 
+/* @layer base: reglas base que se aplican a toda la página (documento, texto, títulos, foco del teclado y opciones de menú). Son la base sobre la que se construyen los demás estilos. */
 @layer base {
+  /* html y body: el documento completo. overflow-x clip evita que algo demasiado ancho cause un desplazamiento lateral. */
   html,
   body {
     max-width: 100%;
     overflow-x: clip;
   }
 
+  /* body: color de fondo de la página (var(--surface-canvas)) y tres degradados de luz en las esquinas. min-h-dvh: ocupa al menos toda la altura visible; font-sans: letra normal; text-slate-100: texto claro por defecto; antialiased: suaviza los bordes de las letras; selection: color al seleccionar texto. */
   body {
     background-color: var(--surface-canvas);
     background-image:
@@ -378,22 +498,26 @@
     @apply min-h-dvh font-sans text-slate-100 antialiased selection:bg-accent-cyan/20;
   }
 
+  /* Títulos h1 y h2: usan la letra de títulos (--font-display) y las letras van un poco más juntas (letter-spacing negativo). */
   h1,
   h2 {
     font-family: var(--font-display);
     letter-spacing: -0.025em;
   }
 
+  /* Marco de foco para el teclado: un contorno celeste de 2 px separado 2 px del elemento. Sirve para saber dónde está el foco al usar Tab (accesibilidad). */
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-accent-cyan;
   }
 
+  /* Opciones de los menús desplegables (select): fondo oscuro y texto claro para que se lean. */
   option {
     background-color: var(--color-night-800);
     color: var(--color-slate-100);
   }
 }
 
+/* Hero (franja principal) del panel de inicio: fondo azul degradado con brillos. isolation: isolate crea su propia capa para que los brillos no se salgan. */
 /* Dashboard: navy de confianza, azul de datos y acento ámbar. */
 .dashboard-hero {
   isolation: isolate;
@@ -407,6 +531,7 @@
     inset 0 1px 0 rgb(255 255 255 / 0.18);
 }
 
+/* Bola decorativa del hero: círculo borroso (desenfoque de 36 px) de 17 rem, con 24% de opacidad. No recibe clics (pointer-events none). */
 .dashboard-hero__orb {
   position: absolute;
   z-index: -1;
@@ -418,18 +543,21 @@
   pointer-events: none;
 }
 
+/* Primera bola del hero: arriba a la derecha, de color azul claro. */
 .dashboard-hero__orb--one {
   top: -11rem;
   right: 16%;
   background: #60a5fa;
 }
 
+/* Segunda bola del hero: abajo a la derecha, de color ámbar. Se corre fuera de la pantalla (right -8rem, bottom -12rem) para verse recortada. */
 .dashboard-hero__orb--two {
   right: -8rem;
   bottom: -12rem;
   background: #f59e0b;
 }
 
+/* .dashboard-eyebrow y .section-eyebrow: etiquetas pequeñas en mayúsculas que van encima de los títulos. Se acomodan en fila, con letra gruesa y letras separadas. */
 .dashboard-eyebrow,
 .section-eyebrow {
   display: flex;
@@ -440,18 +568,22 @@
   letter-spacing: 0.14em;
 }
 
+/* .dashboard-eyebrow: la etiqueta del panel de inicio. Color azul muy claro para leerse sobre el fondo azul del hero. */
 .dashboard-eyebrow {
   color: #dbeafe;
 }
 
+/* .section-eyebrow: etiqueta de sección en el color principal (var(--color-primary)). */
 .section-eyebrow {
   color: var(--color-primary);
 }
 
+/* .dashboard-hero__highlight: palabra destacada dentro del hero, en amarillo pálido (#fde68a). */
 .dashboard-hero__highlight {
   color: #fde68a;
 }
 
+/* .dashboard-hero__primary: botón principal del hero, con degradado ámbar y texto oscuro. Usa !important para ganarle a otros estilos. */
 .dashboard-hero__primary {
   color: #172b57 !important;
   border-color: rgb(255 255 255 / 0.72) !important;
@@ -461,10 +593,12 @@
     inset 0 1px 0 rgb(255 255 255 / 0.72) !important;
 }
 
+/* Al pasar el mouse sobre el botón principal del hero, se ilumina un poquito (brillo 104%). */
 .dashboard-hero__primary:hover {
   filter: brightness(1.04);
 }
 
+/* .dashboard-hero__secondary: botón secundario del hero, transparente, con borde blanco suave y desenfoque de fondo (efecto vidrio). */
 .dashboard-hero__secondary {
   color: #fff !important;
   border-color: rgb(255 255 255 / 0.26) !important;
@@ -474,10 +608,12 @@
   backdrop-filter: blur(10px) saturate(140%);
 }
 
+/* Al pasar el mouse, el botón secundario del hero se vuelve un poco más opaco. */
 .dashboard-hero__secondary:hover {
   background: rgb(255 255 255 / 0.17) !important;
 }
 
+/* .dashboard-hero__rule: línea fina que se desvanece en los extremos, en la parte de abajo del hero. */
 .dashboard-hero__rule {
   position: absolute;
   right: 2rem;
@@ -487,6 +623,7 @@
   background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.32), transparent);
 }
 
+/* .summary-tile: tarjeta de resumen del estado de los proyectos. Tiene borde, fondo de tarjeta y sombra; la transición hace que el movimiento sea suave. */
 .summary-tile {
   border: 1px solid var(--border-subtle);
   background: var(--surface-card);
@@ -497,6 +634,7 @@
     box-shadow 240ms ease;
 }
 
+/* .summary-tile al pasar el mouse o enfocarla con teclado: sube 2 px, el borde se pone azul fuerte y usa la sombra de cristal. */
 .summary-tile:hover,
 .summary-tile:focus-visible {
   transform: translateY(-2px);
@@ -504,51 +642,61 @@
   box-shadow: var(--shadow-glass-hover);
 }
 
+/* Ícono del estado 'borrador' en modo claro: texto ámbar oscuro sobre fondo ámbar muy pálido. */
 .summary-tile__icon--draft {
   color: #a16207;
   background: #fffbeb;
 }
 
+/* Ícono del estado 'estructurado' en modo claro: azul sobre azul muy pálido. */
 .summary-tile__icon--structured {
   color: #1e40af;
   background: #eff6ff;
 }
 
+/* Ícono del estado 'investigando' en modo claro: celeste sobre celeste muy pálido. */
 .summary-tile__icon--researching {
   color: #0369a1;
   background: #f0f9ff;
 }
 
+/* Ícono del estado 'analizado' en modo claro: verde sobre verde muy pálido. */
 .summary-tile__icon--analyzed {
   color: #047857;
   background: #ecfdf5;
 }
 
+/* Ícono 'borrador' en modo oscuro: amarillo claro sobre un fondo ámbar transparente (en oscuro hacen falta colores más claros para leerse). */
 :root[data-theme="dark"] .summary-tile__icon--draft {
   color: #fcd34d;
   background: rgb(217 119 6 / 0.16);
 }
 
+/* Ícono 'estructurado' en modo oscuro: azul muy claro sobre fondo azul transparente. */
 :root[data-theme="dark"] .summary-tile__icon--structured {
   color: #bfdbfe;
   background: rgb(59 130 246 / 0.18);
 }
 
+/* Ícono 'investigando' en modo oscuro: celeste claro sobre fondo celeste transparente. */
 :root[data-theme="dark"] .summary-tile__icon--researching {
   color: #7dd3fc;
   background: rgb(14 165 233 / 0.16);
 }
 
+/* Ícono 'analizado' en modo oscuro: verde claro sobre fondo verde transparente. */
 :root[data-theme="dark"] .summary-tile__icon--analyzed {
   color: #6ee7b7;
   background: rgb(16 185 129 / 0.16);
 }
 
+/* .method-step: tarjeta de cada paso del método, con borde suave y fondo apagado. */
 .method-step {
   border: 1px solid var(--border-subtle);
   background: var(--surface-card-muted);
 }
 
+/* .verdict-card: tarjeta del veredicto final. Tiene un borde más fuerte y un brillo azul muy suave en la esquina superior derecha. */
 .verdict-card {
   border: 1px solid var(--border-strong);
   background:
@@ -557,15 +705,18 @@
   box-shadow: var(--shadow-panel);
 }
 
+/* .verdict-detail: bloque de detalle dentro del veredicto, con fondo apagado. */
 .verdict-detail {
   border: 1px solid var(--border-subtle);
   background: var(--surface-card-muted);
 }
 
+/* .progress-liquid: barra de avance con degradado de azul a ámbar. */
 .progress-liquid {
   background: linear-gradient(90deg, var(--color-secondary), var(--color-accent));
 }
 
+/* .liquid-loader: pequeño aro que gira sin parar (cada 720 ms una vuelta). Tiene un borde gris con una parte de color azul. */
 .liquid-loader {
   width: 1rem;
   height: 1rem;
@@ -575,6 +726,7 @@
   animation: liquid-loader-spin 720ms linear infinite;
 }
 
+/* .project-card: tarjeta de un proyecto. La transición hace que sus cambios de borde y sombra sean suaves. */
 .project-card {
   transition:
     transform 220ms var(--ease-spring),
@@ -582,12 +734,14 @@
     box-shadow 240ms ease;
 }
 
+/* .project-card al pasar el mouse o tener el foco: el borde se pone azul fuerte y usa la sombra de cristal. */
 .project-card:hover,
 .project-card:focus-within {
   border-color: var(--border-strong);
   box-shadow: var(--shadow-glass-hover);
 }
 
+/* .project-card__arrow: círculo con la flecha de la tarjeta, con fondo azul muy suave. */
 .project-card__arrow {
   color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 8%, var(--surface-card));
@@ -596,29 +750,35 @@
     background-color 220ms ease;
 }
 
+/* Al pasar el mouse sobre la tarjeta, la flecha se mueve 2 px a la derecha y arriba, y su fondo se ve más azul. */
 .project-card:hover .project-card__arrow,
 .project-card:focus-within .project-card__arrow {
   transform: translate3d(2px, -2px, 0);
   background: color-mix(in srgb, var(--color-primary) 14%, var(--surface-card));
 }
 
+/* .theme-preview: vista previa del tema en Configuración, con esquinas redondeadas. */
 .theme-preview {
   border-radius: 0.75rem;
 }
 
+/* .theme-preview--light: vista previa en modo claro: texto oscuro sobre fondo gris claro. */
 .theme-preview--light {
   color: #0f172a;
   background: #f8fafc;
   border-color: #cbd5e1;
 }
 
+/* .theme-preview--dark: vista previa en modo oscuro: texto claro sobre fondo azul noche. */
 .theme-preview--dark {
   color: #f1f5f9;
   background: #0b1220;
   border-color: #334155;
 }
 
+/* @keyframes liquid-loader-spin: giro de 0 a 360 grados que usa .liquid-loader. */
 @keyframes liquid-loader-spin {
+  /* Final del giro: 360 grados, es decir, una vuelta completa. */
   to {
     transform: rotate(360deg);
   }
@@ -652,12 +812,14 @@
     box-shadow 280ms ease;
 }
 
+/* @utility surface-panel: clase 'surface-panel' para tarjetas sólidas (fondo de tarjeta, borde y sombra de panel). La usa GlassPanel.tsx. */
 @utility surface-panel {
   background: var(--surface-card);
   border: 1px solid var(--border-subtle);
   box-shadow: var(--shadow-panel);
 }
 
+/* @utility neo-raised: clase 'neo-raised' para que un elemento parezca levantado, con degradado claro y sombra de relieve. */
 @utility neo-raised {
   position: relative;
   background:
@@ -672,6 +834,7 @@
     inset 0 -1.5px 2.5px var(--glass-specular-bottom);
 }
 
+/* @utility neo-inset: clase 'neo-inset' para que un elemento parezca hundido (sombra interna), por ejemplo en barras de progreso. */
 @utility neo-inset {
   background:
     radial-gradient(110% 100% at 100% 0%, var(--glass-refraction), transparent 64%),
@@ -681,6 +844,7 @@
   box-shadow: var(--shadow-inset);
 }
 
+/* @utility stage-3d: clase 'stage-3d' para paneles con un ligero tinte azul en la esquina y sombra de panel. */
 @utility stage-3d {
   position: relative;
   background:
@@ -690,12 +854,14 @@
   box-shadow: var(--shadow-panel);
 }
 
+/* @utility tilt-3d: clase para que una tarjeta se levante 2.5 px al pasar el mouse o al enfocarla. */
 @utility tilt-3d {
   transition:
     transform 320ms var(--ease-spring),
     box-shadow 320ms ease,
     border-color 240ms ease;
 
+  /* Al pasar el mouse (o enfocar) una tarjeta tilt-3d: borde fuerte, sombra de cristal y se sube 2.5 px. */
   &:hover,
   &:focus-visible {
     border-color: var(--border-strong);
@@ -704,6 +870,7 @@
   }
 }
 
+/* @utility fog-uncertain: fondo con rayas diagonales grises y borde punteado ámbar, para mostrar algo que todavía es incierto. */
 @utility fog-uncertain {
   background:
     repeating-linear-gradient(
@@ -715,6 +882,7 @@
   border: 1px dashed color-mix(in oklab, var(--color-kind-hypothesis) 48%, transparent);
 }
 
+/* @utility filament-line: degradado de azul a celeste y a ámbar, como un hilo de color. */
 @utility filament-line {
   background-image: linear-gradient(
     90deg,
@@ -724,6 +892,7 @@
   );
 }
 
+/* @utility jelly: hace que un elemento rebote como gelatina al tocarlo y se hunda un poco al presionarlo. */
 @utility jelly {
   position: relative;
   overflow: hidden;
@@ -734,10 +903,12 @@
     border-color 200ms ease,
     color 200ms ease;
 
+  /* Al pasar el mouse o enfocar un botón activo (no deshabilitado): se ejecuta la animación jelly. */
   &:where(:not(:disabled)):hover,
   &:where(:not(:disabled)):focus-visible {
     animation: var(--animate-jelly);
   }
+  /* Al presionar el botón (estado active): se hunde 1 px y se aplasta un 2%. */
   &:where(:not(:disabled)):active {
     transform: translate3d(0, 1px, 0) scale3d(0.98, 0.98, 1);
   }
@@ -750,6 +921,7 @@
   overflow: hidden;
 }
 
+/* .liquid-btn-primary: botón principal con degradado ámbar y brillo blanco arriba. Sus ondas son blancas y ámbar. */
 .liquid-btn-primary {
   --wave-ring-primary: rgb(255 255 255 / 0.94);
   --wave-ring-secondary: rgb(255 251 235 / 0.88);
@@ -764,6 +936,7 @@
     linear-gradient(95deg, var(--color-accent), color-mix(in srgb, var(--color-accent) 84%, #b45309));
 }
 
+/* .liquid-btn-glass: botón de cristal con desenfoque de fondo y sombra de relieve. */
 .liquid-btn-glass {
   -webkit-backdrop-filter: blur(14px) saturate(155%);
   backdrop-filter: blur(14px) saturate(155%);
@@ -773,8 +946,10 @@
     inset 0 -2px 3px var(--glass-specular-bottom);
 }
 
+/* .liquid-btn-ghost: botón fantasma sin sombra. Al pasar el mouse o enfocarlo aparece un brillo suave. */
 .liquid-btn-ghost {
   box-shadow: inset 0 1px 0 transparent;
+  /* Al pasar el mouse o enfocar el botón fantasma, aparece un brillo interno. */
   &:hover,
   &:focus-visible {
     box-shadow:
@@ -783,10 +958,12 @@
   }
 }
 
+/* .is-liquid-waving: clase temporal que se pone mientras hay ondas. El botón tiembla un poco (liquid-surface-wobble). */
 .is-liquid-waving {
   animation: liquid-surface-wobble 500ms var(--ease-spring);
 }
 
+/* .liquid-ripple: contenedor de las ondas. No recibe clics y no se sale del botón (el botón tiene overflow hidden). */
 .liquid-ripple {
   pointer-events: none;
   position: absolute;
@@ -796,6 +973,7 @@
   transform: translate3d(-50%, -50%, 0);
 }
 
+/* .liquid-ripple__drop: la gota del centro. Aparece donde tocaste y se desvanece con liquid-drop-splash. */
 .liquid-ripple__drop {
   position: absolute;
   left: 50%;
@@ -813,6 +991,7 @@
   animation: liquid-drop-splash 480ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* .liquid-ripple__wave: base de cada ola. Empieza invisible y centrada; las animaciones de cada ola la hacen crecer. */
 .liquid-ripple__wave {
   position: absolute;
   left: 50%;
@@ -824,6 +1003,7 @@
   will-change: transform, opacity;
 }
 
+/* .liquid-ripple__wave--1: primera ola, la más marcada (borde de 2.5 px). Crece en 680 ms. */
 .liquid-ripple__wave--1 {
   border: 2.5px solid var(--wave-ring-primary);
   background: radial-gradient(
@@ -836,6 +1016,7 @@
   animation: liquid-wave-expand 680ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* .liquid-ripple__wave--2: segunda ola, con borde de 2 px. Crece en 820 ms y empieza 110 ms después de la primera. */
 .liquid-ripple__wave--2 {
   border: 2px solid var(--wave-ring-secondary);
   background: radial-gradient(
@@ -847,26 +1028,31 @@
   animation: liquid-wave-expand 820ms cubic-bezier(0.16, 1, 0.3, 1) 110ms forwards;
 }
 
+/* .liquid-ripple__wave--3: tercera ola, la más fina (1.5 px) y la más lenta (940 ms). Empieza 220 ms después. */
 .liquid-ripple__wave--3 {
   border: 1.5px solid var(--wave-ring-primary);
   animation: liquid-wave-expand 940ms cubic-bezier(0.16, 1, 0.3, 1) 220ms forwards;
 }
 
+/* .liquid-orb: bola de luz del fondo. Usa la animación liquid-drift (movimiento lento de ida y vuelta). */
 .liquid-orb {
   will-change: transform;
   animation: var(--animate-liquid-drift);
 }
 
+/* .liquid-orb--secondary: segunda bola de luz. Se mueve más despacio (32 s por ciclo) y empieza desfasada. */
 .liquid-orb--secondary {
   animation-duration: 32s;
   animation-delay: -10s;
 }
 
+/* .liquid-orb--tertiary: tercera bola de luz, con ciclo de 38 s. */
 .liquid-orb--tertiary {
   animation-duration: 38s;
   animation-delay: -18s;
 }
 
+/* .liquid-orb--caustic: bola central de brillo, con ciclo de 22 s. Es la más rápida. */
 .liquid-orb--caustic {
   animation-duration: 22s;
   animation-delay: -6s;
@@ -878,26 +1064,31 @@
   animation: liquid-screen-in 560ms var(--ease-spring);
 }
 
+/* Primer elemento que entra en la pantalla: aparece con fade-up en 520 ms, sin espera. */
 .animate-liquid-screen > * > *:nth-child(1),
 .animate-fade-up > *:nth-child(1) {
   animation: fade-up 520ms var(--ease-spring);
 }
 
+/* Segundo elemento: fade-up de 580 ms, con 45 ms de espera. */
 .animate-liquid-screen > * > *:nth-child(2),
 .animate-fade-up > *:nth-child(2) {
   animation: fade-up 580ms var(--ease-spring) 45ms backwards;
 }
 
+/* Tercer elemento: fade-up de 620 ms, con 85 ms de espera. */
 .animate-liquid-screen > * > *:nth-child(3),
 .animate-fade-up > *:nth-child(3) {
   animation: fade-up 620ms var(--ease-spring) 85ms backwards;
 }
 
+/* Cuarto elemento: fade-up de 660 ms, con 120 ms de espera. Así los bloques aparecen uno tras otro (efecto cascada). */
 .animate-liquid-screen > * > *:nth-child(4),
 .animate-fade-up > *:nth-child(4) {
   animation: fade-up 660ms var(--ease-spring) 120ms backwards;
 }
 
+/* .liquid-route-wave: destello de luz que aparece al cambiar de página (liquid-route-sheen, 720 ms). */
 .liquid-route-wave {
   will-change: transform, opacity;
   background: radial-gradient(
@@ -909,14 +1100,18 @@
   animation: liquid-route-sheen 720ms var(--ease-spring) forwards;
 }
 
+/* Si el navegador NO soporta desenfoque de fondo (backdrop-filter), los paneles de cristal usan un fondo sólido de respaldo. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  /* Fondo sólido de respaldo para .glass y .stage-3d en navegadores sin desenfoque. */
   .glass,
   .stage-3d {
     background: var(--surface-card);
   }
 }
 
+/* Accesibilidad: transparencia para (prefers-reduced-transparency: reduce). */
 @media (prefers-reduced-transparency: reduce) {
+  /* Con 'reducir transparencia', los paneles de cristal, el relieve y los botones de cristal quitan el desenfoque y usan un fondo sólido. */
   .glass,
   .neo-raised,
   .liquid-btn-glass {
@@ -926,21 +1121,26 @@
   }
 }
 
+/* @utility text-gradient: texto con degradado de azul a celeste. El color del texto se hace transparente para dejar ver el degradado. */
 @utility text-gradient {
   background-image: linear-gradient(105deg, var(--color-primary), var(--color-secondary));
   background-clip: text;
   color: transparent;
 }
 
+/* @utility font-display: aplica la letra de títulos. */
 @utility font-display {
   font-family: var(--font-display);
 }
 
+/* @utility font-mono-tech: aplica la letra de ancho fijo para datos técnicos. */
 @utility font-mono-tech {
   font-family: var(--font-mono);
 }
 
+/* Accesibilidad: ajustes para (prefers-reduced-motion: reduce). */
 @media (prefers-reduced-motion: reduce) {
+  /* Con 'reducir movimiento', todas las animaciones y transiciones casi no se notan (0.01 ms). Así no molestan a personas sensibles al movimiento. */
   *,
   *::before,
   *::after {
@@ -950,20 +1150,25 @@
   }
 }
 
+/* Estilos de impresion del veredicto y del informe. */
 @media print {
+  /* @page: márgenes de la hoja al imprimir (18 mm). */
   @page {
     margin: 18mm;
   }
 
+  /* Al imprimir, oculta todo lo de la página (visibility hidden). Solo se salvará lo que siga abajo. */
   body * {
     visibility: hidden !important;
   }
 
+  /* Excepto el contenedor con id report-print (el informe), que sí se ve al imprimir. */
   #report-print,
   #report-print * {
     visibility: visible !important;
   }
 
+  /* El contenedor del informe ocupa toda la hoja, sin fondo ni sombras, con texto oscuro. */
   #report-print {
     position: absolute;
     inset: 0;
@@ -976,16 +1181,19 @@
     backdrop-filter: none !important;
   }
 
+  /* Títulos y párrafos del informe en color casi negro para que se lean bien en papel. */
   #report-print h3,
   #report-print h4,
   #report-print p {
     color: #171717 !important;
   }
 
+  /* Cada artículo del informe no se corta entre dos hojas (break-inside avoid). */
   #report-print article {
     break-inside: avoid;
   }
 
+  /* Al imprimir, cada enlace muestra su dirección entre paréntesis, para que el enlace se conserve en papel. */
   #report-print a::after {
     color: #444;
     content: " (" attr(href) ")";
@@ -994,6 +1202,7 @@
   }
 }
 
+/* Mapa Leaflet: fondo y letra de la capa del mapa. */
 .geo-map .leaflet-container {
   z-index: 0;
   background: var(--surface-inset);
@@ -1001,6 +1210,7 @@
   font-family: var(--font-sans);
 }
 
+/* Controles y ventanitas del mapa (zoom, popups y su flechita): fondo de cristal y texto claro. */
 .geo-map .leaflet-control-zoom a,
 .geo-map .leaflet-popup-content-wrapper,
 .geo-map .leaflet-popup-tip {
@@ -1009,14 +1219,17 @@
   color: var(--color-slate-100);
 }
 
+/* Botones de zoom del mapa: borde inferior suave. */
 .geo-map .leaflet-control-zoom a {
   border-bottom-color: var(--border-subtle);
 }
 
+/* Enlaces dentro de las ventanitas del mapa: color ámbar. */
 .geo-map .leaflet-popup-content a {
   color: var(--color-brand-ember);
 }
 
+/* Texto de atribución del mapa (el crédito de OpenStreetMap), en gris. */
 .geo-map .leaflet-control-attribution {
   background: var(--surface-elevated-strong);
   color: var(--color-slate-400);

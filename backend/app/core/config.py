@@ -1,3 +1,5 @@
+"""Lee y valida la configuracion del backend."""
+
 from functools import lru_cache
 from typing import Annotated, Any, Literal
 from urllib.parse import urlsplit
@@ -9,6 +11,8 @@ from app.core.enums import AIProviderName
 
 
 class Settings(BaseSettings):
+    """Representa configuracion."""
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "IdeaForge AI"
@@ -69,20 +73,26 @@ class Settings(BaseSettings):
     @field_validator("secret_key", mode="before")
     @classmethod
     def empty_secret_key_is_missing(cls, value: Any) -> Any:
+        """Trata secret clave is faltante."""
         return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("supabase_url", mode="before")
     @classmethod
     def empty_supabase_url_is_missing(cls, value: Any) -> Any:
+        """Trata supabase URL is faltante."""
         return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("supabase_url")
     @classmethod
     def validate_supabase_url(cls, value: str | None) -> str | None:
+        """Valida supabase URL."""
+        # Rama condicional: se cumple value is None.
         if value is None:
             return value
         value = value.strip().rstrip("/")
         parsed = urlsplit(value)
+        # Rama condicional: evalua parsed.scheme != un valor or not parsed.hostname or
+        # parsed.username or p.
         if (
             parsed.scheme != "https"
             or not parsed.hostname
@@ -98,30 +108,38 @@ class Settings(BaseSettings):
     @field_validator("supabase_publishable_key", mode="before")
     @classmethod
     def empty_supabase_publishable_key_is_missing(cls, value: Any) -> Any:
+        """Trata supabase publishable clave is faltante."""
         return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("supabase_service_role_key", mode="before")
     @classmethod
     def empty_supabase_service_key_is_missing(cls, value: Any) -> Any:
+        """Trata supabase servicio clave is faltante."""
         return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("supabase_jwt_secret", mode="before")
     @classmethod
     def empty_supabase_secret_is_missing(cls, value: Any) -> Any:
+        """Trata supabase secret is faltante."""
         return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("supabase_jwks_url", mode="before")
     @classmethod
     def empty_supabase_jwks_url_is_missing(cls, value: Any) -> Any:
+        """Trata supabase jwks URL is faltante."""
         return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("supabase_jwks_url")
     @classmethod
     def validate_supabase_jwks_url(cls, value: str | None) -> str | None:
+        """Valida supabase jwks URL."""
+        # Rama condicional: se cumple value is None.
         if value is None:
             return value
         value = value.strip()
         parsed = urlsplit(value)
+        # Rama condicional: evalua parsed.scheme != un valor or not parsed.hostname or
+        # parsed.username or p.
         if (
             parsed.scheme != "https"
             or not parsed.hostname
@@ -136,16 +154,22 @@ class Settings(BaseSettings):
     @field_validator("gemini_api_key", mode="before")
     @classmethod
     def empty_gemini_key_is_missing(cls, value: Any) -> Any:
+        """Trata gemini clave is faltante."""
         return None if isinstance(value, str) and not value.strip() else value
 
     @field_validator("ollama_base_url")
     @classmethod
     def validate_ollama_base_url(cls, value: str) -> str:
+        """Valida ollama base URL."""
         value = value.strip().rstrip("/")
         parsed = urlsplit(value)
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
+            # Rama condicional: se cumple parsed.port is not None and (not 1 <= parsed.port <=
+            # 65535).
             if parsed.port is not None and not 1 <= parsed.port <= 65535:
                 raise ValueError
+        # Maneja el error ValueError sin detener el flujo esperado.
         except ValueError:
             raise ValueError("OLLAMA_BASE_URL contiene un puerto inválido.") from None
         invalid_url = (
@@ -154,8 +178,11 @@ class Settings(BaseSettings):
             or parsed.username
             or parsed.password
         )
+        # Rama condicional: se cumple invalid_url.
         if invalid_url:
             raise ValueError("OLLAMA_BASE_URL debe ser una URL HTTP(S) sin credenciales.")
+        # Rama condicional: evalua parsed.query or parsed.fragment or parsed.path not in {un valor,
+        # un valo.
         if parsed.query or parsed.fragment or parsed.path not in {"", "/"}:
             raise ValueError("OLLAMA_BASE_URL solo debe contener el origen del servidor Ollama.")
         return value
@@ -163,8 +190,11 @@ class Settings(BaseSettings):
     @field_validator("geo_nominatim_url", "geo_overpass_url")
     @classmethod
     def validate_geo_service_url(cls, value: str) -> str:
+        """Valida geografico servicio URL."""
         value = value.strip().rstrip("/")
         parsed = urlsplit(value)
+        # Rama condicional: evalua parsed.scheme != un valor or not parsed.hostname or
+        # parsed.username or p.
         if (
             parsed.scheme != "https"
             or not parsed.hostname
@@ -181,7 +211,9 @@ class Settings(BaseSettings):
     @field_validator("geo_user_agent")
     @classmethod
     def validate_geo_user_agent(cls, value: str) -> str:
+        """Valida geografico usuario agent."""
         value = value.strip()
+        # Rama condicional: se cumple '\r' in value or '\n' in value.
         if "\r" in value or "\n" in value:
             raise ValueError("GEO_USER_AGENT no puede contener saltos de línea.")
         return value
@@ -189,6 +221,8 @@ class Settings(BaseSettings):
     @field_validator("cors_origins", mode="before")
     @classmethod
     def split_cors_origins(cls, value: Any) -> Any:
+        """Separa cors origins."""
+        # Rama condicional: se cumple isinstance(value, str).
         if isinstance(value, str):
             return [origin.strip().rstrip("/") for origin in value.split(",") if origin.strip()]
         return value
@@ -196,39 +230,53 @@ class Settings(BaseSettings):
     @field_validator("cors_origins")
     @classmethod
     def forbid_wildcard_origin(cls, value: list[str]) -> list[str]:
+        """Impide wildcard procedencia."""
+        # Rama condicional: se cumple '*' in value.
         if "*" in value:
             raise ValueError("CORS_ORIGINS no puede contener '*'; indica orígenes explícitos.")
         return value
 
     @model_validator(mode="after")
     def validate_ai_provider_setup(self) -> "Settings":
+        """Valida ai proveedor setup."""
+        # Rama condicional: evalua self.legacy_auth_enabled and (self.secret_key is None or
+        # len(self.secret.
         if self.legacy_auth_enabled and (
             self.secret_key is None or len(self.secret_key.get_secret_value()) < 32
         ):
             raise ValueError("SECRET_KEY debe tener al menos 32 caracteres con auth heredada.")
+        # Rama condicional: evalua self.app_env == un valor and self.ai_provider ==
+        # AIProviderName.FAKE.
         if self.app_env == "production" and self.ai_provider == AIProviderName.FAKE:
             raise ValueError("AI_PROVIDER=fake solo se permite en desarrollo y tests.")
+        # Rama condicional: se cumple self.ai_provider == AIProviderName.LEGACY.
         if self.ai_provider == AIProviderName.LEGACY:
             raise ValueError(
                 "AI_PROVIDER=legacy solo identifica registros históricos; no es seleccionable."
             )
+        # Rama condicional: evalua self.ai_fallback_provider in {AIProviderName.FAKE,
+        # AIProviderName.LEGACY.
         if self.ai_fallback_provider in {AIProviderName.FAKE, AIProviderName.LEGACY}:
             raise ValueError("AI_FALLBACK_PROVIDER solo puede ser gemini u ollama.")
+        # Rama condicional: se cumple self.ai_fallback_provider == self.ai_provider.
         if self.ai_fallback_provider == self.ai_provider:
             raise ValueError("AI_FALLBACK_PROVIDER debe ser distinto de AI_PROVIDER.")
         gemini_selected = AIProviderName.GEMINI in {
             self.ai_provider,
             self.ai_fallback_provider,
         }
+        # Rama condicional: se cumple gemini_selected and (not self.gemini_api_key).
         if gemini_selected and not self.gemini_api_key:
             raise ValueError("GEMINI_API_KEY es obligatoria cuando Gemini está seleccionado.")
         return self
 
     @property
     def is_development(self) -> bool:
+        """Indica si el backend se ejecuta en modo desarrollo."""
         return self.app_env == "development"
 
 
 @lru_cache
 def get_settings() -> Settings:
+    """Carga la configuracion validada del backend."""
     return Settings()

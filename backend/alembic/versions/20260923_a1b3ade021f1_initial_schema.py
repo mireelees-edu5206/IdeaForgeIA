@@ -35,6 +35,7 @@ UPDATED_AT_TABLES = [
 
 
 def upgrade() -> None:
+    """Crea el esquema base, sus tablas, indices, restricciones y triggers."""
     # citext y pg_trgm son extensiones "trusted": las puede crear el dueño de la BD.
     op.execute("CREATE EXTENSION IF NOT EXISTS citext")
     op.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm")
@@ -1531,6 +1532,7 @@ def upgrade() -> None:
         op.f("ix_finding_evidence_evidence_id"), "finding_evidence", ["evidence_id"], unique=False
     )
 
+    # Itera table sobre UPDATED_AT_TABLES.
     for table in UPDATED_AT_TABLES:
         op.execute(
             f"CREATE TRIGGER trg_{table}_updated_at BEFORE UPDATE ON {table} "
@@ -1539,6 +1541,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Gestiona el flujo en migracion."""
     op.drop_index(op.f("ix_finding_evidence_evidence_id"), table_name="finding_evidence")
     op.drop_table("finding_evidence")
     op.drop_index(op.f("ix_risk_findings_finding_id"), table_name="risk_findings")

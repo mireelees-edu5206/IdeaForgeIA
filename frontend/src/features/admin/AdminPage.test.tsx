@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de administracion. */
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -10,6 +11,7 @@ vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ user: { id: "admin-1", role: "admin" } }),
 }));
 
+/** Define overview para el bloque de administracion. */
 const overview = {
   total_users: 2,
   active_users: 2,
@@ -26,6 +28,7 @@ const overview = {
   recent_ai_logs: [],
 };
 
+/** Define adminUser para el bloque de administracion. */
 const adminUser = {
   id: "admin-1",
   email: "admin@example.test",
@@ -38,6 +41,7 @@ const adminUser = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
+/** Define targetUser para el bloque de administracion. */
 const targetUser = {
   ...adminUser,
   id: "user-2",
@@ -50,15 +54,20 @@ const targetUser = {
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Escenario de prueba: Administración de cuentas. */
 describe("Administración de cuentas", () => {
+  /** Escenario de prueba: pide confirmación antes de eliminar una cuenta y actualiza la lista. */
   it("pide confirmación antes de eliminar una cuenta y actualiza la lista", async () => {
     let deleted = false;
     const fetchMock = mockFetch((rawUrl, init) => {
       const path = new URL(rawUrl, "http://localhost").pathname;
+      /** Rama condicional: path === "/api/v1/admin/overview". */
       if (path === "/api/v1/admin/overview") return jsonResponse(200, overview);
+      /** Rama condicional: path === "/api/v1/admin/users" && init.method !== "DELE. */
       if (path === "/api/v1/admin/users" && init.method !== "DELETE") {
         return jsonResponse(200, deleted ? [adminUser] : [adminUser, targetUser]);
       }
+      /** Rama condicional: path === "/api/v1/admin/users/user-2" && init.method ==. */
       if (path === "/api/v1/admin/users/user-2" && init.method === "DELETE") {
         deleted = true;
         return jsonResponse(204);

@@ -1,9 +1,11 @@
+/** Presenta estados de error y rutas no encontradas. */
 import { Link, isRouteErrorResponse, useRouteError } from "react-router";
 
 import { Backdrop } from "../components/layout/Backdrop";
 import { GlassPanel } from "../components/ui/GlassPanel";
 import { useDocumentTitle } from "../lib/useDocumentTitle";
 
+/** Componente StatusPage: renderiza la vista de aplicacion. */
 function StatusPage({ code, title, description }: { code: string; title: string; description: string }) {
   useDocumentTitle(title);
   return (
@@ -24,6 +26,7 @@ function StatusPage({ code, title, description }: { code: string; title: string;
   );
 }
 
+/** Expone la funcion not found page para el flujo de shared frontend. */
 export function NotFoundPage() {
   return (
     <StatusPage code="404" title="Página no encontrada" description="La página que buscas no existe o se ha movido." />
@@ -33,6 +36,7 @@ export function NotFoundPage() {
 /** Errores inesperados al renderizar: mensaje genérico, sin detalles técnicos. */
 export function RouteErrorPage() {
   const error = useRouteError();
+  /** Rama condicional: isRouteErrorResponse(error) && error.status === 404. */
   if (isRouteErrorResponse(error) && error.status === 404) return <NotFoundPage />;
   return (
     <StatusPage

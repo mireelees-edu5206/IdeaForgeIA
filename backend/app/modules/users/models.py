@@ -1,3 +1,5 @@
+"""Define entidades ORM y restricciones de persistencia. Area: perfiles."""
+
 import uuid
 from datetime import datetime
 from enum import StrEnum
@@ -10,11 +12,15 @@ from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, str_enum
 
 
 class UserRole(StrEnum):
+    """Representa usuario rol."""
+
     USER = "user"
     ADMIN = "admin"
 
 
 class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Representa usuario."""
+
     __tablename__ = "users"
     __table_args__ = (
         CheckConstraint("char_length(email) <= 254", name="email_length"),

@@ -14,6 +14,8 @@ from app.modules.ai.types import AIProviderAttempt, AIUsage
 
 @dataclass(frozen=True, slots=True)
 class AICallContext:
+    """Representa aicall context."""
+
     user_id: uuid.UUID
     project_id: uuid.UUID
     research_run_id: uuid.UUID | None = None
@@ -21,6 +23,8 @@ class AICallContext:
 
 @dataclass(frozen=True, slots=True)
 class AICallOutcome[T]:
+    """Representa aicall outcome."""
+
     result: T | None
     error: AIProviderError | None
     latency_ms: int
@@ -31,13 +35,18 @@ async def timed_call[T](call: Awaitable[T], timeout_s: float) -> AICallOutcome[T
     started = time.perf_counter()
 
     def elapsed() -> int:
+        """Gestiona elapsed."""
         return round((time.perf_counter() - started) * 1000)
 
+    # Protege la operacion y dirige sus errores a manejadores explicitos.
     try:
+        # Abre y libera los recursos declarados en este bloque.
         async with asyncio.timeout(timeout_s):
             result = await call
+    # Maneja el error TimeoutError sin detener el flujo esperado.
     except TimeoutError:
         return AICallOutcome(None, AITimeoutError(), elapsed())
+    # Maneja el error AIProviderError sin detener el flujo esperado.
     except AIProviderError as exc:
         return AICallOutcome(None, exc, elapsed())
     return AICallOutcome(result, None, elapsed())
@@ -54,8 +63,10 @@ def build_call_logs(
     """Registra cada proveedor intentado, nunca prompts, respuestas ni claves."""
     result = outcome.result
     attempts = getattr(result, "attempts", ()) if result is not None else ()
+    # Rama condicional: se cumple outcome.error is not None.
     if outcome.error is not None:
         attempts = outcome.error.attempts
+    # Rama condicional: se cumple not attempts.
     if not attempts:
         actual_provider = (
             getattr(result, "provider", None)

@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para admin lab."""
+
 from collections.abc import Iterator
 from contextlib import contextmanager
 from uuid import uuid4
@@ -14,7 +16,10 @@ from tests.conftest import fetch_scalar, make_settings, run_sql
 
 
 class LabGeoProvider(GeoProvider):
+    """Adaptador que ofrece servicios de lab geografico."""
+
     async def geocode(self, query: str) -> list[GeoPlace]:
+        """Gestiona geocode."""
         return []
 
     async def find_places(
@@ -25,6 +30,7 @@ class LabGeoProvider(GeoProvider):
         category: GeoCategory,
         keyword: str | None = None,
     ) -> list[GeoBusiness]:
+        """Busca lugares."""
         return [
             GeoBusiness(
                 osm_type="node",
@@ -49,12 +55,15 @@ class LabGeoProvider(GeoProvider):
 
 @contextmanager
 def lab_client(db_url: str) -> Iterator[TestClient]:
+    """Gestiona lab client."""
     app = create_app(make_settings(database_url=db_url), geo_provider=LabGeoProvider())
+    # Abre y libera los recursos declarados en este bloque.
     with TestClient(app) as client:
         yield client
 
 
 def test_admin_lab_endpoints_reject_standard_user(db_client: TestClient) -> None:
+    """Prueba el escenario: administrador lab endpoints reject standard usuario."""
     headers = user_headers(db_client)
     project_id = str(uuid4())
 
@@ -114,6 +123,7 @@ def test_admin_lab_endpoints_reject_standard_user(db_client: TestClient) -> None
 
 
 def test_admin_lab_metrics_and_propositions(db_client: TestClient, migrated_db: str) -> None:
+    """Prueba el escenario: administrador lab metrics and propositions."""
     headers = admin_headers(db_client, migrated_db, email="lab-admin@ideaforge.dev")
 
     propositions = db_client.get("/api/v1/admin/lab/propositions", headers=headers)
@@ -152,6 +162,7 @@ def test_admin_lab_metrics_and_propositions(db_client: TestClient, migrated_db: 
 def test_admin_lab_lists_projects_and_traces_real_graph(
     db_client: TestClient, migrated_db: str
 ) -> None:
+    """Prueba el escenario: administrador lab lists proyectos and traces real graph."""
     owner = user_headers(db_client, email="dueno@ideaforge.dev")
     project = create_project(db_client, owner, "Heladería local")
     assert (
@@ -214,6 +225,8 @@ def test_admin_lab_lists_projects_and_traces_real_graph(
 
 
 def test_admin_lab_places_and_route_use_real_geo_provider(migrated_db: str) -> None:
+    """Prueba el escenario: administrador lab lugares and ruta use real geografico proveedor."""
+    # Abre y libera los recursos declarados en este bloque.
     with lab_client(migrated_db) as client:
         headers = admin_headers(client, migrated_db, email="lab-geo@ideaforge.dev")
         project = create_project(client, headers, "Ruta de campo")
@@ -264,6 +277,7 @@ def test_admin_lab_places_and_route_use_real_geo_provider(migrated_db: str) -> N
 def test_admin_lab_budget_and_schedule_use_real_hypotheses(
     db_client: TestClient, migrated_db: str
 ) -> None:
+    """Prueba el escenario: administrador lab presupuesto and schedule use real hipotesis."""
     owner = user_headers(db_client, email="analista@ideaforge.dev")
     project = create_project(db_client, owner, "Validación de mercado")
     first = fetch_scalar(

@@ -1,3 +1,4 @@
+/** Pantalla o componente React del flujo de proyectos. */
 import { type FormEvent, useEffect, useState } from "react";
 import { FiArrowLeft, FiArrowRight, FiCheckCircle, FiCompass, FiTarget } from "react-icons/fi";
 import { useNavigate } from "react-router";
@@ -15,14 +16,18 @@ import { PageHeader } from "./components/PageHeader";
 import { RAW_IDEA_MAX_LENGTH, RAW_IDEA_MIN_LENGTH, TITLE_MAX_LENGTH } from "./constants";
 import { useCreateProject } from "./queries";
 
+/** Expone la funcion validate project para el flujo de projects. */
 export function validateProject(title: string, rawIdea: string): Record<string, string> {
   const errors: Record<string, string> = {};
+  /** Rama condicional: !title.trim(). */
   if (!title.trim()) errors.title = "Este campo no puede estar vacío.";
+  /** Rama condicional: rawIdea.trim().length < RAW_IDEA_MIN_LENGTH. */
   if (rawIdea.trim().length < RAW_IDEA_MIN_LENGTH)
     errors.raw_idea = `Escribe una frase breve sobre tu idea (al menos ${RAW_IDEA_MIN_LENGTH} caracteres).`;
   return errors;
 }
 
+/** Define PROMPTS para el bloque de proyectos. */
 const PROMPTS = [
   {
     icon: FiTarget,
@@ -41,6 +46,7 @@ const PROMPTS = [
   },
 ];
 
+/** Expone la funcion new project page para el flujo de projects. */
 export function NewProjectPage() {
   useDocumentTitle("Nuevo proyecto");
   const navigate = useNavigate();
@@ -61,11 +67,14 @@ export function NewProjectPage() {
     });
   }, [forgeProgress, litFacets]);
 
+  /** Gestiona handle submit de proyectos. */
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const clientErrors = validateProject(title, rawIdea);
     setErrors(clientErrors);
+    /** Rama condicional: Object.keys(clientErrors).length > 0. */
     if (Object.keys(clientErrors).length > 0) return;
+    /** Maneja fallos de la operacion del bloque proyectos. */
     try {
       const project = await createProject.mutateAsync({ title: title.trim(), raw_idea: rawIdea.trim() });
       navigate(`/proyectos/${project.id}`, { replace: true });

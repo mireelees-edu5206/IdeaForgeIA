@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para reports."""
+
 from collections.abc import Sequence
 
 from fastapi.testclient import TestClient
@@ -22,11 +24,15 @@ from tests.conftest import fetch_scalar, run_sql
 
 
 class ReportGeoProvider(GeoProvider):
+    """Adaptador que ofrece servicios de informe geografico."""
+
     def __init__(self) -> None:
+        """Gestiona la inicializacion para pruebas."""
         self.geocoded: list[str] = []
         self.searches: list[tuple[float, float, int, GeoCategory, str | None]] = []
 
     async def geocode(self, query: str) -> list[GeoPlace]:
+        """Gestiona geocode."""
         self.geocoded.append(query)
         return [
             GeoPlace(
@@ -47,6 +53,7 @@ class ReportGeoProvider(GeoProvider):
         category: GeoCategory,
         keyword: str | None = None,
     ) -> list[GeoBusiness]:
+        """Busca lugares."""
         self.searches.append((latitude, longitude, radius_m, category, keyword))
         return [
             GeoBusiness(
@@ -64,6 +71,7 @@ class ReportGeoProvider(GeoProvider):
 
 
 def test_report_requires_project_analysis(db_client: TestClient, migrated_db: str) -> None:
+    """Prueba el escenario: informe requires proyecto analisis."""
     headers = user_headers(db_client)
     project = create_project(db_client, headers, "Idea pendiente")
 
@@ -75,6 +83,7 @@ def test_report_requires_project_analysis(db_client: TestClient, migrated_db: st
 
 
 def test_verdict_does_not_keep_unbacked_investment_or_unknown_map_references() -> None:
+    """Verifica que el veredicto descarte inversiones y referencias de mapa sin respaldo."""
     draft = ReportDraft(
         executive_summary=BusinessVerdict(
             recommendation="worth_testing",
@@ -151,6 +160,7 @@ def test_verdict_does_not_keep_unbacked_investment_or_unknown_map_references() -
 def test_report_generates_versioned_sections_with_traceable_sources(
     db_client: TestClient, migrated_db: str
 ) -> None:
+    """Prueba el escenario: informe generates versioned sections con traceable fuentes."""
     headers = user_headers(db_client)
     project_id, run_id = researched(db_client, headers)
     assert analyze(db_client, headers, project_id, run_id).status_code == 202
@@ -195,13 +205,19 @@ def test_report_generates_versioned_sections_with_traceable_sources(
 
 
 class ReportFails(FakeProvider):
+    """Representa informe fails."""
+
     async def generate_structured(self, messages: Sequence[AIMessage], schema):
+        """Gestiona generate structured."""
+        # Rama condicional: se cumple schema is ReportDraft.
         if schema is ReportDraft:
             raise AIUnavailableError()
         return await super().generate_structured(messages, schema)
 
 
 def test_report_failure_is_saved_and_logged(migrated_db: str) -> None:
+    """Prueba el escenario: informe fallo is saved and logged."""
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, ReportFails()) as client:
         headers = user_headers(client)
         project_id, run_id = researched(client, headers)
@@ -225,7 +241,9 @@ def test_report_failure_is_saved_and_logged(migrated_db: str) -> None:
 
 
 def test_final_verdict_uses_confirmed_zones_and_current_map_places(migrated_db: str) -> None:
+    """Prueba el escenario: final veredicto uses confirmed zones and actual map lugares."""
     geo_provider = ReportGeoProvider()
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, geo_provider=geo_provider) as client:
         headers = user_headers(client)
         project = create_project(client, headers, "Heladería local")
@@ -271,6 +289,7 @@ def test_final_verdict_uses_confirmed_zones_and_current_map_places(migrated_db: 
 
 
 def test_report_is_hidden_from_other_users(db_client: TestClient) -> None:
+    """Prueba el escenario: informe is hidden from otro usuarios."""
     headers = user_headers(db_client)
     project_id, run_id = researched(db_client, headers)
     assert analyze(db_client, headers, project_id, run_id).status_code == 202

@@ -1,3 +1,5 @@
+"""Aplica reglas de negocio y permisos. Area: investigacion web."""
+
 import uuid
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
@@ -35,17 +37,24 @@ _RESEARCHABLE_STATUSES = (
 
 
 class ResearchRunNotFoundError(NotFoundError):
+    """Error que representa investigacion ejecucion no found."""
+
     code = "research_run_not_found"
     message = "La investigación no existe."
 
 
 class ResearchInProgressError(ConflictError):
+    """Error que representa investigacion in progress."""
+
     code = "research_in_progress"
     message = "Ya hay una investigación en curso para este proyecto."
 
 
 class ResearchService:
+    """Servicio de reglas de negocio para investigacion."""
+
     def __init__(self, session: AsyncSession) -> None:
+        """Gestiona la inicializacion para investigacion."""
         self.session = session
         self.projects = ProjectRepository(session)
         self.runs = ResearchRunRepository(session)
@@ -53,7 +62,9 @@ class ResearchService:
         self.sources = SourceRepository(session)
 
     async def _get_owned(self, user: User, project_id: uuid.UUID) -> Project:
+        """Oculta proyectos ajenos y devuelve el proyecto propio."""
         project = await self.projects.get_owned(project_id, user.id)
+        # Rama condicional: se cumple project is None.
         if project is None:
             raise ProjectNotFoundError()
         return project
@@ -63,14 +74,18 @@ class ResearchService:
     ) -> ResearchRunRead:
         """Crea la ejecución en estado pending; el router lanza el orquestador en segundo plano."""
         project = await self._get_owned(user, project_id)
+        # Rama condicional: se cumple project.status not in _RESEARCHABLE_STATUSES.
         if project.status not in _RESEARCHABLE_STATUSES:
             raise ConflictError(
                 "Confirma la estructura de la idea antes de investigar.",
                 code="project_not_structured",
             )
+        # Rama condicional: se cumple await self.runs.has_active(project.id).
         if await self.runs.has_active(project.id):
             raise ResearchInProgressError()
         since = datetime.now(UTC) - timedelta(days=1)
+        # Rama condicional: evalua await self.runs.count_for_user_since(user.id, since) >=
+        # settings.researc.
         if (
             await self.runs.count_for_user_since(user.id, since)
             >= settings.research_max_runs_per_day
@@ -83,14 +98,17 @@ class ResearchService:
         run = ResearchRun(project_id=project.id, ai_provider=provider.name, ai_model=provider.model)
         self.runs.add(run)
         project.status = ProjectStatus.RESEARCHING
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             await self.session.commit()
+        # Maneja el error IntegrityError sin detener el flujo esperado.
         except IntegrityError as exc:  # otra petición simultánea creó la ejecución activa
             await self.session.rollback()
             raise ResearchInProgressError() from exc
         return ResearchRunRead.model_validate(run)
 
     async def list_runs(self, user: User, project_id: uuid.UUID) -> list[ResearchRunRead]:
+        """Lista ejecuciones."""
         project = await self._get_owned(user, project_id)
         return [
             ResearchRunRead.model_validate(r) for r in await self.runs.list_for_project(project.id)
@@ -99,13 +117,16 @@ class ResearchService:
     async def get_run(
         self, user: User, project_id: uuid.UUID, run_id: uuid.UUID
     ) -> ResearchRunDetail:
+        """Obtiene ejecucion."""
         project = await self._get_owned(user, project_id)
         run = await self.runs.get(project.id, run_id)
+        # Rama condicional: se cumple run is None.
         if run is None:
             raise ResearchRunNotFoundError()
         queries = await self.queries.list_for_run(run.id)
         query_ids = [q.id for q in queries]
         sources: dict[uuid.UUID, list[QuerySourceRead]] = defaultdict(list)
+        # Itera (link, source) sobre await self.queries.sources_for_queries(query_ids).
         for link, source in await self.queries.sources_for_queries(query_ids):
             sources[link.query_id].append(
                 QuerySourceRead(
@@ -119,7 +140,9 @@ class ResearchService:
                 )
             )
         evidence: dict[uuid.UUID, list[EvidenceRead]] = defaultdict(list)
+        # Itera item sobre await self.queries.evidence_for_queries(query_ids).
         for item in await self.queries.evidence_for_queries(query_ids):
+            # Rama condicional: se cumple item.query_id is not None.
             if item.query_id is not None:
                 evidence[item.query_id].append(EvidenceRead.model_validate(item))
         return ResearchRunDetail(
@@ -143,6 +166,7 @@ class ResearchService:
         )
 
     async def list_sources(self, user: User, project_id: uuid.UUID) -> list[SourceRead]:
+        """Lista fuentes."""
         project = await self._get_owned(user, project_id)
         return [
             SourceRead(

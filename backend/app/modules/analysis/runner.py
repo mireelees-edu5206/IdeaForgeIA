@@ -34,22 +34,29 @@ logger = logging.getLogger(__name__)
 
 
 class AnalysisRunner:
+    """Representa analisis runner."""
+
     def __init__(
         self,
         sessionmaker: async_sessionmaker[AsyncSession],
         provider: AIProvider,
         settings: Settings,
     ) -> None:
+        """Gestiona la inicializacion para analisis."""
         self.sessionmaker = sessionmaker
         self.provider = provider
         self.settings = settings
 
     async def run(self, run_id: uuid.UUID) -> None:
         """Tarea en segundo plano: nunca propaga excepciones."""
+        # Abre y libera los recursos declarados en este bloque.
         async with self.sessionmaker() as session:
+            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 await self._execute(session, run_id)
+            # Maneja el error Exception sin detener el flujo esperado.
             except Exception as exc:
+                # Rama condicional: se cumple isinstance(exc, AIProviderError).
                 if isinstance(exc, AIProviderError):
                     logger.warning("El análisis de %s falló: %s", run_id, exc.code)
                 else:
@@ -61,20 +68,28 @@ class AnalysisRunner:
                 )
 
     async def _fail(self, session: AsyncSession, run_id: uuid.UUID, code: str) -> None:
+        """Gestiona el flujo en analisis."""
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             await session.rollback()
             run = await session.get(ResearchRun, run_id)
+            # Rama condicional: se cumple run is not None.
             if run is not None:
                 mark_run_failed(run, None, code)
                 await session.commit()
+        # Maneja el error Exception sin detener el flujo esperado.
         except Exception:
             logger.exception("No se pudo registrar el fallo del análisis de %s", run_id)
 
     async def _execute(self, session: AsyncSession, run_id: uuid.UUID) -> None:
+        """Gestiona el flujo en analisis."""
         run = await session.get(ResearchRun, run_id)
+        # Rama condicional: evalua run is None or run.status != RunStatus.RUNNING or
+        # run.current_step != Ru.
         if run is None or run.status != RunStatus.RUNNING or run.current_step != RunStep.ANALYZING:
             return
         project = await session.get(Project, run.project_id)
+        # Rama condicional: se cumple project is None.
         if project is None:
             return
         attributes = await IdeaAttributeRepository(session).list_for_project(project.id)
@@ -98,12 +113,14 @@ class AnalysisRunner:
                 outcome.result.usage if outcome.result else None,
             )
         )
+        # Rama condicional: se cumple outcome.result is None.
         if outcome.result is None:
             await session.commit()  # conserva el registro de consumo del intento fallido
             raise outcome.error or AIProviderError()
 
         await replace_unreviewed_ai_items(session, project.id, run.id)
         stats = await save_analysis(session, project.id, run.id, outcome.result.data, refs)
+        # Rama condicional: se cumple stats.discarded.
         if stats.discarded:
             logger.info(
                 "Análisis %s: %d elementos descartados sin respaldo", run.id, stats.discarded

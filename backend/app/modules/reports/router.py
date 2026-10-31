@@ -1,3 +1,5 @@
+"""Expone endpoints HTTP del dominio. Area: informes/veredicto."""
+
 import uuid
 from typing import Annotated
 
@@ -12,10 +14,12 @@ router = APIRouter(prefix="/projects/{project_id}/reports", tags=["reports"])
 
 
 def get_report_service(db: DbSession) -> ReportService:
+    """Obtiene report service en informes."""
     return ReportService(db)
 
 
 def get_report_runner(request: Request) -> ReportRunner:
+    """Obtiene report runner en informes."""
     return request.app.state.report_runner
 
 
@@ -33,6 +37,7 @@ async def create_report(
     background: BackgroundTasks,
     data: ReportBody = None,
 ) -> ReportRead:
+    """Crea report en informes."""
     report = await service.start(
         user,
         project_id,
@@ -47,6 +52,7 @@ async def create_report(
 async def list_reports(
     project_id: uuid.UUID, user: CurrentUser, service: Service
 ) -> list[ReportListItem]:
+    """Lista reports en informes."""
     return await service.list_for_project(user, project_id)
 
 
@@ -57,4 +63,5 @@ async def get_report(
     user: CurrentUser,
     service: Service,
 ) -> ReportDetail:
+    """Obtiene report en informes."""
     return await service.get(user, project_id, report_id)

@@ -1,3 +1,4 @@
+/** Une caché de datos, sesión de Supabase y router para toda la SPA. */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { RouterProvider } from "react-router";
@@ -6,6 +7,7 @@ import { AuthProvider } from "../features/auth/AuthProvider";
 import { createQueryClient } from "../lib/queryClient";
 import { router } from "./router";
 
+/** Expone la funcion app para el flujo de shared frontend. */
 export function App() {
   const [queryClient] = useState(createQueryClient);
   return (

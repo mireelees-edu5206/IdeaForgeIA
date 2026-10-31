@@ -1,3 +1,5 @@
+"""Valida contratos de entrada/salida. Area: informes/veredicto."""
+
 import uuid
 from datetime import datetime
 from typing import Annotated, Literal
@@ -25,6 +27,8 @@ GeoKeyword = Annotated[str, StringConstraints(strip_whitespace=True, min_length=
 
 
 class GeographicScopeInput(BaseModel):
+    """Contrato de datos para geografico alcance entrada."""
+
     model_config = ConfigDict(extra="forbid")
 
     query: GeoScopeText
@@ -35,12 +39,16 @@ class GeographicScopeInput(BaseModel):
 
     @model_validator(mode="after")
     def validate_coordinates(self) -> "GeographicScopeInput":
+        """Valida coordinates en informes."""
+        # Rama condicional: se cumple (self.latitude is None) != (self.longitude is None).
         if (self.latitude is None) != (self.longitude is None):
             raise ValueError("Indica ambas coordenadas o deja ambas vacías.")
         return self
 
 
 class ReportCreate(BaseModel):
+    """Representa informe creacion."""
+
     model_config = ConfigDict(extra="forbid")
 
     geographic_scopes: list[GeographicScopeInput] = Field(default_factory=list, max_length=3)
@@ -48,7 +56,9 @@ class ReportCreate(BaseModel):
     @field_validator("geographic_scopes")
     @classmethod
     def deduplicate_scopes(cls, scopes: list[GeographicScopeInput]) -> list[GeographicScopeInput]:
+        """Gestiona scopes en informes."""
         unique: dict[tuple[str, float | None, float | None], GeographicScopeInput] = {}
+        # Itera scope sobre scopes.
         for scope in scopes:
             normalized = " ".join(scope.query.split())
             unique.setdefault(
@@ -59,6 +69,8 @@ class ReportCreate(BaseModel):
 
 
 class InvestmentEstimate(BaseModel):
+    """Representa investment estimate."""
+
     model_config = ConfigDict(extra="forbid")
 
     minimum_mxn: int = Field(ge=0, le=100_000_000)
@@ -69,12 +81,16 @@ class InvestmentEstimate(BaseModel):
 
     @model_validator(mode="after")
     def validate_range(self) -> "InvestmentEstimate":
+        """Valida range en informes."""
+        # Rama condicional: se cumple self.minimum_mxn > self.maximum_mxn.
         if self.minimum_mxn > self.maximum_mxn:
             raise ValueError("El mínimo de inversión no puede superar el máximo.")
         return self
 
 
 class ZoneRecommendation(BaseModel):
+    """Representa zone recommendation."""
+
     model_config = ConfigDict(extra="forbid")
 
     name: ShortText
@@ -84,6 +100,8 @@ class ZoneRecommendation(BaseModel):
 
 
 class BusinessVerdict(BaseModel):
+    """Representa business veredicto."""
+
     model_config = ConfigDict(extra="forbid")
 
     recommendation: Literal[
@@ -98,6 +116,8 @@ class BusinessVerdict(BaseModel):
 
 
 class ReportDraft(BaseModel):
+    """Representa informe draft."""
+
     model_config = ConfigDict(extra="forbid")
 
     executive_summary: BusinessVerdict
@@ -112,6 +132,8 @@ class ReportDraft(BaseModel):
 
 
 class VerdictInvestmentRead(BaseModel):
+    """Contrato de datos para veredicto investment read."""
+
     minimum_mxn: int
     maximum_mxn: int
     basis: str
@@ -120,6 +142,8 @@ class VerdictInvestmentRead(BaseModel):
 
 
 class VerdictZoneRead(BaseModel):
+    """Contrato de datos para veredicto zone read."""
+
     name: str
     reason: str
     place_refs: list[str]
@@ -127,6 +151,8 @@ class VerdictZoneRead(BaseModel):
 
 
 class BusinessVerdictRead(BaseModel):
+    """Contrato de datos para business veredicto read."""
+
     recommendation: Literal[
         "worth_testing", "needs_validation", "do_not_proceed_yet", "insufficient_information"
     ]
@@ -139,6 +165,8 @@ class BusinessVerdictRead(BaseModel):
 
 
 class ReportSectionRead(BaseModel):
+    """Contrato de datos para informe seccion read."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -150,6 +178,8 @@ class ReportSectionRead(BaseModel):
 
 
 class ReportRead(BaseModel):
+    """Contrato de datos para informe read."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -166,10 +196,14 @@ class ReportRead(BaseModel):
 
 
 class ReportDetail(ReportRead):
+    """Representa informe detalle."""
+
     sections: list[ReportSectionRead] = Field(default_factory=list)
 
 
 class ReportListItem(ReportRead):
+    """Representa informe list elemento."""
+
     section_count: int = 0
 
 

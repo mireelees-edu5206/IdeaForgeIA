@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para research."""
+
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 
@@ -27,21 +29,25 @@ def research_client(
     geo_provider: GeoProvider | None = None,
     **settings: object,
 ) -> Iterator[TestClient]:
+    """Gestiona investigacion client."""
     app = create_app(
         make_settings(database_url=db_url, **settings),
         ai_provider=provider,
         geo_provider=geo_provider,
     )
+    # Abre y libera los recursos declarados en este bloque.
     with TestClient(app) as client:
         yield client
 
 
 @pytest.fixture
 def headers(db_client: TestClient) -> dict[str, str]:
+    """Gestiona encabezados."""
     return user_headers(db_client)
 
 
 def structured_project(client: TestClient, headers: dict) -> dict:
+    """Gestiona structured proyecto."""
     project = create_project(client, headers)
     fill_required(client, headers, project["id"])
     assert confirm(client, headers, project["id"]).status_code == 200
@@ -49,10 +55,12 @@ def structured_project(client: TestClient, headers: dict) -> dict:
 
 
 def start(client: TestClient, headers: dict, project_id: str):
+    """Inicia el flujo principal."""
     return client.post(f"{BASE}/{project_id}/research-runs", headers=headers)
 
 
 def latest_run(client: TestClient, headers: dict, project_id: str) -> dict:
+    """Gestiona latest ejecucion."""
     runs = client.get(f"{BASE}/{project_id}/research-runs", headers=headers).json()
     detail = client.get(f"{BASE}/{project_id}/research-runs/{runs[0]['id']}", headers=headers)
     assert detail.status_code == 200
@@ -60,6 +68,7 @@ def latest_run(client: TestClient, headers: dict, project_id: str) -> dict:
 
 
 def project_status(client: TestClient, headers: dict, project_id: str) -> str:
+    """Gestiona proyecto estado."""
     return client.get(f"{BASE}/{project_id}", headers=headers).json()["status"]
 
 
@@ -67,6 +76,7 @@ def project_status(client: TestClient, headers: dict, project_id: str) -> str:
 
 
 def test_research_requires_structured_project(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: investigacion requires structured proyecto."""
     project = create_project(db_client, headers)
     response = start(db_client, headers, project["id"])
     assert response.status_code == 409
@@ -76,6 +86,7 @@ def test_research_requires_structured_project(db_client: TestClient, headers: di
 def test_full_research_run_with_fake_provider(
     db_client: TestClient, headers: dict, migrated_db: str
 ) -> None:
+    """Prueba el escenario: full investigacion ejecucion con fake proveedor."""
     project = structured_project(db_client, headers)
     response = start(db_client, headers, project["id"])
     assert response.status_code == 202
@@ -93,12 +104,14 @@ def test_full_research_run_with_fake_provider(
     queries = run["queries"]
     assert len(queries) == 6
     assert [q["position"] for q in queries] == list(range(6))
+    # Itera query sobre queries.
     for query in queries:
         assert query["status"] == "completed"
         assert query["response_text"].startswith("[Simulado]")
         assert query["executed_queries"]
         assert [s["was_cited"] for s in query["sources"]] == [True, True, False]
         assert len(query["evidence"]) == 2
+        # Itera evidence sobre query[un valor].
         for evidence in query["evidence"]:
             text = query["response_text"][evidence["span_start"] : evidence["span_end"]]
             assert evidence["content"] == text
@@ -128,6 +141,8 @@ def test_full_research_run_with_fake_provider(
 
 
 def test_research_respects_max_questions(migrated_db: str) -> None:
+    """Prueba el escenario: investigacion respects maximo questions."""
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, research_max_questions=3) as client:
         headers = user_headers(client)
         project = structured_project(client, headers)
@@ -142,6 +157,7 @@ def test_research_respects_max_questions(migrated_db: str) -> None:
 def test_active_run_blocks_new_runs_and_edits(
     db_client: TestClient, headers: dict, migrated_db: str
 ) -> None:
+    """Prueba el escenario: activo ejecucion blocks new ejecuciones and edits."""
     project = structured_project(db_client, headers)
     run_sql(migrated_db, ACTIVE_RUN_SQL, {"p": project["id"]})
     url = f"{BASE}/{project['id']}"
@@ -149,6 +165,7 @@ def test_active_run_blocks_new_runs_and_edits(
     response = start(db_client, headers, project["id"])
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "research_in_progress"
+    # Itera blocked sobre (add_attribute(db_client, headers, project[un valor], un valor, un valor.
     for blocked in (
         add_attribute(db_client, headers, project["id"], "channels", "Venta directa"),
         db_client.patch(
@@ -166,6 +183,7 @@ def test_active_run_blocks_new_runs_and_edits(
 def test_edit_after_research_returns_to_draft_and_keeps_history(
     db_client: TestClient, headers: dict
 ) -> None:
+    """Prueba el escenario: edit restante investigacion returns to draft and keeps historial."""
     project = structured_project(db_client, headers)
     start(db_client, headers, project["id"])
     add_attribute(db_client, headers, project["id"], "channels", "Venta directa")
@@ -182,6 +200,8 @@ def test_edit_after_research_returns_to_draft_and_keeps_history(
 
 
 def test_daily_research_limit(migrated_db: str) -> None:
+    """Prueba el escenario: daily investigacion limite."""
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, research_max_runs_per_day=1) as client:
         headers = user_headers(client)
         project = structured_project(client, headers)
@@ -193,12 +213,15 @@ def test_daily_research_limit(migrated_db: str) -> None:
 
 
 def test_interrupted_runs_are_recovered_on_startup(migrated_db: str) -> None:
+    """Prueba el escenario: interrupted ejecuciones are recovered on startup."""
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db) as client:
         headers = user_headers(client)
         project = structured_project(client, headers)
     run_sql(migrated_db, ACTIVE_RUN_SQL, {"p": project["id"]})
     run_sql(migrated_db, "UPDATE projects SET status = 'researching'")
 
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, research_recover_on_startup=True) as client:
         run = latest_run(client, headers, project["id"])
         assert run["status"] == "interrupted"
@@ -212,24 +235,34 @@ def test_interrupted_runs_are_recovered_on_startup(migrated_db: str) -> None:
 
 
 class PlanningFails(FakeProvider):
+    """Representa planning fails."""
+
     async def generate_structured(self, messages, schema):
+        """Gestiona generate structured."""
         raise AIUnavailableError("detalle interno del proveedor")
 
 
 class SearchFails(FakeProvider):
+    """Representa busqueda fails."""
+
     def __init__(self, fail_all: bool) -> None:
+        """Gestiona la inicializacion para pruebas."""
         super().__init__()
         self.fail_all = fail_all
         self.calls = 0
 
     async def generate_grounded(self, messages: Sequence[AIMessage]) -> GroundedResult:
+        """Gestiona generate fundamentada."""
         self.calls += 1
+        # Rama condicional: se cumple self.fail_all or self.calls == 1.
         if self.fail_all or self.calls == 1:
             raise AIRateLimitError()
         return await super().generate_grounded(messages)
 
 
 def test_planning_failure_marks_run_failed(migrated_db: str) -> None:
+    """Prueba el escenario: planning fallo marks ejecucion fallido."""
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, PlanningFails()) as client:
         headers = user_headers(client)
         project = structured_project(client, headers)
@@ -250,6 +283,8 @@ def test_planning_failure_marks_run_failed(migrated_db: str) -> None:
 
 
 def test_all_searches_failing_marks_run_failed(migrated_db: str) -> None:
+    """Prueba el escenario: all searches failing marks ejecucion fallido."""
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, SearchFails(fail_all=True)) as client:
         headers = user_headers(client)
         project = structured_project(client, headers)
@@ -263,6 +298,8 @@ def test_all_searches_failing_marks_run_failed(migrated_db: str) -> None:
 
 
 def test_partial_search_failure_still_completes(migrated_db: str) -> None:
+    """Prueba el escenario: partial busqueda fallo still completes."""
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, SearchFails(fail_all=False), ai_max_concurrency=1) as client:
         headers = user_headers(client)
         project = structured_project(client, headers)
@@ -279,6 +316,7 @@ class UntrustedOutput(FakeProvider):
     """Salida defectuosa: URLs no http(s), duplicadas y spans fuera del texto."""
 
     async def generate_grounded(self, messages: Sequence[AIMessage]) -> GroundedResult:
+        """Gestiona generate fundamentada."""
         text = "Dato respaldado. Otro dato."
         return GroundedResult(
             text=text,
@@ -297,6 +335,8 @@ class UntrustedOutput(FakeProvider):
 
 
 def test_untrusted_provider_output_is_sanitized(migrated_db: str) -> None:
+    """Prueba el escenario: untrusted proveedor output is sanitized."""
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, UntrustedOutput(), research_max_questions=3) as client:
         headers = user_headers(client)
         project = structured_project(client, headers)
@@ -318,10 +358,12 @@ def test_untrusted_provider_output_is_sanitized(migrated_db: str) -> None:
 
 
 def test_research_is_private(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: investigacion is private."""
     project = structured_project(db_client, headers)
     start(db_client, headers, project["id"])
     run_id = db_client.get(f"{BASE}/{project['id']}/research-runs", headers=headers).json()[0]["id"]
     other = user_headers(db_client, "otra@ideaforge.dev")
+    # Itera response sobre (start(db_client, other, project[un valor]), db_client.get(fun valor, he.
     for response in (
         start(db_client, other, project["id"]),
         db_client.get(f"{BASE}/{project['id']}/research-runs", headers=other),
@@ -333,6 +375,7 @@ def test_research_is_private(db_client: TestClient, headers: dict) -> None:
 
 
 def test_run_must_belong_to_project(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: ejecucion must belong to proyecto."""
     project = structured_project(db_client, headers)
     start(db_client, headers, project["id"])
     run_id = db_client.get(f"{BASE}/{project['id']}/research-runs", headers=headers).json()[0]["id"]

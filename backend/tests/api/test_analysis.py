@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para analysis."""
+
 from collections.abc import Sequence
 
 import pytest
@@ -21,20 +23,24 @@ from tests.conftest import fetch_scalar, run_sql
 
 @pytest.fixture
 def headers(db_client: TestClient) -> dict[str, str]:
+    """Gestiona encabezados."""
     return user_headers(db_client)
 
 
 def analyze(client: TestClient, headers: dict, project_id: str, run_id: str):
+    """Gestiona analyze."""
     return client.post(f"{BASE}/{project_id}/research-runs/{run_id}/analysis", headers=headers)
 
 
 def analysis(client: TestClient, headers: dict, project_id: str, **params) -> dict:
+    """Gestiona analisis."""
     response = client.get(f"{BASE}/{project_id}/analysis", params=params, headers=headers)
     assert response.status_code == 200
     return response.json()
 
 
 def researched(client: TestClient, headers: dict) -> tuple[str, str]:
+    """Gestiona researched."""
     project = structured_project(client, headers)
     assert start(client, headers, project["id"]).status_code == 202
     return project["id"], latest_run(client, headers, project["id"])["id"]
@@ -42,6 +48,7 @@ def researched(client: TestClient, headers: dict) -> tuple[str, str]:
 
 @pytest.fixture
 def analyzed(db_client: TestClient, headers: dict) -> tuple[str, str]:
+    """Gestiona analyzed."""
     pid, run_id = researched(db_client, headers)
     assert analyze(db_client, headers, pid, run_id).status_code == 202
     return pid, run_id
@@ -53,6 +60,7 @@ def analyzed(db_client: TestClient, headers: dict) -> tuple[str, str]:
 def test_analysis_generates_items_with_support_rules(
     db_client: TestClient, headers: dict, migrated_db: str
 ) -> None:
+    """Prueba el escenario: analisis generates elementos con support rules."""
     pid, run_id = researched(db_client, headers)
     response = analyze(db_client, headers, pid, run_id)
     assert response.status_code == 202
@@ -87,18 +95,25 @@ def test_analysis_generates_items_with_support_rules(
 
 
 class RecordingProvider(FakeProvider):
+    """Adaptador que ofrece servicios de recording."""
+
     def __init__(self) -> None:
+        """Gestiona la inicializacion para pruebas."""
         super().__init__()
         self.analysis_prompt = ""
 
     async def generate_structured(self, messages: Sequence[AIMessage], schema):
+        """Gestiona generate structured."""
+        # Rama condicional: se cumple schema is AnalysisResult.
         if schema is AnalysisResult:
             self.analysis_prompt = messages[-1].content
         return await super().generate_structured(messages, schema)
 
 
 def test_rejected_findings_are_excluded(migrated_db: str) -> None:
+    """Prueba el escenario: rejected hallazgos are excluded."""
     provider = RecordingProvider()
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, provider) as client:
         headers = user_headers(client)
         pid, run_id = researched(client, headers)
@@ -135,6 +150,7 @@ def test_rejected_findings_are_excluded(migrated_db: str) -> None:
 def test_reanalysis_replaces_only_unreviewed_proposals(
     db_client: TestClient, headers: dict, analyzed: tuple[str, str]
 ) -> None:
+    """Prueba el escenario: reanalysis replaces only unreviewed proposals."""
     pid, run_id = analyzed
     opportunity = analysis(db_client, headers, pid)["opportunities"][0]
     db_client.patch(
@@ -154,6 +170,7 @@ def test_reanalysis_replaces_only_unreviewed_proposals(
 
 
 def test_analysis_preconditions(db_client: TestClient, headers: dict, migrated_db: str) -> None:
+    """Prueba el escenario: analisis preconditions."""
     pid, run_id = researched(db_client, headers)
     other = create_project(db_client, headers, "Otro")
     response = analyze(db_client, headers, other["id"], run_id)
@@ -184,6 +201,7 @@ def test_analysis_preconditions(db_client: TestClient, headers: dict, migrated_d
 def test_active_analysis_blocks_edits(
     db_client: TestClient, headers: dict, migrated_db: str
 ) -> None:
+    """Prueba el escenario: activo analisis blocks edits."""
     pid, run_id = researched(db_client, headers)
     run_sql(
         migrated_db,
@@ -199,13 +217,19 @@ def test_active_analysis_blocks_edits(
 
 
 class AnalysisFails(FakeProvider):
+    """Representa analisis fails."""
+
     async def generate_structured(self, messages: Sequence[AIMessage], schema):
+        """Gestiona generate structured."""
+        # Rama condicional: se cumple schema is AnalysisResult.
         if schema is AnalysisResult:
             raise AIUnavailableError()
         return await super().generate_structured(messages, schema)
 
 
 def test_analysis_failure_keeps_research(migrated_db: str) -> None:
+    """Prueba el escenario: analisis fallo keeps investigacion."""
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, AnalysisFails()) as client:
         headers = user_headers(client)
         pid, run_id = researched(client, headers)
@@ -224,6 +248,8 @@ def test_analysis_failure_keeps_research(migrated_db: str) -> None:
 
 
 def test_interrupted_analysis_is_recovered(migrated_db: str) -> None:
+    """Prueba el escenario: interrupted analisis is recovered."""
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db) as client:
         headers = user_headers(client)
         pid, run_id = researched(client, headers)
@@ -232,6 +258,7 @@ def test_interrupted_analysis_is_recovered(migrated_db: str) -> None:
         "UPDATE research_runs SET status = 'running', current_step = 'analyzing' WHERE id = :r",
         {"r": run_id},
     )
+    # Abre y libera los recursos declarados en este bloque.
     with research_client(migrated_db, research_recover_on_startup=True) as client:
         run = latest_run(client, headers, pid)
         assert run["status"] == "completed"
@@ -246,6 +273,7 @@ def test_interrupted_analysis_is_recovered(migrated_db: str) -> None:
 def test_review_edit_and_tracking(
     db_client: TestClient, headers: dict, analyzed: tuple[str, str]
 ) -> None:
+    """Prueba el escenario: review edit and tracking."""
     pid, _ = analyzed
     data = analysis(db_client, headers, pid)
     hypothesis = data["hypotheses"][0]
@@ -288,6 +316,7 @@ def test_review_edit_and_tracking(
 
 
 def test_manual_items(db_client: TestClient, headers: dict, analyzed: tuple[str, str]) -> None:
+    """Prueba el escenario: manual elementos."""
     pid, run_id = analyzed
     finding_id = db_client.get(f"{BASE}/{pid}/findings", headers=headers).json()[0]["id"]
     payloads = {
@@ -306,6 +335,7 @@ def test_manual_items(db_client: TestClient, headers: dict, analyzed: tuple[str,
         "hypotheses": {"statement": "Pagarían por entrega en 24 h", "priority": "high"},
         "missing-information": {"question": "¿Qué margen tienen los productores?"},
     }
+    # Itera (key, payload) sobre payloads.items().
     for key, payload in payloads.items():
         response = db_client.post(f"{BASE}/{pid}/{key}", json=payload, headers=headers)
         assert response.status_code == 201, (key, response.text)
@@ -350,9 +380,11 @@ def test_manual_items(db_client: TestClient, headers: dict, analyzed: tuple[str,
 def test_analysis_is_private(
     db_client: TestClient, headers: dict, analyzed: tuple[str, str]
 ) -> None:
+    """Prueba el escenario: analisis is private."""
     pid, run_id = analyzed
     opportunity = analysis(db_client, headers, pid)["opportunities"][0]
     other = user_headers(db_client, "otra@ideaforge.dev")
+    # Itera response sobre (analyze(db_client, other, pid, run_id), db_client.get(fun valor, header.
     for response in (
         analyze(db_client, other, pid, run_id),
         db_client.get(f"{BASE}/{pid}/analysis", headers=other),

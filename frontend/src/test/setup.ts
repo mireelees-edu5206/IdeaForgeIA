@@ -1,3 +1,4 @@
+/** Configura el entorno global de pruebas Vitest. */
 import "@testing-library/jest-dom/vitest";
 
 import { cleanup } from "@testing-library/react";

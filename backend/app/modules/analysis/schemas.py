@@ -1,3 +1,5 @@
+"""Valida contratos de entrada/salida. Area: analisis."""
+
 import uuid
 from datetime import datetime
 from typing import Annotated
@@ -15,6 +17,8 @@ FindingIds = Annotated[list[uuid.UUID], Field(default_factory=list, max_length=2
 
 
 class FindingBrief(BaseModel):
+    """Representa hallazgo brief."""
+
     id: uuid.UUID
     finding_type: ResearchCategory
     statement: str
@@ -23,6 +27,8 @@ class FindingBrief(BaseModel):
 
 
 class AnalysisItemRead(BaseModel):
+    """Contrato de datos para analisis elemento read."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -38,6 +44,8 @@ class AnalysisItemRead(BaseModel):
 
 
 class OpportunityFields(BaseModel):
+    """Representa opportunity fields."""
+
     model_config = ConfigDict(extra="forbid")
 
     title: Title
@@ -46,10 +54,14 @@ class OpportunityFields(BaseModel):
 
 
 class OpportunityCreate(OpportunityFields):
+    """Representa opportunity creacion."""
+
     finding_ids: FindingIds
 
 
 class OpportunityUpdate(PatchModel):
+    """Representa opportunity actualizacion."""
+
     title: Title | None = None
     description: Text | None = None
     potential: Level | None = None
@@ -57,6 +69,8 @@ class OpportunityUpdate(PatchModel):
 
 
 class OpportunityRead(AnalysisItemRead):
+    """Contrato de datos para opportunity read."""
+
     title: str
     description: str
     potential: Level
@@ -66,6 +80,8 @@ class OpportunityRead(AnalysisItemRead):
 
 
 class RiskFields(BaseModel):
+    """Representa risk fields."""
+
     model_config = ConfigDict(extra="forbid")
 
     title: Title
@@ -77,10 +93,14 @@ class RiskFields(BaseModel):
 
 
 class RiskCreate(RiskFields):
+    """Representa risk creacion."""
+
     finding_ids: FindingIds
 
 
 class RiskUpdate(PatchModel):
+    """Representa risk actualizacion."""
+
     title: Title | None = None
     description: Text | None = None
     category: RiskCategory | None = None
@@ -91,6 +111,8 @@ class RiskUpdate(PatchModel):
 
 
 class RiskRead(AnalysisItemRead):
+    """Contrato de datos para risk read."""
+
     title: str
     description: str
     category: RiskCategory
@@ -103,6 +125,8 @@ class RiskRead(AnalysisItemRead):
 
 
 class HypothesisFields(BaseModel):
+    """Representa hipotesis fields."""
+
     model_config = ConfigDict(extra="forbid")
 
     statement: Text
@@ -113,10 +137,14 @@ class HypothesisFields(BaseModel):
 
 
 class HypothesisCreate(HypothesisFields):
+    """Representa hipotesis creacion."""
+
     finding_ids: FindingIds
 
 
 class HypothesisUpdate(PatchModel):
+    """Representa hipotesis actualizacion."""
+
     statement: Text | None = None
     related_attribute: AttributeType | None = None
     validation_method: OptionalText | None = None
@@ -129,6 +157,8 @@ class HypothesisUpdate(PatchModel):
 
 
 class HypothesisRead(AnalysisItemRead):
+    """Contrato de datos para hipotesis read."""
+
     statement: str
     related_attribute: AttributeType | None
     validation_method: str | None
@@ -142,6 +172,8 @@ class HypothesisRead(AnalysisItemRead):
 
 
 class MissingInfoFields(BaseModel):
+    """Representa faltante info fields."""
+
     model_config = ConfigDict(extra="forbid")
 
     question: Text
@@ -155,6 +187,8 @@ class MissingInfoCreate(MissingInfoFields):
 
 
 class MissingInfoUpdate(PatchModel):
+    """Representa faltante info actualizacion."""
+
     question: Text | None = None
     reason: OptionalText | None = None
     related_attribute: AttributeType | None = None
@@ -165,6 +199,8 @@ class MissingInfoUpdate(PatchModel):
 
 
 class MissingInfoRead(AnalysisItemRead):
+    """Contrato de datos para faltante info read."""
+
     question: str
     reason: str | None
     related_attribute: AttributeType | None
@@ -174,6 +210,8 @@ class MissingInfoRead(AnalysisItemRead):
 
 
 class AnalysisRead(BaseModel):
+    """Contrato de datos para analisis read."""
+
     opportunities: list[OpportunityRead]
     risks: list[RiskRead]
     hypotheses: list[HypothesisRead]

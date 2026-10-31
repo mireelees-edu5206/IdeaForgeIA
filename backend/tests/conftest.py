@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para conftest."""
+
 import asyncio
 import os
 from collections.abc import Iterator
@@ -27,6 +29,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 
 def make_settings(**overrides: object) -> Settings:
+    """Construye configuracion."""
     values: dict[str, object] = {
         "app_env": "test",
         "cors_origins": [ALLOWED_ORIGIN],
@@ -43,16 +46,20 @@ def make_settings(**overrides: object) -> Settings:
 
 @pytest.fixture
 def settings() -> Settings:
+    """Gestiona configuracion."""
     return make_settings()
 
 
 @pytest.fixture
 def app(settings: Settings) -> FastAPI:
+    """Gestiona aplicacion."""
     return create_app(settings)
 
 
 @pytest.fixture
 def client(app: FastAPI) -> Iterator[TestClient]:
+    """Gestiona client."""
+    # Abre y libera los recursos declarados en este bloque.
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
 
@@ -63,6 +70,7 @@ def client(app: FastAPI) -> Iterator[TestClient]:
 
 
 def _alembic_config(url: str) -> Config:
+    """Gestiona alembic config."""
     config = Config(str(BACKEND_DIR / "alembic.ini"))
     config.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
     config.attributes["database_url"] = url
@@ -74,7 +82,9 @@ def fetch_scalar(url: str, sql: str, params: dict | None = None) -> object:
     """Ejecuta SQL (preparación, limpieza o consulta) desde tests síncronos."""
 
     async def _run() -> object:
+        """Ejecuta el flujo principal."""
         engine = create_async_engine(url, poolclass=pool.NullPool)
+        # Abre y libera los recursos declarados en este bloque.
         async with engine.begin() as conn:
             result = await conn.execute(text(sql), params or {})
             value = result.scalar() if result.returns_rows else None
@@ -85,21 +95,26 @@ def fetch_scalar(url: str, sql: str, params: dict | None = None) -> object:
 
 
 def run_sql(url: str, sql: str, params: dict | None = None) -> None:
+    """Ejecuta sql."""
     fetch_scalar(url, sql, params)
 
 
 @pytest.fixture(scope="session")
 def anyio_backend() -> str:
+    """Gestiona anyio backend."""
     return "asyncio"
 
 
 @pytest.fixture(scope="session")
 def test_db_url() -> str:
+    """Prueba el escenario: db URL."""
     secret = Settings().test_database_url
+    # Rama condicional: se cumple secret is None.
     if secret is None:
         pytest.skip("TEST_DATABASE_URL no definida: se omiten los tests de BD.")
     url = secret.get_secret_value()
     database = make_url(url).database or ""
+    # Rama condicional: se cumple not database.endswith('_test').
     if not database.endswith("_test"):
         pytest.exit(f"TEST_DATABASE_URL debe apuntar a una BD '*_test' (recibido: {database!r}).")
     return url
@@ -107,6 +122,7 @@ def test_db_url() -> str:
 
 @pytest.fixture(scope="session")
 def migrated_db(test_db_url: str) -> Iterator[str]:
+    """Gestiona migrated db."""
     config = _alembic_config(test_db_url)
     command.downgrade(config, "base")  # parte de una BD limpia aunque una ejecución previa falle
     command.upgrade(config, "head")
@@ -123,5 +139,7 @@ def db_app(migrated_db: str) -> Iterator[FastAPI]:
 
 @pytest.fixture
 def db_client(db_app: FastAPI) -> Iterator[TestClient]:
+    """Gestiona db client."""
+    # Abre y libera los recursos declarados en este bloque.
     with TestClient(db_app) as test_client:
         yield test_client

@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de proyectos. */
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -9,8 +10,10 @@ import { projectDetailRoute } from "./routes";
 import { ProjectsPage } from "./ProjectsPage";
 import type { IdeaAttribute, ProjectDetail } from "./types";
 
+/** Define NOW para el bloque de proyectos. */
 const NOW = "2026-09-24T10:00:00Z";
 
+/** Gestiona attribute de proyectos. */
 function attribute(overrides: Partial<IdeaAttribute>): IdeaAttribute {
   return {
     id: crypto.randomUUID(),
@@ -25,6 +28,7 @@ function attribute(overrides: Partial<IdeaAttribute>): IdeaAttribute {
   };
 }
 
+/** Gestiona project de proyectos. */
 function project(overrides: Partial<ProjectDetail> = {}): ProjectDetail {
   return {
     id: "p1",
@@ -41,7 +45,9 @@ function project(overrides: Partial<ProjectDetail> = {}): ProjectDetail {
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Escenario de prueba: Nuevo proyecto. */
 describe("Nuevo proyecto", () => {
+  /** Escenario de prueba: valida en el cliente y, al crear, abre el detalle del proyecto. */
   it("valida en el cliente y, al crear, abre el detalle del proyecto", async () => {
     const fetchMock = mockFetch(
       apiRoutes([
@@ -73,7 +79,9 @@ describe("Nuevo proyecto", () => {
   });
 });
 
+/** Escenario de prueba: Lista de proyectos. */
 describe("Lista de proyectos", () => {
+  /** Escenario de prueba: el filtro por estado se refleja en la URL y en la consulta a la API. */
   it("el filtro por estado se refleja en la URL y en la consulta a la API", async () => {
     const fetchMock = mockFetch(
       apiRoutes([
@@ -92,16 +100,19 @@ describe("Lista de proyectos", () => {
     expect(lastUrl).toContain("status=draft");
   });
 
+  /** Escenario de prueba: permite eliminar un proyecto desde la lista después de confirmar. */
   it("permite eliminar un proyecto desde la lista después de confirmar", async () => {
     let exists = true;
     const fetchMock = mockFetch((rawUrl, init) => {
       const url = new URL(rawUrl, "http://localhost");
+      /** Rama condicional: url.pathname === "/api/v1/projects" && init.method !== . */
       if (url.pathname === "/api/v1/projects" && init.method !== "DELETE") {
         const items = exists
           ? [{ id: "p1", title: "Agro Conecta", status: "draft", created_at: NOW, updated_at: NOW }]
           : [];
         return jsonResponse(200, { items, total: items.length, limit: 12, offset: 0 });
       }
+      /** Rama condicional: url.pathname === "/api/v1/projects/p1" && init.method =. */
       if (url.pathname === "/api/v1/projects/p1" && init.method === "DELETE") {
         exists = false;
         return jsonResponse(204);
@@ -122,7 +133,9 @@ describe("Lista de proyectos", () => {
   });
 });
 
+/** Escenario de prueba: Detalle del proyecto. */
 describe("Detalle del proyecto", () => {
+  /** Renderiza render detail de proyectos. */
   function renderDetail(detail: ProjectDetail, extraRoutes: Parameters<typeof apiRoutes>[0] = []) {
     const fetchMock = mockFetch(
       apiRoutes([{ path: "/api/v1/projects/p1", respond: () => jsonResponse(200, detail) }, ...extraRoutes]),
@@ -131,6 +144,7 @@ describe("Detalle del proyecto", () => {
     return fetchMock;
   }
 
+  /** Escenario de prueba: muestra los pasos principales y guarda las herramientas opcionales en un me. */
   it("muestra los pasos principales y guarda las herramientas opcionales en un menú", async () => {
     renderDetail(project());
     const navigation = await screen.findByRole("navigation", { name: "Secciones del proyecto" });
@@ -148,6 +162,7 @@ describe("Detalle del proyecto", () => {
     expect(within(navigation).getByRole("link", { name: "Gráficos" })).toBeInTheDocument();
   });
 
+  /** Escenario de prueba: muestra qué falta y no deja confirmar la estructura incompleta. */
   it("muestra qué falta y no deja confirmar la estructura incompleta", async () => {
     renderDetail(
       project({
@@ -163,6 +178,7 @@ describe("Detalle del proyecto", () => {
     expect(screen.getByRole("button", { name: "Guardar y continuar" })).toBeDisabled();
   });
 
+  /** Escenario de prueba: confirma la estructura cuando está lista. */
   it("confirma la estructura cuando está lista", async () => {
     const ready = project({ structure: { ready: true, missing: [], pending_suggestions: 0 } });
     const fetchMock = renderDetail(ready, [
@@ -180,6 +196,7 @@ describe("Detalle del proyecto", () => {
     );
   });
 
+  /** Escenario de prueba: distingue las sugerencias de IA y permite confirmarlas. */
   it("distingue las sugerencias de IA y permite confirmarlas", async () => {
     const suggestion = attribute({ id: "a1", attribute_type: "channels", value: "Redes sociales", origin: "ai", is_confirmed: false });
     const fetchMock = renderDetail(project({ attributes: [suggestion] }), [
@@ -201,6 +218,7 @@ describe("Detalle del proyecto", () => {
     });
   });
 
+  /** Escenario de prueba: muestra 'no encontrado' si el proyecto no existe o es de otro usuario. */
   it("muestra 'no encontrado' si el proyecto no existe o es de otro usuario", async () => {
     mockFetch(() => jsonResponse(404, { error: { code: "project_not_found", message: "El proyecto no existe." } }));
     renderRoutes([projectDetailRoute], "/proyectos/p1");

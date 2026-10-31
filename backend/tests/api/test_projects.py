@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para projects."""
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -11,16 +13,19 @@ BASE = "/api/v1/projects"
 
 @pytest.fixture
 def headers(db_client: TestClient) -> dict[str, str]:
+    """Gestiona encabezados."""
     return user_headers(db_client)
 
 
 def create_project(client: TestClient, headers: dict, title: str = "Agro Conecta") -> dict:
+    """Crea proyecto."""
     response = client.post(BASE, json={"title": title, "raw_idea": IDEA}, headers=headers)
     assert response.status_code == 201, response.text
     return response.json()
 
 
 def add_attribute(client: TestClient, headers: dict, project_id: str, type_: str, value: str):
+    """Agrega atributo."""
     return client.post(
         f"{BASE}/{project_id}/attributes",
         json={"attribute_type": type_, "value": value},
@@ -32,10 +37,12 @@ def add_attribute(client: TestClient, headers: dict, project_id: str, type_: str
 
 
 def test_requires_authentication(db_client: TestClient) -> None:
+    """Prueba el escenario: requires autenticacion."""
     assert db_client.get(BASE).status_code == 401
 
 
 def test_create_project(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: creacion proyecto."""
     response = db_client.post(
         BASE, json={"title": "  Agro Conecta  ", "raw_idea": f"  {IDEA}  "}, headers=headers
     )
@@ -47,6 +54,7 @@ def test_create_project(db_client: TestClient, headers: dict) -> None:
 
 
 def test_create_project_validation(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: creacion proyecto validacion."""
     response = db_client.post(
         BASE, json={"title": "   ", "raw_idea": "muy corta", "status": "analyzed"}, headers=headers
     )
@@ -62,6 +70,7 @@ def test_create_project_validation(db_client: TestClient, headers: dict) -> None
 def test_list_projects_paginated_newest_activity_first(
     db_client: TestClient, headers: dict
 ) -> None:
+    """Prueba el escenario: list proyectos paginated newest activity first."""
     first = create_project(db_client, headers, "Primero")
     create_project(db_client, headers, "Segundo")
     create_project(db_client, headers, "Tercero")
@@ -80,6 +89,7 @@ def test_list_projects_paginated_newest_activity_first(
 def test_list_projects_filter_by_status(
     db_client: TestClient, headers: dict, migrated_db: str
 ) -> None:
+    """Prueba el escenario: list proyectos filter por estado."""
     project = create_project(db_client, headers)
     create_project(db_client, headers, "Otro")
     run_sql(
@@ -93,11 +103,13 @@ def test_list_projects_filter_by_status(
 
 
 def test_list_projects_invalid_pagination(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: list proyectos invalido pagination."""
     assert db_client.get(BASE, params={"limit": 101}, headers=headers).status_code == 422
     assert db_client.get(BASE, params={"offset": -1}, headers=headers).status_code == 422
 
 
 def test_get_project_detail_with_attributes(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: get proyecto detalle con atributos."""
     project = create_project(db_client, headers)
     add_attribute(db_client, headers, project["id"], "solution", "Marketplace B2B")
     add_attribute(db_client, headers, project["id"], "problem", "Intermediarios caros")
@@ -108,6 +120,7 @@ def test_get_project_detail_with_attributes(db_client: TestClient, headers: dict
 
 
 def test_update_project(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: actualizacion proyecto."""
     project = create_project(db_client, headers)
     response = db_client.patch(
         f"{BASE}/{project['id']}", json={"title": "Nuevo título"}, headers=headers
@@ -119,6 +132,7 @@ def test_update_project(db_client: TestClient, headers: dict) -> None:
 
 
 def test_update_project_rejects_null_and_status(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: actualizacion proyecto rejects null and estado."""
     project = create_project(db_client, headers)
     url = f"{BASE}/{project['id']}"
     assert db_client.patch(url, json={"title": None}, headers=headers).status_code == 422
@@ -126,6 +140,7 @@ def test_update_project_rejects_null_and_status(db_client: TestClient, headers: 
 
 
 def test_delete_project_cascades(db_client: TestClient, headers: dict, migrated_db: str) -> None:
+    """Prueba el escenario: borrado proyecto cascades."""
     project = create_project(db_client, headers)
     add_attribute(db_client, headers, project["id"], "problem", "Intermediarios caros")
     assert db_client.delete(f"{BASE}/{project['id']}", headers=headers).status_code == 204
@@ -134,11 +149,13 @@ def test_delete_project_cascades(db_client: TestClient, headers: dict, migrated_
 
 
 def test_other_users_projects_are_invisible(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: otro usuarios proyectos are invisible."""
     project = create_project(db_client, headers)
     intruder = user_headers(db_client, "intruso@ideaforge.dev")
     url = f"{BASE}/{project['id']}"
 
     assert db_client.get(BASE, headers=intruder).json()["total"] == 0
+    # Itera response sobre (db_client.get(url, headers=intruder), db_client.patch(url, json={un val.
     for response in (
         db_client.get(url, headers=intruder),
         db_client.patch(url, json={"title": "Hackeado"}, headers=intruder),
@@ -152,6 +169,7 @@ def test_other_users_projects_are_invisible(db_client: TestClient, headers: dict
 
 
 def test_invalid_project_id(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: invalido proyecto id."""
     assert db_client.get(f"{BASE}/no-es-uuid", headers=headers).status_code == 422
 
 
@@ -159,6 +177,7 @@ def test_invalid_project_id(db_client: TestClient, headers: dict) -> None:
 
 
 def test_user_attributes_are_confirmed_and_positioned(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: usuario atributos are confirmed and positioned."""
     project = create_project(db_client, headers)
     first = add_attribute(db_client, headers, project["id"], "channels", "  Venta directa  ")
     second = add_attribute(db_client, headers, project["id"], "channels", "Redes sociales")
@@ -171,6 +190,7 @@ def test_user_attributes_are_confirmed_and_positioned(db_client: TestClient, hea
 
 
 def test_attribute_validation(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: atributo validacion."""
     project = create_project(db_client, headers)
     bad_type = add_attribute(db_client, headers, project["id"], "competitors", "x")
     empty = add_attribute(db_client, headers, project["id"], "problem", "   ")
@@ -184,7 +204,9 @@ def test_attribute_validation(db_client: TestClient, headers: dict) -> None:
 
 
 def test_attribute_limit_per_type(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: atributo limite per tipo."""
     project = create_project(db_client, headers)
+    # Itera i sobre range(MAX_VALUES_PER_ATTRIBUTE).
     for i in range(MAX_VALUES_PER_ATTRIBUTE):
         response = add_attribute(db_client, headers, project["id"], "channels", f"c{i}")
         assert response.status_code == 201
@@ -196,6 +218,7 @@ def test_attribute_limit_per_type(db_client: TestClient, headers: dict) -> None:
 def test_editing_ai_suggestion_turns_it_into_user_data(
     db_client: TestClient, headers: dict, migrated_db: str
 ) -> None:
+    """Prueba el escenario: editing ai suggestion turns it into usuario data."""
     project = create_project(db_client, headers)
     attribute_id = str(
         fetch_scalar(
@@ -222,6 +245,7 @@ def test_editing_ai_suggestion_turns_it_into_user_data(
 
 
 def test_delete_attribute(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: borrado atributo."""
     project = create_project(db_client, headers)
     attribute = add_attribute(db_client, headers, project["id"], "problem", "x").json()
     url = f"{BASE}/{project['id']}/attributes/{attribute['id']}"
@@ -231,10 +255,13 @@ def test_delete_attribute(db_client: TestClient, headers: dict) -> None:
 
 
 def confirm(client: TestClient, headers: dict, project_id: str):
+    """Gestiona confirm."""
     return client.post(f"{BASE}/{project_id}/confirm-structure", headers=headers)
 
 
 def fill_required(client: TestClient, headers: dict, project_id: str) -> None:
+    """Gestiona fill obligatorio."""
+    # Itera type_ sobre (un valor, un valor, un valor).
     for type_ in ("problem", "solution", "customer_segment"):
         response = add_attribute(client, headers, project_id, type_, f"valor {type_}")
         assert response.status_code == 201
@@ -244,6 +271,7 @@ def fill_required(client: TestClient, headers: dict, project_id: str) -> None:
 
 
 def test_detail_reports_structure_check(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: detalle informes estructura check."""
     project = create_project(db_client, headers)
     add_attribute(db_client, headers, project["id"], "problem", "Precios altos")
     structure = db_client.get(f"{BASE}/{project['id']}", headers=headers).json()["structure"]
@@ -255,6 +283,7 @@ def test_detail_reports_structure_check(db_client: TestClient, headers: dict) ->
 
 
 def test_confirm_structure_requires_minimum(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: confirm estructura requires minimo."""
     project = create_project(db_client, headers)
     add_attribute(db_client, headers, project["id"], "problem", "Precios altos")
     response = confirm(db_client, headers, project["id"])
@@ -267,6 +296,7 @@ def test_confirm_structure_requires_minimum(db_client: TestClient, headers: dict
 def test_confirm_structure_blocked_by_pending_ai_suggestions(
     db_client: TestClient, headers: dict, migrated_db: str
 ) -> None:
+    """Prueba el escenario: confirm estructura blocked por pending ai suggestions."""
     project = create_project(db_client, headers)
     fill_required(db_client, headers, project["id"])
     run_sql(
@@ -283,6 +313,7 @@ def test_confirm_structure_blocked_by_pending_ai_suggestions(
 def test_confirm_structure_and_revert_to_draft_on_edit(
     db_client: TestClient, headers: dict
 ) -> None:
+    """Prueba el escenario: confirm estructura and revert to draft on edit."""
     project = create_project(db_client, headers)
     fill_required(db_client, headers, project["id"])
     confirmed = confirm(db_client, headers, project["id"])
@@ -307,6 +338,7 @@ def test_confirm_structure_and_revert_to_draft_on_edit(
 def test_confirm_structure_rejected_while_researching(
     db_client: TestClient, headers: dict, migrated_db: str
 ) -> None:
+    """Prueba el escenario: confirm estructura rejected while researching."""
     project = create_project(db_client, headers)
     fill_required(db_client, headers, project["id"])
     run_sql(migrated_db, "UPDATE projects SET status = 'researching'")
@@ -316,6 +348,7 @@ def test_confirm_structure_rejected_while_researching(
 
 
 def test_projects_overview(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: proyectos overview."""
     empty = db_client.get(f"{BASE}/summary", headers=headers).json()
     assert empty == {
         "total": 0,
@@ -335,6 +368,7 @@ def test_projects_overview(db_client: TestClient, headers: dict) -> None:
 
 
 def test_attribute_must_belong_to_project_in_url(db_client: TestClient, headers: dict) -> None:
+    """Prueba el escenario: atributo must belong to proyecto in URL."""
     project_a = create_project(db_client, headers, "A")
     project_b = create_project(db_client, headers, "B")
     attribute = add_attribute(db_client, headers, project_a["id"], "problem", "x").json()

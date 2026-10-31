@@ -1,3 +1,5 @@
+"""Define el contrato comun de adaptadores. Area: aplicacion."""
+
 import uuid
 from datetime import datetime
 from enum import StrEnum
@@ -17,6 +19,8 @@ NAMING_CONVENTION = {
 
 
 class Base(DeclarativeBase):
+    """Representa base."""
+
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
     type_annotation_map = {datetime: DateTime(timezone=True), str: Text}
     # Recupera con RETURNING los valores generados por la BD (id, created_at, updated_at)
@@ -38,16 +42,22 @@ def str_enum(enum_cls: type[StrEnum], name: str, length: int = 20) -> Enum:
 
 
 class UUIDPrimaryKeyMixin:
+    """Representa uuidprimary clave mixin."""
+
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, server_default=text("uuidv7()"), sort_order=-100
     )
 
 
 class CreatedAtMixin:
+    """Representa created at mixin."""
+
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), sort_order=100)
 
 
 class TimestampMixin(CreatedAtMixin):
+    """Anade updated_at, cuyo valor mantiene el trigger de PostgreSQL."""
+
     # El trigger set_updated_at() lo mantiene; FetchedValue indica al ORM que lo relea.
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), server_onupdate=FetchedValue(), sort_order=101

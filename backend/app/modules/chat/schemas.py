@@ -1,3 +1,5 @@
+"""Valida contratos de entrada/salida. Area: asistente contextual."""
+
 import uuid
 from typing import Annotated, Literal
 
@@ -12,6 +14,8 @@ ChatHistoryText = Annotated[
 
 
 class ChatTurn(BaseModel):
+    """Representa chat turn."""
+
     model_config = ConfigDict(extra="forbid")
 
     role: Literal["user", "assistant"]
@@ -19,6 +23,8 @@ class ChatTurn(BaseModel):
 
 
 class ChatRequest(BaseModel):
+    """Representa chat solicitud."""
+
     model_config = ConfigDict(extra="forbid")
 
     message: ChatText
@@ -26,12 +32,17 @@ class ChatRequest(BaseModel):
 
     @model_validator(mode="after")
     def limit_conversation_size(self) -> "ChatRequest":
+        """Gestiona conversation size en chat."""
+        # Rama condicional: evalua len(self.message) + sum((len(turn.content) for turn in
+        # self.history)) > .
         if len(self.message) + sum(len(turn.content) for turn in self.history) > 3000:
             raise ValueError("La conversación es demasiado larga; inicia una conversación nueva.")
         return self
 
 
 class ChatAnswer(BaseModel):
+    """Representa chat answer."""
+
     model_config = ConfigDict(extra="forbid")
 
     answer: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -39,6 +50,8 @@ class ChatAnswer(BaseModel):
 
 
 class ChatEvidenceReference(BaseModel):
+    """Representa chat evidencia referencia."""
+
     stance: Literal["supports", "contradicts", "context"]
     content: str
     source_url: str | None
@@ -47,6 +60,8 @@ class ChatEvidenceReference(BaseModel):
 
 
 class ChatFindingReference(BaseModel):
+    """Representa chat hallazgo referencia."""
+
     id: uuid.UUID
     finding_type: ResearchCategory
     statement: str
@@ -57,6 +72,8 @@ class ChatFindingReference(BaseModel):
 
 
 class ChatResponse(BaseModel):
+    """Representa chat respuesta."""
+
     answer: str
     references: list[ChatFindingReference]
     provider: AIProviderName | None = None

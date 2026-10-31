@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de graficas. */
 import { screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -8,7 +9,9 @@ import { projectDetailRoute } from "../projects/routes";
 import type { ProjectDetail } from "../projects/types";
 import type { Source } from "../research/types";
 
+/** Define NOW para el bloque de graficas. */
 const NOW = "2026-10-01T10:00:00Z";
+/** Define PROJECT para el bloque de graficas. */
 const PROJECT: ProjectDetail = {
   id: "p1",
   title: "La Michoacana",
@@ -20,6 +23,7 @@ const PROJECT: ProjectDetail = {
   structure: { ready: true, missing: [], pending_suggestions: 0 },
 };
 
+/** Gestiona finding de graficas. */
 function finding(overrides: Partial<Finding> = {}): Finding {
   return {
     id: "f1",
@@ -38,6 +42,7 @@ function finding(overrides: Partial<Finding> = {}): Finding {
   };
 }
 
+/** Gestiona competitor de graficas. */
 function competitor(overrides: Partial<Competitor> = {}): Competitor {
   return {
     id: "c1",
@@ -55,6 +60,7 @@ function competitor(overrides: Partial<Competitor> = {}): Competitor {
   };
 }
 
+/** Define SOURCE para el bloque de graficas. */
 const SOURCE: Source = {
   id: "s1",
   url: "https://ejemplo.test/noticia",
@@ -65,6 +71,7 @@ const SOURCE: Source = {
   citation_count: 1,
   evidence_count: 1,
 };
+/** Define SOURCE_AUGUST para el bloque de graficas. */
 const SOURCE_AUGUST: Source = {
   ...SOURCE,
   id: "s2",
@@ -75,6 +82,7 @@ const SOURCE_AUGUST: Source = {
   created_at: "2026-08-15T10:00:00Z",
 };
 
+/** Renderiza render de graficas. */
 function render(findings: Finding[], competitors: Competitor[] = [], sources: Source[] = []) {
   mockFetch(
     apiRoutes([
@@ -89,7 +97,9 @@ function render(findings: Finding[], competitors: Competitor[] = [], sources: So
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Escenario de prueba: Visualizaciones del proyecto. */
 describe("Visualizaciones del proyecto", () => {
+  /** Escenario de prueba: resume hallazgos, alternativas, fuentes y actividad del proyecto abierto. */
   it("resume hallazgos, alternativas, fuentes y actividad del proyecto abierto", async () => {
     render(
       [
@@ -119,6 +129,7 @@ describe("Visualizaciones del proyecto", () => {
     expect(screen.getByText("resultados")).toBeInTheDocument();
   });
 
+  /** Escenario de prueba: muestra los gráficos vacíos cuando el proyecto todavía no tiene hallazgos. */
   it("muestra los gráficos vacíos cuando el proyecto todavía no tiene hallazgos", async () => {
     render([]);
 

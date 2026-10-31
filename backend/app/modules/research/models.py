@@ -1,3 +1,5 @@
+"""Define entidades ORM y restricciones de persistencia. Area: investigacion web."""
+
 import uuid
 from datetime import datetime
 from enum import StrEnum
@@ -20,6 +22,8 @@ from app.db.base import Base, CreatedAtMixin, TimestampMixin, UUIDPrimaryKeyMixi
 
 
 class RunStatus(StrEnum):
+    """Representa ejecucion estado."""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -31,6 +35,8 @@ ACTIVE_RUN_STATUSES = (RunStatus.PENDING, RunStatus.RUNNING)
 
 
 class RunStep(StrEnum):
+    """Representa ejecucion step."""
+
     PLANNING = "planning"
     SEARCHING = "searching"
     EXTRACTING = "extracting"
@@ -39,12 +45,16 @@ class RunStep(StrEnum):
 
 
 class QueryStatus(StrEnum):
+    """Representa consulta estado."""
+
     PENDING = "pending"
     COMPLETED = "completed"
     FAILED = "failed"
 
 
 class SourceType(StrEnum):
+    """Representa fuente tipo."""
+
     NEWS = "news"
     COMPANY_SITE = "company_site"
     GOVERNMENT = "government"
@@ -67,6 +77,8 @@ def research_run_fk(ondelete: str) -> ForeignKeyConstraint:
 
 
 class ResearchRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Representa investigacion ejecucion."""
+
     __tablename__ = "research_runs"
     __table_args__ = (
         UniqueConstraint("id", "project_id"),
@@ -102,6 +114,8 @@ class ResearchRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class ResearchQuery(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
+    """Representa investigacion consulta."""
+
     __tablename__ = "research_queries"
     __table_args__ = (
         UniqueConstraint("run_id", "position"),
@@ -124,6 +138,8 @@ class ResearchQuery(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
 
 
 class Source(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
+    """Representa fuente."""
+
     __tablename__ = "sources"
     __table_args__ = (
         UniqueConstraint("project_id", "canonical_url"),
@@ -143,6 +159,8 @@ class Source(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
 
 
 class ResearchQuerySource(Base):
+    """Representa investigacion consulta fuente."""
+
     __tablename__ = "research_query_sources"
 
     query_id: Mapped[uuid.UUID] = mapped_column(

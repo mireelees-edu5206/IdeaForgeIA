@@ -82,9 +82,12 @@ RUN_ERROR_MESSAGES = {
 
 
 def _search_failure_code(error_codes: Counter[str]) -> str:
+    """Gestiona busqueda fallo code."""
+    # Rama condicional: se cumple not error_codes.
     if not error_codes:
         return "all_searches_failed"
     failures = error_codes.most_common()
+    # Rama condicional: se cumple len(failures) > 1 and failures[0][1] == failures[1][1].
     if len(failures) > 1 and failures[0][1] == failures[1][1]:
         return "all_searches_failed"
     code = failures[0][0]
@@ -97,16 +100,22 @@ SEARCH_END_PROGRESS = 80
 
 
 class ResearchFailedError(Exception):
+    """Error que representa investigacion fallido."""
+
     def __init__(self, code: str) -> None:
+        """Gestiona la inicializacion para investigacion."""
         self.code = code
         super().__init__(code)
 
 
 def _now() -> datetime:
+    """Gestiona now."""
     return datetime.now(UTC)
 
 
 def mark_run_failed(run: ResearchRun, project: Project | None, code: str) -> None:
+    """Marca ejecucion fallido."""
+    # Rama condicional: se cumple run.current_step == RunStep.ANALYZING.
     if run.current_step == RunStep.ANALYZING:
         # Falló el análisis (Fase 11): la investigación y sus hallazgos siguen siendo válidos.
         run.status = RunStatus.COMPLETED
@@ -132,12 +141,15 @@ def mark_run_failed(run: ResearchRun, project: Project | None, code: str) -> Non
 
 
 class ResearchOrchestrator:
+    """Representa investigacion orchestrator."""
+
     def __init__(
         self,
         sessionmaker: async_sessionmaker[AsyncSession],
         provider: AIProvider,
         settings: Settings,
     ) -> None:
+        """Gestiona la inicializacion para investigacion."""
         self.sessionmaker = sessionmaker
         self.provider = provider
         self.settings = settings
@@ -145,11 +157,15 @@ class ResearchOrchestrator:
 
     async def run(self, run_id: uuid.UUID) -> None:
         """Punto de entrada de la tarea en segundo plano: nunca propaga excepciones."""
+        # Abre y libera los recursos declarados en este bloque.
         async with self.sessionmaker() as session:
+            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 await self._execute(session, run_id)
+            # Maneja el error Exception sin detener el flujo esperado.
             except Exception as exc:
                 code = exc.code if isinstance(exc, ResearchFailedError | AIProviderError) else None
+                # Rama condicional: se cumple code is None.
                 if code is None:
                     logger.exception("Error no controlado en la investigación %s", run_id)
                 else:
@@ -157,21 +173,28 @@ class ResearchOrchestrator:
                 await self._fail(session, run_id, code or "internal_error")
 
     async def _fail(self, session: AsyncSession, run_id: uuid.UUID, code: str) -> None:
+        """Gestiona fail."""
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             await session.rollback()
             run = await session.get(ResearchRun, run_id)
+            # Rama condicional: se cumple run is None.
             if run is None:  # el proyecto se borró mientras tanto
                 return
             mark_run_failed(run, await session.get(Project, run.project_id), code)
             await session.commit()
+        # Maneja el error Exception sin detener el flujo esperado.
         except Exception:
             logger.exception("No se pudo registrar el fallo de la investigación %s", run_id)
 
     async def _execute(self, session: AsyncSession, run_id: uuid.UUID) -> None:
+        """Gestiona execute."""
         run = await session.get(ResearchRun, run_id)
+        # Rama condicional: se cumple run is None or run.status != RunStatus.PENDING.
         if run is None or run.status != RunStatus.PENDING:
             return
         project = await session.get(Project, run.project_id)
+        # Rama condicional: se cumple project is None.
         if project is None:
             return
         attributes = await IdeaAttributeRepository(session).list_for_project(project.id)
@@ -197,6 +220,7 @@ class ResearchOrchestrator:
     async def _plan(
         self, session: AsyncSession, ctx: AICallContext, run: ResearchRun, context: str
     ) -> list[ResearchQuery]:
+        """Planea el flujo principal."""
         max_questions = self.settings.research_max_questions
         outcome = await timed_call(
             self.provider.generate_structured(
@@ -214,14 +238,17 @@ class ResearchOrchestrator:
                 outcome.result.usage if outcome.result else None,
             )
         )
+        # Rama condicional: se cumple outcome.error or outcome.result is None.
         if outcome.error or outcome.result is None:
             await session.commit()  # conserva el registro de consumo del intento fallido
             raise outcome.error or ResearchFailedError("ai_error")
 
         seen: set[str] = set()
         queries: list[ResearchQuery] = []
+        # Itera planned sobre outcome.result.data.questions.
         for planned in outcome.result.data.questions:
             key = planned.question.casefold()
+            # Rama condicional: se cumple key in seen.
             if key in seen:
                 continue
             seen.add(key)
@@ -233,8 +260,10 @@ class ResearchOrchestrator:
                     question=planned.question,
                 )
             )
+            # Rama condicional: se cumple len(queries) == max_questions.
             if len(queries) == max_questions:
                 break
+        # Rama condicional: se cumple not queries.
         if not queries:
             await session.commit()
             raise ResearchFailedError("empty_plan")
@@ -248,6 +277,8 @@ class ResearchOrchestrator:
     async def _grounded(
         self, query: ResearchQuery, context: str
     ) -> tuple[ResearchQuery, AICallOutcome[GroundedResult]]:
+        """Gestiona fundamentada."""
+        # Abre y libera los recursos declarados en este bloque.
         async with self._semaphore:
             outcome = await timed_call(
                 self.provider.generate_grounded(
@@ -266,11 +297,14 @@ class ResearchOrchestrator:
         queries: list[ResearchQuery],
         context: str,
     ) -> None:
+        """Ejecuta busquedas concurrentes y persiste cada resultado en una sola sesion."""
         # Las llamadas a la IA van en paralelo; la sesión de BD se usa solo desde este bucle.
         tasks = [asyncio.create_task(self._grounded(q, context)) for q in queries]
         completed = 0
         failure_codes: Counter[str] = Counter()
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
+            # Itera next_done sobre asyncio.as_completed(tasks).
             for next_done in asyncio.as_completed(tasks):
                 query, outcome = await next_done
                 session.add_all(
@@ -283,6 +317,7 @@ class ResearchOrchestrator:
                         outcome.result.usage if outcome.result else None,
                     )
                 )
+                # Rama condicional: se cumple outcome.result is not None.
                 if outcome.result is not None:
                     await self._save_grounded(session, project.id, query, outcome.result)
                     completed += 1
@@ -295,8 +330,10 @@ class ResearchOrchestrator:
                 )
                 await session.commit()
         finally:
+            # Itera task sobre tasks.
             for task in tasks:
                 task.cancel()
+        # Rama condicional: se cumple completed == 0.
         if completed == 0:
             raise ResearchFailedError(_search_failure_code(failure_codes))
 
@@ -308,6 +345,7 @@ class ResearchOrchestrator:
         queries: list[ResearchQuery],
         context: str,
     ) -> None:
+        """Extrae el flujo principal."""
         run.current_step = RunStep.EXTRACTING
         run.progress_pct = SEARCH_END_PROGRESS
         await session.commit()
@@ -320,6 +358,7 @@ class ResearchOrchestrator:
             .order_by(ResearchQuery.position, Evidence.span_start, Evidence.id)
         )
         items = build_evidence_items(list(rows.tuples()))
+        # Rama condicional: se cumple not items.
         if not items:  # sin evidencia citada no puede haber hallazgos
             return
         answered = [q for q in queries if q.status == QueryStatus.COMPLETED]
@@ -339,6 +378,7 @@ class ResearchOrchestrator:
                 outcome.result.usage if outcome.result else None,
             )
         )
+        # Rama condicional: se cumple outcome.result is None.
         if outcome.result is None:
             logger.warning("Extracción fallida en %s: %s", run.id, outcome.error)
             run.error_code = "extraction_failed"
@@ -348,6 +388,7 @@ class ResearchOrchestrator:
         stats = await save_extraction(
             session, run.project_id, run.id, outcome.result.data, items, answered
         )
+        # Rama condicional: se cumple stats.discarded_findings or stats.dropped_entities.
         if stats.discarded_findings or stats.dropped_entities:
             logger.info(
                 "Extracción %s: %d hallazgos descartados sin evidencia, %d entidades no halladas",
@@ -364,6 +405,7 @@ class ResearchOrchestrator:
         query: ResearchQuery,
         result: GroundedResult,
     ) -> None:
+        """Gestiona save fundamentada."""
         text = result.text
         query.response_text = text
         query.executed_queries = [q for q in result.executed_queries if q][:20]
@@ -373,8 +415,10 @@ class ResearchOrchestrator:
 
         sources = SourceRepository(session)
         source_ids: dict[int, uuid.UUID] = {}
+        # Itera (index, grounded) sobre enumerate(result.sources).
         for index, grounded in enumerate(result.sources):
             url = normalize_url(grounded.url)
+            # Rama condicional: se cumple url is None.
             if url is None:
                 continue
             title = (grounded.title or "").strip()[:500] or None
@@ -386,8 +430,10 @@ class ResearchOrchestrator:
         cited |= {i for i, s in enumerate(result.sources) if s.cited}
         # Dos URLs distintas pueden normalizarse a la misma fuente: se fusionan.
         links: dict[uuid.UUID, ResearchQuerySource] = {}
+        # Itera (index, source_id) sobre source_ids.items().
         for index, source_id in source_ids.items():
             link = links.get(source_id)
+            # Rama condicional: se cumple link is None.
             if link is None:
                 links[source_id] = ResearchQuerySource(
                     query_id=query.id, source_id=source_id, was_cited=index in cited, rank=index
@@ -397,12 +443,18 @@ class ResearchOrchestrator:
         session.add_all(links.values())
 
         seen: set[tuple[uuid.UUID, int, int]] = set()
+        # Itera citation sobre result.citations.
         for citation in result.citations:
             start, end = citation.start, citation.end
+            # Rama condicional: evalua not 0 <= start < end <= len(text) or not
+            # text[start:end].strip().
             if not 0 <= start < end <= len(text) or not text[start:end].strip():
                 continue  # span fuera del texto: se descarta en lugar de guardar evidencia falsa
+            # Itera index sobre citation.source_indexes.
             for index in citation.source_indexes:
                 source_id = source_ids.get(index)
+                # Rama condicional: se cumple source_id is None or (source_id, start, end) in
+                # seen.
                 if source_id is None or (source_id, start, end) in seen:
                     continue
                 seen.add((source_id, start, end))
@@ -421,8 +473,10 @@ class ResearchOrchestrator:
 
 async def recover_interrupted_runs(sessionmaker: async_sessionmaker[AsyncSession]) -> int:
     """Al arrancar no hay tareas en curso: las ejecuciones activas quedaron huérfanas."""
+    # Abre y libera los recursos declarados en este bloque.
     async with sessionmaker() as session:
         runs = await ResearchRunRepository(session).list_active()
+        # Itera run sobre runs.
         for run in runs:
             mark_run_failed(run, await session.get(Project, run.project_id), "interrupted")
         await session.commit()

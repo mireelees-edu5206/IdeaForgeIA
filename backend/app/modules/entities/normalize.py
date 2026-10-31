@@ -35,6 +35,7 @@ def fold(text: str) -> str:
 
 
 def normalize_entity_name(name: str) -> str:
+    """Normaliza entity name en entidades."""
     folded = fold(name)
     stripped = _SUFFIX_RE.sub("", folded).strip()
     return (stripped or folded)[:200]

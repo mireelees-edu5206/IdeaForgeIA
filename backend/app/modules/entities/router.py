@@ -1,3 +1,5 @@
+"""Expone endpoints HTTP del dominio. Area: entidades."""
+
 import uuid
 from typing import Annotated
 
@@ -16,6 +18,7 @@ router = APIRouter(prefix="/projects/{project_id}", tags=["entities"])
 
 
 def get_entity_service(db: DbSession) -> EntityService:
+    """Obtiene entity service en entidades."""
     return EntityService(db)
 
 
@@ -26,6 +29,7 @@ Service = Annotated[EntityService, Depends(get_entity_service)]
 async def list_entities(
     project_id: uuid.UUID, user: CurrentUser, service: Service
 ) -> list[EntityRead]:
+    """Lista entities en entidades."""
     return await service.list_entities(user, project_id)
 
 
@@ -33,6 +37,7 @@ async def list_entities(
 async def list_competitors(
     project_id: uuid.UUID, user: CurrentUser, service: Service
 ) -> list[CompetitorRead]:
+    """Lista competitors en entidades."""
     return await service.list_competitors(user, project_id)
 
 
@@ -40,6 +45,7 @@ async def list_competitors(
 async def create_competitor(
     project_id: uuid.UUID, data: CompetitorCreate, user: CurrentUser, service: Service
 ) -> CompetitorRead:
+    """Crea competitor en entidades."""
     return await service.create_competitor(user, project_id, data)
 
 
@@ -51,6 +57,7 @@ async def update_competitor(
     user: CurrentUser,
     service: Service,
 ) -> CompetitorRead:
+    """Actualiza competitor en entidades."""
     return await service.update_competitor(user, project_id, competitor_id, data)
 
 
@@ -58,4 +65,5 @@ async def update_competitor(
 async def delete_competitor(
     project_id: uuid.UUID, competitor_id: uuid.UUID, user: CurrentUser, service: Service
 ) -> None:
+    """Elimina competitor en entidades."""
     await service.delete_competitor(user, project_id, competitor_id)

@@ -1,3 +1,5 @@
+"""Agrupa consultas SQL del dominio. Area: investigacion web."""
+
 import uuid
 from datetime import datetime
 
@@ -19,10 +21,14 @@ from app.modules.research.urls import NormalizedUrl
 
 
 class ResearchRunRepository:
+    """Repositorio de consultas para investigacion ejecucion."""
+
     def __init__(self, session: AsyncSession) -> None:
+        """Gestiona la inicializacion para investigacion."""
         self.session = session
 
     async def has_active(self, project_id: uuid.UUID) -> bool:
+        """Indica si activo."""
         return bool(
             await self.session.scalar(
                 select(
@@ -37,6 +43,7 @@ class ResearchRunRepository:
         )
 
     async def count_for_user_since(self, user_id: uuid.UUID, since: datetime) -> int:
+        """Cuenta para usuario since."""
         count = await self.session.scalar(
             select(func.count())
             .select_from(ResearchRun)
@@ -46,6 +53,7 @@ class ResearchRunRepository:
         return count or 0
 
     async def list_for_project(self, project_id: uuid.UUID) -> list[ResearchRun]:
+        """Lista para proyecto."""
         runs = await self.session.scalars(
             select(ResearchRun)
             .where(ResearchRun.project_id == project_id)
@@ -54,6 +62,7 @@ class ResearchRunRepository:
         return list(runs)
 
     async def get(self, project_id: uuid.UUID, run_id: uuid.UUID) -> ResearchRun | None:
+        """Obtiene el flujo principal."""
         return await self.session.scalar(
             select(ResearchRun).where(
                 ResearchRun.id == run_id, ResearchRun.project_id == project_id
@@ -61,20 +70,26 @@ class ResearchRunRepository:
         )
 
     async def list_active(self) -> list[ResearchRun]:
+        """Lista activo."""
         runs = await self.session.scalars(
             select(ResearchRun).where(ResearchRun.status.in_(ACTIVE_RUN_STATUSES))
         )
         return list(runs)
 
     def add(self, run: ResearchRun) -> None:
+        """Agrega el flujo principal."""
         self.session.add(run)
 
 
 class ResearchQueryRepository:
+    """Repositorio de consultas para investigacion consulta."""
+
     def __init__(self, session: AsyncSession) -> None:
+        """Gestiona la inicializacion para investigacion."""
         self.session = session
 
     async def list_for_run(self, run_id: uuid.UUID) -> list[ResearchQuery]:
+        """Lista para ejecucion."""
         queries = await self.session.scalars(
             select(ResearchQuery)
             .where(ResearchQuery.run_id == run_id)
@@ -85,6 +100,7 @@ class ResearchQueryRepository:
     async def sources_for_queries(
         self, query_ids: list[uuid.UUID]
     ) -> list[tuple[ResearchQuerySource, Source]]:
+        """Gestiona fuentes para consultas."""
         rows = await self.session.execute(
             select(ResearchQuerySource, Source)
             .join(Source, Source.id == ResearchQuerySource.source_id)
@@ -94,6 +110,7 @@ class ResearchQueryRepository:
         return list(rows.tuples())
 
     async def evidence_for_queries(self, query_ids: list[uuid.UUID]) -> list[Evidence]:
+        """Gestiona evidencia para consultas."""
         evidence = await self.session.scalars(
             select(Evidence)
             .where(Evidence.query_id.in_(query_ids))
@@ -103,7 +120,10 @@ class ResearchQueryRepository:
 
 
 class SourceRepository:
+    """Repositorio de consultas para fuente."""
+
     def __init__(self, session: AsyncSession) -> None:
+        """Gestiona la inicializacion para investigacion."""
         self.session = session
 
     async def upsert(
@@ -129,6 +149,7 @@ class SourceRepository:
         return (await self.session.execute(stmt)).scalar_one()
 
     async def list_with_counts(self, project_id: uuid.UUID) -> list[tuple[Source, int, int]]:
+        """Lista con counts."""
         citations = (
             select(func.count())
             .where(

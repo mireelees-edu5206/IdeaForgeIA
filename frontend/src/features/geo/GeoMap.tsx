@@ -1,12 +1,16 @@
+/** Dibuja ubicaciones y resultados con Leaflet. */
 import { useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 import type { GeoBusiness, GeoPlace } from "./types";
 
+/** Define DEFAULT_VIEW para el bloque de mapa y zonas. */
 const DEFAULT_VIEW: [number, number] = [19.2925, -99.6569];
+/** Define DEFAULT_ZOOM para el bloque de mapa y zonas. */
 const DEFAULT_ZOOM = 12;
 
+/** Contrato de datos GeoMapProps utilizado por mapa y zonas. */
 interface GeoMapProps {
   center: GeoPlace | null;
   places: GeoBusiness[];
@@ -14,6 +18,7 @@ interface GeoMapProps {
   onSelectLocation?: (latitude: number, longitude: number) => void;
 }
 
+/** Expone la funcion geo map para el flujo de geo. */
 export function GeoMap({ center, places, radiusM, onSelectLocation }: GeoMapProps) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
@@ -23,6 +28,7 @@ export function GeoMap({ center, places, radiusM, onSelectLocation }: GeoMapProp
   onSelectRef.current = onSelectLocation;
 
   useEffect(() => {
+    /** Rama condicional: !container.current || map.current. */
     if (!container.current || map.current) return;
     const initialLat = center ? Number(center.latitude) : DEFAULT_VIEW[0];
     const initialLng = center ? Number(center.longitude) : DEFAULT_VIEW[1];
@@ -61,17 +67,21 @@ export function GeoMap({ center, places, radiusM, onSelectLocation }: GeoMapProp
   useEffect(() => {
     const instance = map.current;
     const layer = markers.current;
+    /** Rama condicional: !instance || !layer. */
     if (!instance || !layer) return;
 
     layer.clearLayers();
     radiusCircle.current?.removeFrom(instance);
     radiusCircle.current = null;
 
+    /** Rama condicional: !center. */
     if (!center) return;
     const lat = Number(center.latitude);
     const lng = Number(center.longitude);
+    /** Rama condicional: !Number.isFinite(lat) || !Number.isFinite(lng). */
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
+    /** Maneja fallos de la operacion del bloque mapa y zonas. */
     try {
       instance.setView([lat, lng], Math.max(instance.getZoom(), 14), { animate: false });
       radiusCircle.current = L.circle([lat, lng], {
@@ -99,9 +109,11 @@ export function GeoMap({ center, places, radiusM, onSelectLocation }: GeoMapProp
         onSelectRef.current?.(pos.lat, pos.lng);
       });
 
+      /** Recorre los elementos del bloque mapa y zonas. */
       for (const place of places) {
         const pLat = Number(place.latitude);
         const pLng = Number(place.longitude);
+        /** Rama condicional: !Number.isFinite(pLat) || !Number.isFinite(pLng). */
         if (!Number.isFinite(pLat) || !Number.isFinite(pLng)) continue;
         L.circleMarker([pLat, pLng], {
           radius: 6,
@@ -115,6 +127,7 @@ export function GeoMap({ center, places, radiusM, onSelectLocation }: GeoMapProp
       }
 
       const bounds = radiusCircle.current.getBounds();
+      /** Rama condicional: bounds.isValid(). */
       if (bounds.isValid()) {
         instance.fitBounds(bounds, {
           padding: [20, 20],
@@ -140,12 +153,14 @@ export function GeoMap({ center, places, radiusM, onSelectLocation }: GeoMapProp
   );
 }
 
+/** Gestiona popup for location de mapa y zonas. */
 function popupForLocation(name: string): HTMLElement {
   const content = document.createElement("strong");
   content.textContent = name;
   return content;
 }
 
+/** Gestiona popup for business de mapa y zonas. */
 function popupForBusiness(place: GeoBusiness): HTMLElement {
   const content = document.createElement("div");
   const title = document.createElement("strong");

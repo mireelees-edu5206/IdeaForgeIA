@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para ai providers."""
+
 import asyncio
 import io
 import json
@@ -29,22 +31,29 @@ from tests.conftest import make_settings
 
 
 class Answer(BaseModel):
+    """Representa answer."""
+
     text: str
     count: int
 
 
 class StubResponse(io.BytesIO):
+    """Representa stub respuesta."""
+
     pass
 
 
 def response(body: dict) -> StubResponse:
+    """Gestiona respuesta."""
     return StubResponse(json.dumps(body).encode())
 
 
 def test_gemini_structured_output_keeps_key_off_url_and_validates_schema() -> None:
+    """Prueba el escenario: gemini structured output keeps clave off URL and validates esquema."""
     requests = []
 
     def send(request, timeout):
+        """Gestiona send."""
         requests.append((request, timeout, json.loads(request.data)))
         return response(
             {
@@ -54,6 +63,7 @@ def test_gemini_structured_output_keeps_key_off_url_and_validates_schema() -> No
         )
 
     provider = GeminiProvider("test-secret", "gemini-test", 20)
+    # Abre y libera los recursos declarados en este bloque.
     with patch("app.modules.ai.providers.http.urlopen", side_effect=send):
         result = asyncio.run(
             provider.generate_structured(
@@ -74,6 +84,7 @@ def test_gemini_structured_output_keeps_key_off_url_and_validates_schema() -> No
 
 
 def test_gemini_grounding_maps_search_citations_and_suggestions() -> None:
+    """Prueba el escenario: gemini grounding maps busqueda citations and suggestions."""
     text = "Una señal del mercado."
     body = {
         "candidates": [
@@ -97,6 +108,7 @@ def test_gemini_grounding_maps_search_citations_and_suggestions() -> None:
         "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 9},
     }
     provider = GeminiProvider("key", "gemini-test", 20)
+    # Abre y libera los recursos declarados en este bloque.
     with patch("app.modules.ai.providers.http.urlopen", return_value=response(body)):
         result = asyncio.run(provider.generate_grounded([AIMessage("user", "Investiga")]))
 
@@ -110,11 +122,14 @@ def test_gemini_grounding_maps_search_citations_and_suggestions() -> None:
 
 
 def test_gemini_grounding_falls_back_to_public_web_search_on_search_tool_429() -> None:
+    """Verifica que Gemini use busqueda web publica cuando grounding responde 429."""
     calls: list[dict] = []
 
     def send(request, timeout):
+        """Gestiona send."""
         payload = json.loads(request.data)
         calls.append(payload)
+        # Rama condicional: se cumple 'tools' in payload.
         if "tools" in payload:
             raise HTTPError(request.full_url, 429, "quota", {}, io.BytesIO())
         return response(
@@ -155,6 +170,7 @@ def test_gemini_grounding_falls_back_to_public_web_search_on_search_tool_429() -
         )
     ]
     provider = GeminiProvider("key", "gemini-test", 20)
+    # Abre y libera los recursos declarados en este bloque.
     with (
         patch("app.modules.ai.providers.http.urlopen", side_effect=send),
         patch("app.modules.ai.providers.web_search.search_public_web", return_value=hits),
@@ -174,9 +190,11 @@ def test_gemini_grounding_falls_back_to_public_web_search_on_search_tool_429() -
 
 
 def test_ollama_structured_output_records_local_zero_cost() -> None:
+    """Prueba el escenario: ollama structured output registros local zero costo."""
     seen = []
 
     def send(request, timeout):
+        """Gestiona send."""
         seen.append((request, json.loads(request.data)))
         return response(
             {
@@ -187,6 +205,7 @@ def test_ollama_structured_output_records_local_zero_cost() -> None:
         )
 
     provider = OllamaProvider("http://localhost:11434", "custom-model", 20)
+    # Abre y libera los recursos declarados en este bloque.
     with patch("app.modules.ai.providers.http.urlopen", side_effect=send):
         result = asyncio.run(provider.generate_structured([AIMessage("user", "Entrada")], Answer))
 
@@ -205,6 +224,7 @@ def test_ollama_structured_output_records_local_zero_cost() -> None:
 
 
 def test_ollama_report_draft_builds_the_structured_verdict_from_project_context() -> None:
+    """Verifica que Ollama forme el veredicto estructurado desde contexto del proyecto."""
     context = {
         "project": {
             "title": "Heladería Centro",
@@ -255,6 +275,7 @@ def test_ollama_report_draft_builds_the_structured_verdict_from_project_context(
     )
 
     def send(_request, timeout):
+        """Gestiona send."""
         return response(
             {
                 "message": {"content": answer},
@@ -270,6 +291,7 @@ def test_ollama_report_draft_builds_the_structured_verdict_from_project_context(
             f"<report_data>{json.dumps(context, ensure_ascii=False)}</report_data>",
         )
     ]
+    # Abre y libera los recursos declarados en este bloque.
     with patch("app.modules.ai.providers.http.urlopen", side_effect=send):
         result = asyncio.run(provider.generate_structured(messages, ReportDraft))
 
@@ -282,10 +304,12 @@ def test_ollama_report_draft_builds_the_structured_verdict_from_project_context(
 
 
 def test_ollama_chat_answer_has_no_short_text_cap_and_a_larger_generation_budget() -> None:
+    """Verifica que Ollama admita respuestas largas y un presupuesto amplio de generacion."""
     captured = []
     long_answer = "Respuesta completa. " * 300
 
     def send(request, timeout):
+        """Gestiona send."""
         payload = json.loads(request.data)
         captured.append(payload)
         return response(
@@ -301,6 +325,7 @@ def test_ollama_chat_answer_has_no_short_text_cap_and_a_larger_generation_budget
         )
 
     provider = OllamaProvider("http://localhost:11434", "custom-model", 20)
+    # Abre y libera los recursos declarados en este bloque.
     with patch("app.modules.ai.providers.http.urlopen", side_effect=send):
         result = asyncio.run(
             provider.generate_structured([AIMessage("user", "Desarrolla el análisis")], ChatAnswer)
@@ -316,6 +341,7 @@ def test_ollama_chat_answer_has_no_short_text_cap_and_a_larger_generation_budget
 
 
 def test_ollama_synthesizes_real_search_snippets_with_source_citations() -> None:
+    """Prueba el escenario: ollama synthesizes real busqueda snippets con fuente citations."""
     hit = WebHit(
         url="https://example.org/ropa-basica",
         title="Estudio de ropa básica",
@@ -323,6 +349,7 @@ def test_ollama_synthesizes_real_search_snippets_with_source_citations() -> None
     )
 
     def send(request, timeout):
+        """Gestiona send."""
         payload = json.loads(request.data)
         assert payload["model"] == "custom-model"
         assert "Estudio de ropa básica" in payload["messages"][1]["content"]
@@ -346,6 +373,7 @@ def test_ollama_synthesizes_real_search_snippets_with_source_citations() -> None
         )
 
     provider = OllamaProvider("http://localhost:11434", "custom-model", 20)
+    # Abre y libera los recursos declarados en este bloque.
     with (
         patch(
             "app.modules.ai.providers.web_search.search_public_web",
@@ -363,7 +391,11 @@ def test_ollama_synthesizes_real_search_snippets_with_source_citations() -> None
 
 
 def test_orchestrator_falls_back_from_gemini_search_429_to_ollama_web_synthesis() -> None:
+    """Verifica que el orquestador use Ollama si la busqueda Gemini responde 429."""
+
     class GroundedStub(StubProvider):
+        """Representa fundamentada stub."""
+
         def __init__(
             self,
             name: AIProviderName,
@@ -372,10 +404,13 @@ def test_orchestrator_falls_back_from_gemini_search_429_to_ollama_web_synthesis(
             error: Exception | None = None,
             result: GroundedResult | None = None,
         ) -> None:
+            """Gestiona la inicializacion para pruebas."""
             super().__init__(name, model, error)
             self.result = result
 
         async def generate_grounded(self, messages: Sequence[AIMessage]) -> GroundedResult:
+            """Gestiona generate fundamentada."""
+            # Rama condicional: se cumple self.error.
             if self.error:
                 raise self.error
             assert self.result is not None
@@ -404,12 +439,15 @@ def test_orchestrator_falls_back_from_gemini_search_429_to_ollama_web_synthesis(
 
 
 def test_orchestrator_never_uses_local_fallback_for_grounded_search() -> None:
+    """Prueba el escenario: orchestrator never uses local respaldo para fundamentada busqueda."""
     provider = AIOrchestrator(StubProvider(AIProviderName.OLLAMA, "local-model"))
+    # Abre y libera los recursos declarados en este bloque.
     with pytest.raises(AIGroundingUnavailableError):
         asyncio.run(provider.generate_grounded([AIMessage("user", "Busca actualidad")]))
 
 
 def test_uniform_search_rate_limits_keep_the_provider_error_code() -> None:
+    """Prueba el escenario: uniform busqueda rate limits keep the proveedor error code."""
     assert _search_failure_code(Counter({"ai_rate_limited": 6})) == "ai_rate_limited"
     assert (
         _search_failure_code(Counter({"ai_rate_limited": 3, "ai_timeout": 3}))
@@ -418,8 +456,11 @@ def test_uniform_search_rate_limits_keep_the_provider_error_code() -> None:
 
 
 def test_provider_http_429_is_classified_as_rate_limit() -> None:
+    """Prueba el escenario: proveedor http 429 is classified as rate limite."""
     error = HTTPError("https://provider.example", 429, "limited", {}, io.BytesIO())
+    # Abre y libera los recursos declarados en este bloque.
     with patch("app.modules.ai.providers.http.urlopen", side_effect=error):
+        # Abre y libera los recursos declarados en este bloque.
         with pytest.raises(AIRateLimitError):
             asyncio.run(
                 OllamaProvider("http://localhost:11434", "model", 20).generate_structured(
@@ -429,7 +470,10 @@ def test_provider_http_429_is_classified_as_rate_limit() -> None:
 
 
 class StubProvider(AIProvider):
+    """Adaptador que ofrece servicios de stub."""
+
     def __init__(self, name: AIProviderName, model: str, error: Exception | None = None) -> None:
+        """Gestiona la inicializacion para pruebas."""
         self.name = name
         self.model = model
         self.error = error
@@ -437,6 +481,8 @@ class StubProvider(AIProvider):
     async def generate_structured[T: BaseModel](
         self, messages: Sequence[AIMessage], schema: type[T]
     ) -> StructuredResult[T]:
+        """Gestiona generate structured."""
+        # Rama condicional: se cumple self.error.
         if self.error:
             raise self.error
         return StructuredResult(
@@ -445,10 +491,12 @@ class StubProvider(AIProvider):
         )
 
     async def generate_grounded(self, messages: Sequence[AIMessage]) -> GroundedResult:
+        """Gestiona generate fundamentada."""
         raise AIGroundingUnavailableError()
 
 
 def test_orchestrator_fallback_logs_both_providers_and_only_then_uses_ollama() -> None:
+    """Prueba el escenario: orchestrator respaldo logs both providers and only then uses ollama."""
     primary = StubProvider(AIProviderName.GEMINI, "gemini-test", AIRateLimitError())
     fallback = StubProvider(AIProviderName.OLLAMA, "local-test")
     provider = AIOrchestrator(primary, fallback)
@@ -473,11 +521,15 @@ def test_orchestrator_fallback_logs_both_providers_and_only_then_uses_ollama() -
     ["http://user:secret@localhost:11434", "http://localhost:not-a-port"],
 )
 def test_ollama_url_rejects_credentials_and_invalid_ports(base_url: str) -> None:
+    """Prueba el escenario: ollama URL rejects credentials and invalido ports."""
+    # Abre y libera los recursos declarados en este bloque.
     with pytest.raises(ValidationError):
         make_settings(ai_provider="ollama", ollama_base_url=base_url)
 
 
 def test_settings_select_gemini_or_ollama_and_require_gemini_key() -> None:
+    """Prueba el escenario: configuracion select gemini or ollama and require gemini clave."""
+    # Abre y libera los recursos declarados en este bloque.
     with pytest.raises(ValidationError):
         make_settings(ai_provider="gemini")
 

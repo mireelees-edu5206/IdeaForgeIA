@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para geo."""
+
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -13,11 +15,15 @@ from tests.conftest import make_settings, run_sql
 
 
 class StubGeoProvider(GeoProvider):
+    """Adaptador que ofrece servicios de stub geografico."""
+
     def __init__(self) -> None:
+        """Gestiona la inicializacion para pruebas."""
         self.geocode_queries: list[str] = []
         self.nearby_requests: list[tuple[float, float, int, GeoCategory, str | None]] = []
 
     async def geocode(self, query: str) -> list[GeoPlace]:
+        """Gestiona geocode."""
         self.geocode_queries.append(query)
         return [
             GeoPlace(
@@ -38,6 +44,7 @@ class StubGeoProvider(GeoProvider):
         category: GeoCategory,
         keyword: str | None = None,
     ) -> list[GeoBusiness]:
+        """Busca lugares."""
         self.nearby_requests.append((latitude, longitude, radius_m, category, keyword))
         return [
             GeoBusiness(
@@ -56,17 +63,21 @@ class StubGeoProvider(GeoProvider):
 
 @contextmanager
 def geo_client(db_url: str, provider: GeoProvider) -> Iterator[TestClient]:
+    """Gestiona geografico client."""
     app = create_app(
         make_settings(database_url=db_url),
         ai_provider=FakeProvider(),
         geo_provider=provider,
     )
+    # Abre y libera los recursos declarados en este bloque.
     with TestClient(app) as client:
         yield client
 
 
 def test_manual_geocoding_is_authenticated_and_returns_normalized_places(migrated_db: str) -> None:
+    """Prueba el escenario: manual geocoding is authenticated and returns normalized lugares."""
     provider = StubGeoProvider()
+    # Abre y libera los recursos declarados en este bloque.
     with geo_client(migrated_db, provider) as client:
         headers = user_headers(client)
 
@@ -84,7 +95,9 @@ def test_manual_geocoding_is_authenticated_and_returns_normalized_places(migrate
 
 
 def test_nearby_places_are_scoped_to_owned_project_and_bounded(migrated_db: str) -> None:
+    """Prueba el escenario: nearby lugares are scoped to propio proyecto and bounded."""
     provider = StubGeoProvider()
+    # Abre y libera los recursos declarados en este bloque.
     with geo_client(migrated_db, provider) as client:
         owner = user_headers(client)
         project = create_project(client, owner, "Marca local")

@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para supabase auth."""
+
 import uuid
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -15,6 +17,7 @@ SUPABASE_SECRET = "supabase-test-secret-" + "x" * 32
 
 
 def token_payload(**changes: object) -> dict:
+    """Gestiona token payload."""
     now = datetime.now(UTC)
     return {
         "iss": f"{SUPABASE_URL}/auth/v1",
@@ -29,6 +32,7 @@ def token_payload(**changes: object) -> dict:
 
 
 def test_legacy_hs256_token_is_verified() -> None:
+    """Prueba el escenario: legacy hs256 token is verified."""
     verifier = SupabaseTokenVerifier(
         make_settings(supabase_url=SUPABASE_URL, supabase_jwt_secret=SUPABASE_SECRET)
     )
@@ -38,6 +42,7 @@ def test_legacy_hs256_token_is_verified() -> None:
 
 
 def test_asymmetric_signing_key_uses_jwks_public_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Prueba el escenario: asymmetric signing clave uses jwks public clave."""
     verifier = SupabaseTokenVerifier(make_settings(supabase_url=SUPABASE_URL))
     private_key = ec.generate_private_key(ec.SECP256R1())
     token = jwt.encode(token_payload(), private_key, algorithm="ES256", headers={"kid": "test"})
@@ -52,17 +57,20 @@ def test_asymmetric_signing_key_uses_jwks_public_key(monkeypatch: pytest.MonkeyP
 
 @pytest.mark.parametrize("algorithm", ["none", "HS384"])
 def test_unapproved_algorithm_is_rejected(algorithm: str) -> None:
+    """Prueba el escenario: unapproved algorithm is rejected."""
     verifier = SupabaseTokenVerifier(
         make_settings(supabase_url=SUPABASE_URL, supabase_jwt_secret=SUPABASE_SECRET)
     )
     key = None if algorithm == "none" else SUPABASE_SECRET
     token = jwt.encode(token_payload(), key, algorithm=algorithm)
 
+    # Abre y libera los recursos declarados en este bloque.
     with pytest.raises(SupabaseTokenError):
         verifier.decode(token)
 
 
 def test_token_with_wrong_issuer_is_rejected() -> None:
+    """Prueba el escenario: token con wrong issuer is rejected."""
     verifier = SupabaseTokenVerifier(
         make_settings(supabase_url=SUPABASE_URL, supabase_jwt_secret=SUPABASE_SECRET)
     )
@@ -72,5 +80,6 @@ def test_token_with_wrong_issuer_is_rejected() -> None:
         algorithm="HS256",
     )
 
+    # Abre y libera los recursos declarados en este bloque.
     with pytest.raises(SupabaseTokenError):
         verifier.decode(token)

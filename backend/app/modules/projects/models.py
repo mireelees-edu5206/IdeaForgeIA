@@ -1,3 +1,5 @@
+"""Define entidades ORM y restricciones de persistencia. Area: proyectos."""
+
 import uuid
 from enum import StrEnum
 
@@ -22,6 +24,8 @@ ATTRIBUTE_VALUE_MAX_LENGTH = 4000
 
 
 class ProjectStatus(StrEnum):
+    """Representa proyecto estado."""
+
     DRAFT = "draft"
     STRUCTURED = "structured"
     RESEARCHING = "researching"
@@ -29,6 +33,8 @@ class ProjectStatus(StrEnum):
 
 
 class Project(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Representa proyecto."""
+
     __tablename__ = "projects"
     __table_args__ = (
         CheckConstraint("btrim(title) <> ''", name="title_not_blank"),
@@ -48,6 +54,8 @@ class Project(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class IdeaAttribute(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Representa idea atributo."""
+
     __tablename__ = "idea_attributes"
     __table_args__ = (
         UniqueConstraint("project_id", "attribute_type", "position"),

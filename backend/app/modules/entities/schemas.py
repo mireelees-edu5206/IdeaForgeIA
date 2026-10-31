@@ -1,3 +1,5 @@
+"""Valida contratos de entrada/salida. Area: entidades."""
+
 import uuid
 from datetime import datetime
 from typing import Annotated, Self
@@ -14,6 +16,8 @@ LongText = Annotated[str, StringConstraints(strip_whitespace=True, max_length=20
 
 
 class EntityBrief(BaseModel):
+    """Representa entidad brief."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -24,11 +28,15 @@ class EntityBrief(BaseModel):
 
 
 class EntityRead(EntityBrief):
+    """Contrato de datos para entidad read."""
+
     finding_count: int
     competitor_id: uuid.UUID | None
 
 
 class CompetitorRead(BaseModel):
+    """Contrato de datos para alternativa read."""
+
     id: uuid.UUID
     entity: EntityBrief
     competitor_type: CompetitorType
@@ -59,21 +67,28 @@ class CompetitorCreate(BaseModel):
     @field_validator("website")
     @classmethod
     def valid_website(cls, value: str | None) -> str | None:
+        """Gestiona website en entidades."""
+        # Rama condicional: se cumple value is None or not value.strip().
         if value is None or not value.strip():
             return None
         normalized = normalize_url(value)
+        # Rama condicional: se cumple normalized is None.
         if normalized is None:
             raise ValueError("El sitio web debe ser una URL http(s) válida.")
         return normalized.canonical
 
     @model_validator(mode="after")
     def entity_or_name(self) -> Self:
+        """Gestiona or name en entidades."""
+        # Rama condicional: se cumple (self.entity_id is None) == (self.name is None).
         if (self.entity_id is None) == (self.name is None):
             raise ValueError("Indica una entidad existente o el nombre de una nueva, no ambos.")
         return self
 
 
 class CompetitorUpdate(PatchModel):
+    """Representa alternativa actualizacion."""
+
     competitor_type: CompetitorType | None = None
     threat_level: Level | None = None
     rationale: LongText | None = None

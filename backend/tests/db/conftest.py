@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para conftest."""
+
 from collections.abc import AsyncIterator
 
 import pytest
@@ -7,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_en
 
 @pytest.fixture
 async def engine(migrated_db: str) -> AsyncIterator[AsyncEngine]:
+    """Gestiona engine."""
     engine = create_async_engine(migrated_db, poolclass=pool.NullPool)
     yield engine
     await engine.dispose()
@@ -15,6 +18,7 @@ async def engine(migrated_db: str) -> AsyncIterator[AsyncEngine]:
 @pytest.fixture
 async def conn(engine: AsyncEngine) -> AsyncIterator[AsyncConnection]:
     """Conexión dentro de una transacción que se revierte: cada test queda aislado."""
+    # Abre y libera los recursos declarados en este bloque.
     async with engine.connect() as connection:
         transaction = await connection.begin()
         yield connection

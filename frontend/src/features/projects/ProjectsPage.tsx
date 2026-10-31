@@ -1,3 +1,4 @@
+/** Pantalla o componente React del flujo de proyectos. */
 import { FiChevronLeft, FiChevronRight, FiFilter, FiFolder, FiPlus } from "react-icons/fi";
 import { useSearchParams } from "react-router";
 
@@ -15,12 +16,15 @@ import { PROJECT_STATUSES, STATUS_META } from "./constants";
 import { useProjectList } from "./queries";
 import type { ProjectStatus } from "./types";
 
+/** Define PAGE_SIZE para el bloque de proyectos. */
 const PAGE_SIZE = 12;
 
+/** Gestiona is status de proyectos. */
 function isStatus(value: string | null): value is ProjectStatus {
   return value !== null && (PROJECT_STATUSES as string[]).includes(value);
 }
 
+/** Expone la funcion projects page para el flujo de projects. */
 export function ProjectsPage() {
   useDocumentTitle("Proyectos");
   const [searchParams, setSearchParams] = useSearchParams();
@@ -31,9 +35,12 @@ export function ProjectsPage() {
   const projects = useProjectList({ limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE, status });
   const totalPages = Math.max(1, Math.ceil((projects.data?.total ?? 0) / PAGE_SIZE));
 
+  /** Actualiza update de proyectos. */
   function update(next: { estado?: ProjectStatus; pagina?: number }) {
     const params = new URLSearchParams();
+    /** Rama condicional: next.estado. */
     if (next.estado) params.set("estado", next.estado);
+    /** Rama condicional: next.pagina && next.pagina > 1. */
     if (next.pagina && next.pagina > 1) params.set("pagina", String(next.pagina));
     setSearchParams(params);
   }

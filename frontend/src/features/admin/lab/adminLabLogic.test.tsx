@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de administracion. */
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -40,7 +41,9 @@ vi.mock("../queries", () => ({
   }),
 }));
 
+/** Escenario de prueba: Apartado de proposiciones y tablas de verdad. */
 describe("Apartado de proposiciones y tablas de verdad", () => {
+  /** Escenario de prueba: presenta reglas generales del sistema sin requerir seleccionar un proyecto. */
   it("presenta reglas generales del sistema sin requerir seleccionar un proyecto", () => {
     render(
       <MemoryRouter>

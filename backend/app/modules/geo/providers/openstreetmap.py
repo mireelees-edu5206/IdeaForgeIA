@@ -112,21 +112,30 @@ _SPANISH_KEYWORD_TAGS: tuple[tuple[tuple[str, ...], tuple[tuple[str, str], ...]]
 
 
 def _read_json(request: Request, timeout: float = 18.0) -> object:
+    """Lee json en geografia."""
+    # Protege la operacion y dirige sus errores a manejadores explicitos.
     try:
+        # Abre y libera los recursos declarados en este bloque.
         with urlopen(request, timeout=timeout) as response:
             body = response.read(_MAX_RESPONSE_BYTES + 1)
+    # Maneja el error HTTPError sin detener el flujo esperado.
     except HTTPError as exc:
+        # Rama condicional: se cumple exc.code in {403, 429, 509}.
         if exc.code in {403, 429, 509}:
             raise GeoProviderUnavailableError(
                 "El proveedor de mapas limitó temporalmente las solicitudes."
             ) from None
         raise GeoProviderUnavailableError() from None
+    # Maneja el error (TimeoutError, URLError, OSError) sin detener el flujo esperado.
     except (TimeoutError, URLError, OSError):
         raise GeoProviderUnavailableError() from None
+    # Rama condicional: se cumple len(body) > _MAX_RESPONSE_BYTES.
     if len(body) > _MAX_RESPONSE_BYTES:
         raise GeoProviderUnavailableError()
+    # Protege la operacion y dirige sus errores a manejadores explicitos.
     try:
         return json.loads(body)
+    # Maneja el error (UnicodeDecodeError, json.JSONDecodeError) sin detener el flujo esperado.
     except (UnicodeDecodeError, json.JSONDecodeError):
         raise GeoProviderUnavailableError() from None
 
@@ -140,6 +149,7 @@ class OpenStreetMapGeoProvider(GeoProvider):
         overpass_url: str,
         user_agent: str,
     ) -> None:
+        """Gestiona la inicializacion para geografia."""
         self.nominatim_url = nominatim_url.rstrip("/")
         self.overpass_url = overpass_url
         self.user_agent = user_agent
@@ -151,18 +161,23 @@ class OpenStreetMapGeoProvider(GeoProvider):
         self._places_cache: dict[str, tuple[float, list[GeoBusiness]]] = {}
 
     async def geocode(self, query: str) -> list[GeoPlace]:
+        """Gestiona el flujo en geografia."""
         normalized = " ".join(query.split()).casefold()
         now = time.monotonic()
         cached = self._geocode_cache.get(normalized)
+        # Rama condicional: se cumple cached and cached[0] > now.
         if cached and cached[0] > now:
             return cached[1]
 
+        # Abre y libera los recursos declarados en este bloque.
         async with self._nominatim_lock:
             now = time.monotonic()
             cached = self._geocode_cache.get(normalized)
+            # Rama condicional: se cumple cached and cached[0] > now.
             if cached and cached[0] > now:
                 return cached[1]
             delay = _NOMINATIM_MIN_INTERVAL_S - (now - self._last_nominatim_request)
+            # Rama condicional: se cumple delay > 0.
             if delay > 0:
                 await asyncio.sleep(delay)
             self._last_nominatim_request = time.monotonic()
@@ -183,13 +198,17 @@ class OpenStreetMapGeoProvider(GeoProvider):
                 },
             )
             payload = await asyncio.to_thread(_read_json, request)
+            # Rama condicional: se cumple not isinstance(payload, list).
             if not isinstance(payload, list):
                 raise GeoProviderUnavailableError()
 
             places = []
+            # Itera item sobre payload[:5].
             for item in payload[:5]:
+                # Rama condicional: se cumple not isinstance(item, dict).
                 if not isinstance(item, dict):
                     continue
+                # Protege la operacion y dirige sus errores a manejadores explicitos.
                 try:
                     places.append(
                         GeoPlace(
@@ -201,9 +220,11 @@ class OpenStreetMapGeoProvider(GeoProvider):
                             place_type=_optional_string(item.get("type")),
                         )
                     )
+                # Maneja el error (KeyError, TypeError, ValueError) sin detener el flujo esperado.
                 except (KeyError, TypeError, ValueError):
                     continue
 
+            # Rama condicional: se cumple len(self._geocode_cache) >= 256.
             if len(self._geocode_cache) >= 256:
                 self._geocode_cache.clear()
             self._geocode_cache[normalized] = (
@@ -220,10 +241,12 @@ class OpenStreetMapGeoProvider(GeoProvider):
         category: GeoCategory,
         keyword: str | None = None,
     ) -> list[GeoBusiness]:
+        """Busca places en geografia."""
         clean_kw = _normalize_keyword(keyword)
         cache_key = f"{latitude:.4f}:{longitude:.4f}:{radius_m}:{category}:{clean_kw}"
         now = time.monotonic()
         cached = self._places_cache.get(cache_key)
+        # Rama condicional: se cumple cached and cached[0] > now.
         if cached and cached[0] > now:
             return cached[1]
 
@@ -232,10 +255,12 @@ class OpenStreetMapGeoProvider(GeoProvider):
             places = await self._find_places_nominatim(
                 latitude, longitude, radius_m, keyword.strip(), clean_kw
             )
+            # Rama condicional: se cumple not places and _has_spanish_category_match(clean_kw).
             if not places and _has_spanish_category_match(clean_kw):
                 places = await self._find_places_overpass_safe(
                     latitude, longitude, radius_m, category, keyword, clean_kw
                 )
+            # Rama condicional: se cumple len(self._places_cache) >= 256.
             if len(self._places_cache) >= 256:
                 self._places_cache.clear()
             self._places_cache[cache_key] = (time.monotonic() + _PLACES_TTL_S, places)
@@ -244,6 +269,7 @@ class OpenStreetMapGeoProvider(GeoProvider):
         places = await self._find_places_overpass_safe(
             latitude, longitude, radius_m, category, keyword, clean_kw
         )
+        # Rama condicional: se cumple len(self._places_cache) >= 256.
         if len(self._places_cache) >= 256:
             self._places_cache.clear()
         self._places_cache[cache_key] = (time.monotonic() + _PLACES_TTL_S, places)
@@ -258,13 +284,17 @@ class OpenStreetMapGeoProvider(GeoProvider):
         keyword: str | None,
         clean_kw: str,
     ) -> list[GeoBusiness]:
+        """Busca places overpass safe en geografia."""
+        # Abre y libera los recursos declarados en este bloque.
         async with self._overpass_lock:
             now = time.monotonic()
             delay = _OVERPASS_MIN_INTERVAL_S - (now - self._last_overpass_request)
+            # Rama condicional: se cumple delay > 0.
             if delay > 0:
                 await asyncio.sleep(delay)
             self._last_overpass_request = time.monotonic()
         query = _overpass_query(latitude, longitude, radius_m, category, keyword)
+        # Itera endpoint sobre (self.overpass_url, un valor, un valor).
         for endpoint in (
             self.overpass_url,
             "https://overpass.kumi.systems/api/interpreter",
@@ -280,12 +310,17 @@ class OpenStreetMapGeoProvider(GeoProvider):
                 },
                 method="POST",
             )
+            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 payload = await asyncio.to_thread(_read_json, request, 10.0)
+                # Rama condicional: evalua isinstance(payload, dict) and isinstance(payload.get(un
+                # valor), list).
                 if isinstance(payload, dict) and isinstance(payload.get("elements"), list):
                     return _parse_businesses(payload["elements"], clean_kw or category)
+            # Maneja el error GeoProviderUnavailableError sin detener el flujo esperado.
             except GeoProviderUnavailableError:
                 continue
+        # Rama condicional: se cumple keyword and clean_kw.
         if keyword and clean_kw:
             return []
         raise GeoProviderUnavailableError()
@@ -298,6 +333,7 @@ class OpenStreetMapGeoProvider(GeoProvider):
         raw_keyword: str,
         clean_kw: str,
     ) -> list[GeoBusiness]:
+        """Busca candidatos por nombre y limita la consulta a una caja geografica acotada."""
         # Caja de búsqueda amplia (mínimo 2.5 km) para no perder resultados cercanos al borde
         effective_radius_m = max(radius_m, 2500)
         lat_delta = effective_radius_m / 111_320.0
@@ -308,9 +344,11 @@ class OpenStreetMapGeoProvider(GeoProvider):
         top = latitude + lat_delta
         bottom = latitude - lat_delta
 
+        # Abre y libera los recursos declarados en este bloque.
         async with self._nominatim_lock:
             now = time.monotonic()
             delay = _NOMINATIM_MIN_INTERVAL_S - (now - self._last_nominatim_request)
+            # Rama condicional: se cumple delay > 0.
             if delay > 0:
                 await asyncio.sleep(delay)
             self._last_nominatim_request = time.monotonic()
@@ -334,30 +372,42 @@ class OpenStreetMapGeoProvider(GeoProvider):
                 "Accept-Language": "es-MX,es",
             },
         )
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             payload = await asyncio.to_thread(_read_json, request, 8.0)
+        # Maneja el error GeoProviderUnavailableError sin detener el flujo esperado.
         except GeoProviderUnavailableError:
             return []
+        # Rama condicional: se cumple not isinstance(payload, list).
         if not isinstance(payload, list):
             return []
 
         results: list[GeoBusiness] = []
         seen: set[tuple[str, int]] = set()
+        # Itera item sobre payload.
         for item in payload:
+            # Rama condicional: se cumple not isinstance(item, dict).
             if not isinstance(item, dict):
                 continue
             osm_type = item.get("osm_type")
             osm_id = item.get("osm_id")
+            # Rama condicional: evalua osm_type not in {un valor, un valor, un valor} or not
+            # isinstance(osm_id,.
             if osm_type not in {"node", "way", "relation"} or not isinstance(osm_id, int):
                 continue
             key = (osm_type, osm_id)
+            # Rama condicional: se cumple key in seen.
             if key in seen:
                 continue
+            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 lat = float(item["lat"])
                 lon = float(item["lon"])
+            # Maneja el error (KeyError, TypeError, ValueError) sin detener el flujo esperado.
             except (KeyError, TypeError, ValueError):
                 continue
+            # Rama condicional: evalua _haversine_m(latitude, longitude, lat, lon) > max(radius_m *
+            # 1.35, 1800).
             if _haversine_m(latitude, longitude, lat, lon) > max(radius_m * 1.35, 1800):
                 continue
             raw_name = str(item.get("name") or "").strip()
@@ -380,12 +430,14 @@ class OpenStreetMapGeoProvider(GeoProvider):
                 )
             )
             seen.add(key)
+            # Rama condicional: se cumple len(results) >= _MAX_PLACES.
             if len(results) >= _MAX_PLACES:
                 break
         return results
 
 
 def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Gestiona m en geografia."""
     r = 6_371_000.0
     p1 = math.radians(lat1)
     p2 = math.radians(lat2)
@@ -396,13 +448,18 @@ def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def _has_spanish_category_match(norm_keyword: str) -> bool:
+    """Indica si spanish category match en geografia."""
+    # Itera (stems, _) sobre _SPANISH_KEYWORD_TAGS.
     for stems, _ in _SPANISH_KEYWORD_TAGS:
+        # Rama condicional: se cumple any((stem.strip() in norm_keyword for stem in stems)).
         if any(stem.strip() in norm_keyword for stem in stems):
             return True
     return False
 
 
 def _normalize_keyword(keyword: str | None) -> str:
+    """Normaliza keyword en geografia."""
+    # Rama condicional: se cumple not keyword.
     if not keyword:
         return ""
     stripped = "".join(
@@ -414,11 +471,15 @@ def _normalize_keyword(keyword: str | None) -> str:
 
 
 def _keyword_selectors(latitude: float, longitude: float, radius_m: int, keyword: str) -> list[str]:
+    """Gestiona selectors en geografia."""
     norm = _normalize_keyword(keyword)
+    # Rama condicional: se cumple not norm.
     if not norm:
         return []
     matched_tags: list[tuple[str, str]] = []
+    # Itera (stems, tag_pairs) sobre _SPANISH_KEYWORD_TAGS.
     for stems, tag_pairs in _SPANISH_KEYWORD_TAGS:
+        # Rama condicional: se cumple any((stem.strip() in norm for stem in stems)).
         if any(stem.strip() in norm for stem in stems):
             matched_tags.extend(tag_pairs)
 
@@ -433,13 +494,16 @@ def _keyword_selectors(latitude: float, longitude: float, radius_m: int, keyword
     around = f"(around:{radius_m},{latitude:.6f},{longitude:.6f})"
     selectors: list[str] = []
     seen_tags: set[tuple[str, str]] = set()
+    # Itera (key, value) sobre matched_tags.
     for key, value in matched_tags:
+        # Rama condicional: se cumple (key, value) in seen_tags.
         if (key, value) in seen_tags:
             continue
         seen_tags.add((key, value))
         selectors.append(f'  nwr{around}["{key}"~"^({value})$"];')
     # Búsqueda ágil por nombre (y en shop/amenity si no es un giro del catálogo)
     selectors.append(f'  nwr{around}["name"~"({regex_pattern})",i];')
+    # Rama condicional: se cumple not matched_tags.
     if not matched_tags:
         selectors.append(f'  nwr{around}["shop"~"({regex_pattern})",i];')
         selectors.append(f'  nwr{around}["amenity"~"({regex_pattern})",i];')
@@ -453,12 +517,16 @@ def _overpass_query(
     category: GeoCategory,
     keyword: str | None = None,
 ) -> str:
+    """Gestiona query en geografia."""
+    # Rama condicional: se cumple keyword and _normalize_keyword(keyword).
     if keyword and _normalize_keyword(keyword):
         selectors = _keyword_selectors(latitude, longitude, radius_m, keyword)
     else:
         selectors = []
+        # Itera (key, value) sobre _CATEGORY_FILTERS[category].
         for key, value in _CATEGORY_FILTERS[category]:
             tag = f'["{key}"]' if value is None else f'["{key}"~"^({value})$"]'
+            # Itera element_type sobre (un valor, un valor, un valor).
             for element_type in ("node", "way", "relation"):
                 selectors.append(
                     f"  {element_type}(around:{radius_m},{latitude:.6f},{longitude:.6f}){tag};"
@@ -467,24 +535,34 @@ def _overpass_query(
 
 
 def _parse_businesses(elements: list[object], category: GeoCategory) -> list[GeoBusiness]:
+    """Interpreta businesses en geografia."""
     places: list[GeoBusiness] = []
     seen: set[tuple[str, int]] = set()
+    # Itera element sobre elements.
     for element in elements:
+        # Rama condicional: se cumple not isinstance(element, dict).
         if not isinstance(element, dict):
             continue
         tags = element.get("tags")
+        # Rama condicional: evalua not isinstance(tags, dict) or not isinstance(tags.get(un valor),
+        # str).
         if not isinstance(tags, dict) or not isinstance(tags.get("name"), str):
             continue
         osm_type = element.get("type")
         osm_id = element.get("id")
+        # Rama condicional: evalua osm_type not in {un valor, un valor, un valor} or not
+        # isinstance(osm_id,.
         if osm_type not in {"node", "way", "relation"} or not isinstance(osm_id, int):
             continue
         key = (osm_type, osm_id)
+        # Rama condicional: se cumple key in seen.
         if key in seen:
             continue
         coordinates = element.get("center", element)
+        # Rama condicional: se cumple not isinstance(coordinates, dict).
         if not isinstance(coordinates, dict):
             continue
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             latitude = float(coordinates["lat"])
             longitude = float(coordinates["lon"])
@@ -502,26 +580,35 @@ def _parse_businesses(elements: list[object], category: GeoCategory) -> list[Geo
                 )
             )
             seen.add(key)
+        # Maneja el error (KeyError, TypeError, ValueError) sin detener el flujo esperado.
         except (KeyError, TypeError, ValueError):
             continue
+        # Rama condicional: se cumple len(places) >= _MAX_PLACES.
         if len(places) >= _MAX_PLACES:
             break
     return places
 
 
 def _business_subtype(tags: dict) -> str | None:
+    """Gestiona subtype en geografia."""
+    # Itera key sobre (un valor, un valor).
     for key in ("shop", "amenity"):
         value = tags.get(key)
+        # Rama condicional: se cumple isinstance(value, str).
         if isinstance(value, str):
             return value[:80]
     return None
 
 
 def _optional_string(value: object) -> str | None:
+    """Gestiona string en geografia."""
     return value[:200] if isinstance(value, str) else None
 
 
 def _safe_website(value: object) -> str | None:
+    """Gestiona website en geografia."""
+    # Rama condicional: se cumple isinstance(value, str) and value.startswith(('https://',
+    # 'http://')).
     if isinstance(value, str) and value.startswith(("https://", "http://")):
         return value[:1000]
     return None

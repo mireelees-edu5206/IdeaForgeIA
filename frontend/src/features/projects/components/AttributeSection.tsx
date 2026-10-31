@@ -1,3 +1,4 @@
+/** Edita un atributo estructurado del proyecto. */
 import { type FormEvent, useState } from "react";
 import { FiCheck, FiEdit2, FiPlus, FiRotateCcw, FiTrash2, FiX } from "react-icons/fi";
 
@@ -12,6 +13,7 @@ import { useAddAttribute, useDeleteAttribute, useUpdateAttribute } from "../quer
 import type { AttributeType, IdeaAttribute } from "../types";
 import { OriginBadge } from "./badges";
 
+/** Contrato de datos AttributeSectionProps utilizado por proyectos. */
 interface AttributeSectionProps {
   projectId: string;
   type: AttributeType;
@@ -19,6 +21,7 @@ interface AttributeSectionProps {
   required: boolean;
 }
 
+/** Componente AttributeRow: renderiza la vista de proyectos. */
 function AttributeRow({ projectId, attribute, label }: { projectId: string; attribute: IdeaAttribute; label: string }) {
   const updateAttribute = useUpdateAttribute(projectId);
   const deleteAttribute = useDeleteAttribute(projectId);
@@ -27,9 +30,12 @@ function AttributeRow({ projectId, attribute, label }: { projectId: string; attr
   const error = updateAttribute.error ?? deleteAttribute.error;
   const busy = updateAttribute.isPending || deleteAttribute.isPending;
 
+  /** Gestiona save de proyectos. */
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    /** Rama condicional: !draft.trim(). */
     if (!draft.trim()) return;
+    /** Maneja fallos de la operacion del bloque proyectos. */
     try {
       await updateAttribute.mutateAsync({ attributeId: attribute.id, value: draft.trim() });
       setEditing(false);
@@ -38,6 +44,7 @@ function AttributeRow({ projectId, attribute, label }: { projectId: string; attr
     }
   }
 
+  /** Rama condicional: editing. */
   if (editing) {
     return (
       <li>
@@ -123,6 +130,7 @@ function AttributeRow({ projectId, attribute, label }: { projectId: string; attr
   );
 }
 
+/** Expone la funcion attribute section para el flujo de projects. */
 export function AttributeSection({ projectId, type, values, required }: AttributeSectionProps) {
   const { label, question, placeholder } = ATTRIBUTE_META[type];
   const addAttribute = useAddAttribute(projectId);
@@ -131,9 +139,12 @@ export function AttributeSection({ projectId, type, values, required }: Attribut
   const canAdd = values.length < MAX_VALUES_PER_ATTRIBUTE;
   const headingId = `atributo-${type}`;
 
+  /** Agrega add de proyectos. */
   async function add(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    /** Rama condicional: !value.trim(). */
     if (!value.trim()) return;
+    /** Maneja fallos de la operacion del bloque proyectos. */
     try {
       await addAttribute.mutateAsync({ attribute_type: type, value: value.trim() });
       setValue("");

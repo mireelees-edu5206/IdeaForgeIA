@@ -1,8 +1,10 @@
+/** Pruebas de regresion para formatDate. */
 import { describe, expect, it } from "vitest";
 
 import { formatRelative } from "./formatDate";
 import { initLiquidGlass } from "./liquidGlass";
 
+/** Escenario de prueba: formatRelative. */
 describe("formatRelative", () => {
   const now = new Date("2026-09-24T12:00:00Z");
 
@@ -16,7 +18,9 @@ describe("formatRelative", () => {
   });
 });
 
+/** Escenario de prueba: liquidGlass. */
 describe("liquidGlass", () => {
+  /** Escenario de prueba: genera 3 ondas líquidas concéntricas al hacer clic en un botón. */
   it("genera 3 ondas líquidas concéntricas al hacer clic en un botón", () => {
     initLiquidGlass();
     const button = document.createElement("button");

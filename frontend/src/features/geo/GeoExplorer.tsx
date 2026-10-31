@@ -1,3 +1,4 @@
+/** Busca zonas y lugares y permite compararlos. */
 import { type FormEvent, useState } from "react";
 import { FiCrosshair, FiMapPin, FiSearch } from "react-icons/fi";
 
@@ -15,6 +16,7 @@ import { GeoMap } from "./GeoMap";
 import { useGeocode, useNearbyPlaces } from "./queries";
 import type { GeoPlace, GeoSearchParams } from "./types";
 
+/** Define RADIUS_OPTIONS para el bloque de mapa y zonas. */
 const RADIUS_OPTIONS = [
   { value: "500", label: "500 m" },
   { value: "1000", label: "1 km" },
@@ -22,6 +24,7 @@ const RADIUS_OPTIONS = [
   { value: "5000", label: "5 km" },
 ];
 
+/** Expone la funcion geo explorer para el flujo de geo. */
 export function GeoExplorer() {
   const { project } = useProjectOutlet();
   const [query, setQuery] = useState("");
@@ -35,24 +38,30 @@ export function GeoExplorer() {
   const geocode = useGeocode();
   const places = useNearbyPlaces(project.id, search);
 
+  /** Gestiona search location de mapa y zonas. */
   async function searchLocation(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = query.trim();
+    /** Rama condicional: value.length < 3 || geocode.isPending. */
     if (value.length < 3 || geocode.isPending) return;
     setGeoError(null);
     setLocation(null);
     setSearch(null);
     setGeocodeResults([]);
+    /** Maneja fallos de la operacion del bloque mapa y zonas. */
     try {
       const matches = await geocode.mutateAsync(value);
       setGeocodeResults(matches);
+      /** Rama condicional: matches.length === 0. */
       if (matches.length === 0) setGeoError("No se encontraron coincidencias para esa búsqueda.");
     } catch (error) {
       setGeoError(errorMessageFrom(error));
     }
   }
 
+  /** Coordina use device location de mapa y zonas. */
   function useDeviceLocation() {
+    /** Rama condicional: !navigator.geolocation. */
     if (!navigator.geolocation) {
       setGeoError("Este navegador no permite compartir la ubicación del dispositivo.");
       return;
@@ -86,6 +95,7 @@ export function GeoExplorer() {
     );
   }
 
+  /** Gestiona pick on map de mapa y zonas. */
   function pickOnMap(latitude: number, longitude: number) {
     const picked: GeoPlace = {
       place_id: `map:${latitude.toFixed(5)},${longitude.toFixed(5)}`,
@@ -99,9 +109,12 @@ export function GeoExplorer() {
     setLocation(picked);
   }
 
+  /** Gestiona explore nearby de mapa y zonas. */
   function exploreNearby() {
+    /** Rama condicional: !location. */
     if (!location) return;
     const trimmedKeyword = customKeyword.trim();
+    /** Rama condicional: !trimmedKeyword. */
     if (!trimmedKeyword) return;
     setGeoError(null);
     setSearch({
@@ -198,6 +211,7 @@ export function GeoExplorer() {
             value={customKeyword}
             onChange={(event) => setCustomKeyword(event.target.value)}
             onKeyDown={(event) => {
+              /** Rama condicional: event.key === "Enter" && canExplore. */
               if (event.key === "Enter" && canExplore) {
                 event.preventDefault();
                 exploreNearby();

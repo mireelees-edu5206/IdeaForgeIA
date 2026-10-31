@@ -1,3 +1,5 @@
+"""Expone endpoints HTTP del dominio. Area: proyectos."""
+
 import uuid
 from typing import Annotated
 
@@ -23,6 +25,7 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 
 
 def get_project_service(db: DbSession) -> ProjectService:
+    """Obtiene proyecto servicio."""
     return ProjectService(db)
 
 
@@ -40,22 +43,26 @@ async def list_projects(
     pagination: Pagination,
     status_filter: Annotated[ProjectStatus | None, Query(alias="status")] = None,
 ) -> Page[ProjectSummary]:
+    """Lista proyectos."""
     return await service.list_projects(user, pagination, status_filter)
 
 
 # Declarada antes de /{project_id} para que "summary" no se interprete como un id.
 @router.get("/summary", response_model=ProjectsOverview)
 async def projects_overview(user: CurrentUser, service: Service) -> ProjectsOverview:
+    """Resumen de los proyectos de la persona conectada."""
     return await service.overview(user)
 
 
 @router.post("", response_model=ProjectRead, status_code=status.HTTP_201_CREATED)
 async def create_project(data: ProjectCreate, user: CurrentUser, service: Service) -> ProjectRead:
+    """Crea un proyecto con su idea inicial."""
     return await service.create_project(user, data)
 
 
 @router.get("/{project_id}", response_model=ProjectDetail)
 async def get_project(project_id: uuid.UUID, user: CurrentUser, service: Service) -> ProjectDetail:
+    """Obtiene el detalle de un proyecto propio."""
     return await service.get_project(user, project_id)
 
 
@@ -63,11 +70,13 @@ async def get_project(project_id: uuid.UUID, user: CurrentUser, service: Service
 async def update_project(
     project_id: uuid.UUID, data: ProjectUpdate, user: CurrentUser, service: Service
 ) -> ProjectRead:
+    """Actualiza proyecto."""
     return await service.update_project(user, project_id, data)
 
 
 @router.delete("/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_project(project_id: uuid.UUID, user: CurrentUser, service: Service) -> None:
+    """Elimina un proyecto propio."""
     await service.delete_project(user, project_id)
 
 
@@ -75,6 +84,7 @@ async def delete_project(project_id: uuid.UUID, user: CurrentUser, service: Serv
 async def confirm_structure(
     project_id: uuid.UUID, user: CurrentUser, service: Service
 ) -> ProjectDetail:
+    """Gestiona confirm estructura."""
     return await service.confirm_structure(user, project_id)
 
 
@@ -85,6 +95,7 @@ async def confirm_structure(
 async def list_attributes(
     project_id: uuid.UUID, user: CurrentUser, service: Service
 ) -> list[IdeaAttributeRead]:
+    """Lista atributos."""
     return await service.list_attributes(user, project_id)
 
 
@@ -96,6 +107,7 @@ async def list_attributes(
 async def add_attribute(
     project_id: uuid.UUID, data: IdeaAttributeCreate, user: CurrentUser, service: Service
 ) -> IdeaAttributeRead:
+    """Agrega atributo."""
     return await service.add_attribute(user, project_id, data)
 
 
@@ -107,6 +119,7 @@ async def update_attribute(
     user: CurrentUser,
     service: Service,
 ) -> IdeaAttributeRead:
+    """Actualiza atributo."""
     return await service.update_attribute(user, project_id, attribute_id, data)
 
 
@@ -114,4 +127,5 @@ async def update_attribute(
 async def delete_attribute(
     project_id: uuid.UUID, attribute_id: uuid.UUID, user: CurrentUser, service: Service
 ) -> None:
+    """Elimina atributo."""
     await service.delete_attribute(user, project_id, attribute_id)

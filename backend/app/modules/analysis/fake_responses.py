@@ -20,6 +20,7 @@ _REF = re.compile(r"^\[(H\d+)\]", re.MULTILINE)
 
 @register_fake_response(AnalysisResult)
 def fake_analysis(messages: Sequence[AIMessage]) -> AnalysisResult:
+    """Gestiona analysis en analisis."""
     refs = _REF.findall(messages[-1].content)
     first, second = (refs + refs)[:2] if refs else ("H999", "H999")
     return AnalysisResult(

@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para findings rules."""
+
 import pytest
 
 from app.core.enums import Level
@@ -19,6 +21,7 @@ S, C, X = EvidenceStance.SUPPORTS, EvidenceStance.CONTRADICTS, EvidenceStance.CO
     ],
 )
 def test_normalize_entity_name(raw: str, expected: str) -> None:
+    """Prueba el escenario: normalize entidad nombre."""
     assert normalize_entity_name(raw) == expected
 
 
@@ -36,6 +39,7 @@ def test_normalize_entity_name(raw: str, expected: str) -> None:
 def test_cap_confidence(
     proposed: Level, domains: set[str], stances: set, level: Level, capped: bool
 ) -> None:
+    """Prueba el escenario: cap confidence."""
     decision = cap_confidence(proposed, domains, stances)
     assert decision.level == level
     assert decision.capped is capped

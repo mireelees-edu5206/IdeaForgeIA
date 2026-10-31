@@ -1,3 +1,5 @@
+"""Valida contratos de entrada/salida. Area: proyectos."""
+
 import uuid
 from datetime import datetime
 from typing import Annotated
@@ -32,6 +34,8 @@ AttributeValue = Annotated[
 
 
 class ProjectCreate(BaseModel):
+    """Representa proyecto creacion."""
+
     model_config = ConfigDict(extra="forbid")
 
     title: ProjectTitle
@@ -39,6 +43,8 @@ class ProjectCreate(BaseModel):
 
 
 class ProjectUpdate(PatchModel):
+    """Representa proyecto actualizacion."""
+
     title: ProjectTitle | None = None
     raw_idea: RawIdea | None = None
 
@@ -56,6 +62,8 @@ class ProjectSummary(BaseModel):
 
 
 class ProjectRead(ProjectSummary):
+    """Contrato de datos para proyecto read."""
+
     raw_idea: str
 
 
@@ -63,6 +71,8 @@ class ProjectRead(ProjectSummary):
 
 
 class IdeaAttributeCreate(BaseModel):
+    """Representa idea atributo creacion."""
+
     model_config = ConfigDict(extra="forbid")
 
     attribute_type: AttributeType
@@ -70,11 +80,15 @@ class IdeaAttributeCreate(BaseModel):
 
 
 class IdeaAttributeUpdate(PatchModel):
+    """Representa idea atributo actualizacion."""
+
     value: AttributeValue | None = None
     is_confirmed: bool | None = None
 
 
 class IdeaAttributeRead(BaseModel):
+    """Contrato de datos para idea atributo read."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -96,10 +110,14 @@ class StructureCheck(BaseModel):
 
 
 class ProjectDetail(ProjectRead):
+    """Representa proyecto detalle."""
+
     attributes: list[IdeaAttributeRead]
     structure: StructureCheck
 
 
 class ProjectsOverview(BaseModel):
+    """Representa proyectos overview."""
+
     total: int
     by_status: dict[ProjectStatus, int]

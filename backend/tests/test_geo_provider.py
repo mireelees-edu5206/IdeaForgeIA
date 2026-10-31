@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para geo provider."""
+
 import asyncio
 import io
 import json
@@ -8,6 +10,7 @@ from app.modules.geo.providers.openstreetmap import OpenStreetMapGeoProvider
 
 
 def test_nominatim_geocoding_sends_manual_query_and_parses_coordinates() -> None:
+    """Prueba el escenario: nominatim geocoding sends manual consulta and parses coordinates."""
     response = io.BytesIO(
         json.dumps(
             [
@@ -25,6 +28,7 @@ def test_nominatim_geocoding_sends_manual_query_and_parses_coordinates() -> None
     provider = OpenStreetMapGeoProvider(
         "https://nominatim.example", "https://overpass.example/api", "IdeaForgeAI/tests"
     )
+    # Abre y libera los recursos declarados en este bloque.
     with patch(
         "app.modules.geo.providers.openstreetmap.urlopen", return_value=response
     ) as mocked_urlopen:
@@ -39,6 +43,7 @@ def test_nominatim_geocoding_sends_manual_query_and_parses_coordinates() -> None
 
 
 def test_overpass_search_is_radius_and_category_limited() -> None:
+    """Prueba el escenario: overpass busqueda is radius and categoria limited."""
     response = io.BytesIO(
         json.dumps(
             {
@@ -56,6 +61,7 @@ def test_overpass_search_is_radius_and_category_limited() -> None:
     provider = OpenStreetMapGeoProvider(
         "https://nominatim.example", "https://overpass.example/api", "IdeaForgeAI/tests"
     )
+    # Abre y libera los recursos declarados en este bloque.
     with patch(
         "app.modules.geo.providers.openstreetmap.urlopen", return_value=response
     ) as mocked_urlopen:

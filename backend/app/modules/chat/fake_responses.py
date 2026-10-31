@@ -1,3 +1,5 @@
+"""Provee respuestas deterministas para pruebas. Area: asistente contextual."""
+
 from collections.abc import Sequence
 
 from app.modules.ai.providers.fake import register_fake_response
@@ -7,6 +9,7 @@ from app.modules.chat.schemas import ChatAnswer
 
 @register_fake_response(ChatAnswer)
 def chat_answer(messages: Sequence[AIMessage]) -> ChatAnswer:
+    """Gestiona answer en chat."""
     return ChatAnswer(
         answer=(
             "[Simulado] El asistente contextual está activo. "

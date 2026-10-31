@@ -11,6 +11,8 @@ _TRACKING_PARAMS = {"gclid", "fbclid", "msclkid", "mc_cid", "mc_eid", "ref", "re
 
 @dataclass(frozen=True, slots=True)
 class NormalizedUrl:
+    """Representa normalized URL."""
+
     url: str  # la original (limpia de espacios)
     canonical: str
     domain: str  # host sin "www."
@@ -19,16 +21,22 @@ class NormalizedUrl:
 def normalize_url(raw: str) -> NormalizedUrl | None:
     """Devuelve None si no es una URL http(s) válida (se descarta la fuente)."""
     url = raw.strip()
+    # Rama condicional: se cumple not url or len(url) > MAX_URL_LENGTH.
     if not url or len(url) > MAX_URL_LENGTH:
         return None
+    # Protege la operacion y dirige sus errores a manejadores explicitos.
     try:
         parts = urlsplit(url)
         host = (parts.hostname or "").lower().rstrip(".")
         port = parts.port
+    # Maneja el error ValueError sin detener el flujo esperado.
     except ValueError:
         return None
+    # Rama condicional: evalua parts.scheme.lower() not in (un valor, un valor) or not host or un
+    # valor.
     if parts.scheme.lower() not in ("http", "https") or not host or "." not in host:
         return None
+    # Rama condicional: se cumple parts.username or parts.password.
     if parts.username or parts.password:
         return None
     domain = host.removeprefix("www.")
@@ -49,8 +57,11 @@ def normalize_url(raw: str) -> NormalizedUrl | None:
 def guess_source_type(domain: str) -> SourceType:
     """Clasificación mínima por dominio; la Fase 10 podrá refinarla con la IA."""
     labels = domain.split(".")
+    # Rama condicional: evalua any((label in (un valor, un valor, un valor, un valor) for label in
+    # labe.
     if any(label in ("gov", "gob", "gouv", "mil") for label in labels[-3:]):
         return SourceType.GOVERNMENT
+    # Rama condicional: se cumple any((label in ('edu', 'ac') for label in labels[-3:])).
     if any(label in ("edu", "ac") for label in labels[-3:]):
         return SourceType.ACADEMIC
     return SourceType.UNKNOWN

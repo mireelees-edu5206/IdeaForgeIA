@@ -1,3 +1,4 @@
+/** Declara las rutas y sus barreras de acceso de invitado, usuario y administrador. */
 import { createBrowserRouter } from "react-router";
 
 import { AppShell } from "../components/layout/AppShell";
@@ -14,6 +15,7 @@ import { projectDetailRoute } from "../features/projects/routes";
 import { SettingsPage } from "../features/settings/SettingsPage";
 import { NotFoundPage, RouteErrorPage } from "../pages/StatusPage";
 
+/** Define router como dato o funcion publica de shared frontend. */
 export const router = createBrowserRouter([
   {
     errorElement: <RouteErrorPage />,

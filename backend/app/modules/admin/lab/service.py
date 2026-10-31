@@ -1,3 +1,6 @@
+"""Aplica reglas de negocio y permisos. Area: laboratorio administrativo."""
+
+import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime, time, timedelta
 from itertools import product
@@ -77,11 +80,15 @@ MAX_LAB_PROJECTS = 100
 
 
 class AdminLabService:
+    """Servicio de reglas de negocio para administrador lab."""
+
     def __init__(self, session: AsyncSession, geo_provider: GeoProvider) -> None:
+        """Gestiona la inicializacion para laboratorio admin."""
         self.session = session
         self.geo_provider = geo_provider
 
     async def list_projects(self) -> AdminLabProjectsResponse:
+        """Lista projects en laboratorio admin."""
         rows = await self.session.execute(
             select(Project, User.full_name)
             .join(User, User.id == Project.user_id)
@@ -91,6 +98,7 @@ class AdminLabService:
         projects = list(rows.tuples())
         project_ids = [project.id for project, _ in projects]
         scopes: dict[UUID, str] = {}
+        # Rama condicional: se cumple project_ids.
         if project_ids:
             attributes = await self.session.scalars(
                 select(IdeaAttribute)
@@ -101,6 +109,7 @@ class AdminLabService:
                 )
                 .order_by(IdeaAttribute.position)
             )
+            # Itera attribute sobre attributes.
             for attribute in attributes:
                 scopes.setdefault(attribute.project_id, attribute.value)
         return AdminLabProjectsResponse(
@@ -117,6 +126,7 @@ class AdminLabService:
         )
 
     async def metrics(self, days: int) -> LabMetricsResponse:
+        """Gestiona el flujo en laboratorio admin."""
         today = datetime.now(UTC).date()
         start = today - timedelta(days=days - 1)
         rows = await self.session.execute(
@@ -137,6 +147,7 @@ class AdminLabService:
             for day, calls, success, errors, latency, tokens_in, tokens_out in rows.tuples()
         }
         points = []
+        # Itera offset sobre range(days).
         for offset in range(days):
             day = start + timedelta(days=offset)
             calls, success, errors, latency, tokens_in, tokens_out = by_day.get(
@@ -157,7 +168,10 @@ class AdminLabService:
 
     @staticmethod
     def propositions() -> LabPropositionsResponse:
+        """Gestiona el flujo en laboratorio admin."""
+
         def prop(symbol: str, name: str, meaning: str) -> PropositionDefinition:
+            """Gestiona el flujo en laboratorio admin."""
             return PropositionDefinition(symbol=symbol, name=name, meaning=meaning)
 
         def build_table(
@@ -171,8 +185,10 @@ class AdminLabService:
             evaluate: Callable[[dict[str, bool]], bool],
             note: str,
         ) -> PropositionRuleTable:
+            """Construye table en laboratorio admin."""
             symbols = [item.symbol for item in inputs]
             rows = []
+            # Itera combination sobre product((False, True), repeat=len(symbols)).
             for combination in product((False, True), repeat=len(symbols)):
                 values = dict(zip(symbols, combination, strict=True))
                 rows.append(
@@ -259,6 +275,7 @@ class AdminLabService:
         confidence_input = [c1, c2, c3]
 
         def confidence_allows_high(values: dict[str, bool]) -> bool:
+            """Gestiona allows high en laboratorio admin."""
             domains = {"dominio-a", "dominio-b"} if values["C2"] else {"dominio-a"}
             stances = {EvidenceStance.CONTRADICTS} if values["C3"] else set()
             proposed = Level.HIGH if values["C1"] else Level.MEDIUM
@@ -377,7 +394,9 @@ class AdminLabService:
         )
 
     async def project_trace(self, project_id: UUID) -> ProjectTraceGraph:
+        """Gestiona trace en laboratorio admin."""
         project = await self.session.get(Project, project_id)
+        # Rama condicional: se cumple project is None.
         if project is None:
             raise ProjectNotFoundError()
 
@@ -387,9 +406,12 @@ class AdminLabService:
         root_id = f"project:{project.id}"
 
         def add_node(node_id: str, label: str, kind: str, **details: object) -> bool:
+            """Agrega node en laboratorio admin."""
             nonlocal truncated
+            # Rama condicional: se cumple node_id in nodes.
             if node_id in nodes:
                 return True
+            # Rama condicional: se cumple len(nodes) >= MAX_TRACE_NODES.
             if len(nodes) >= MAX_TRACE_NODES:
                 truncated = True
                 return False
@@ -402,6 +424,9 @@ class AdminLabService:
             return True
 
         def add_edge(source: str, target: str, relation: str) -> None:
+            """Agrega edge en laboratorio admin."""
+            # Rama condicional: evalua source in nodes and target in nodes and (len(edges) <
+            # MAX_TRACE_NODES * .
             if source in nodes and target in nodes and len(edges) < MAX_TRACE_NODES * 3:
                 key = (source, target, relation)
                 edges.setdefault(
@@ -422,6 +447,7 @@ class AdminLabService:
             .order_by(IdeaAttribute.attribute_type, IdeaAttribute.position)
             .limit(20)
         )
+        # Itera attribute sobre attributes.
         for attribute in attributes:
             node_id = f"attribute:{attribute.id}"
             add_node(
@@ -442,6 +468,7 @@ class AdminLabService:
             )
         )
         run_ids = [run.id for run in runs]
+        # Itera run sobre runs.
         for run in runs:
             node_id = f"run:{run.id}"
             add_node(
@@ -455,6 +482,7 @@ class AdminLabService:
             add_edge(root_id, node_id, "tiene ejecución")
 
         queries: list[ResearchQuery] = []
+        # Rama condicional: se cumple run_ids.
         if run_ids:
             queries = list(
                 await self.session.scalars(
@@ -465,6 +493,7 @@ class AdminLabService:
                 )
             )
         query_ids = [query.id for query in queries]
+        # Itera query sobre queries.
         for query in queries:
             node_id = f"query:{query.id}"
             add_node(
@@ -476,6 +505,7 @@ class AdminLabService:
             )
             add_edge(f"run:{query.run_id}", node_id, "pregunta de investigación")
 
+        # Rama condicional: se cumple query_ids.
         if query_ids:
             source_links = await self.session.execute(
                 select(ResearchQuerySource, Source)
@@ -484,6 +514,7 @@ class AdminLabService:
                 .order_by(ResearchQuerySource.rank)
                 .limit(MAX_TRACE_SOURCES)
             )
+            # Itera (link, source) sobre source_links.tuples().
             for link, source in source_links.tuples():
                 source_node = f"source:{source.id}"
                 add_node(
@@ -502,6 +533,7 @@ class AdminLabService:
             .order_by(Evidence.created_at)
             .limit(MAX_TRACE_EVIDENCE)
         )
+        # Itera (evidence, source) sobre evidence_rows.tuples().
         for evidence, source in evidence_rows.tuples():
             source_node = f"source:{source.id}"
             add_node(
@@ -520,6 +552,7 @@ class AdminLabService:
                 query_id=str(evidence.query_id) if evidence.query_id else None,
             )
             add_edge(source_node, evidence_node, "contiene evidencia")
+            # Rama condicional: se cumple evidence.query_id.
             if evidence.query_id:
                 add_edge(f"query:{evidence.query_id}", evidence_node, "cita en respuesta")
 
@@ -535,6 +568,7 @@ class AdminLabService:
             )
         )
         finding_ids = [finding.id for finding in findings]
+        # Itera finding sobre findings.
         for finding in findings:
             finding_node = f"finding:{finding.id}"
             add_node(
@@ -548,10 +582,12 @@ class AdminLabService:
             )
             add_edge(root_id, finding_node, "contiene hallazgo")
 
+        # Rama condicional: se cumple finding_ids.
         if finding_ids:
             finding_evidence_rows = await self.session.scalars(
                 select(FindingEvidence).where(FindingEvidence.finding_id.in_(finding_ids))
             )
+            # Itera link sobre finding_evidence_rows.
             for link in finding_evidence_rows:
                 add_edge(
                     f"evidence:{link.evidence_id}",
@@ -567,6 +603,7 @@ class AdminLabService:
                     Entity.project_id == project_id,
                 )
             )
+            # Itera (link, entity) sobre finding_entities.tuples().
             for link, entity in finding_entities.tuples():
                 entity_node = f"entity:{entity.id}"
                 add_node(
@@ -588,6 +625,7 @@ class AdminLabService:
             .order_by(Entity.name)
             .limit(MAX_TRACE_ANALYSIS_ITEMS)
         )
+        # Itera (competitor, entity) sobre competitor_rows.tuples().
         for competitor, entity in competitor_rows.tuples():
             entity_node = f"entity:{entity.id}"
             competitor_node = f"competitor:{competitor.id}"
@@ -625,8 +663,10 @@ class AdminLabService:
     async def trace_path(
         self, project_id: UUID, algorithm: TraceAlgorithm, target_node_id: str
     ) -> LabTracePathResponse:
+        """Gestiona path en laboratorio admin."""
         graph = await self.project_trace(project_id)
         nodes = {node.id: node for node in graph.nodes}
+        # Rama condicional: se cumple target_node_id not in nodes.
         if target_node_id not in nodes:
             return LabTracePathResponse(
                 algorithm=algorithm,
@@ -637,12 +677,13 @@ class AdminLabService:
                 expanded_count=0,
                 found=False,
             )
+        edge_pairs = [(edge.source, edge.target) for edge in graph.edges]
+        node_kinds = {node.id: node.kind for node in graph.nodes}
         path_ids, visited_ids = find_trace_path(
-            graph.root_id,
-            target_node_id,
-            [(edge.source, edge.target) for edge in graph.edges],
-            algorithm,
+            graph.root_id, target_node_id, edge_pairs, algorithm, node_kinds
         )
+        # BFS siempre devuelve el camino más corto; sirve como referencia para comparar.
+        reference_ids, _ = find_trace_path(graph.root_id, target_node_id, edge_pairs, "bfs")
         return LabTracePathResponse(
             algorithm=algorithm,
             root_id=graph.root_id,
@@ -651,11 +692,13 @@ class AdminLabService:
             visited_node_ids=visited_ids,
             expanded_count=len(visited_ids),
             found=bool(path_ids),
+            shortest_path_steps=len(reference_ids) - 1 if reference_ids else None,
         )
 
     async def places(
         self, project_id: UUID, latitude: float, longitude: float, radius_m: int, keyword: str
     ) -> LabPlaceSearchResponse:
+        """Gestiona el flujo en laboratorio admin."""
         project = await self._get_project(project_id)
         results = await self.geo_provider.find_places(latitude, longitude, radius_m, "all", keyword)
         return LabPlaceSearchResponse(
@@ -668,6 +711,7 @@ class AdminLabService:
         )
 
     async def route(self, project_id: UUID, request: LabRouteRequest) -> LabRouteResponse:
+        """Gestiona el flujo en laboratorio admin."""
         project = await self._get_project(project_id)
         current_places = await self.geo_provider.find_places(
             request.latitude,
@@ -677,6 +721,8 @@ class AdminLabService:
             request.keyword,
         )
         by_id = {f"{place.osm_type}:{place.osm_id}": place for place in current_places}
+        # Rama condicional: evalua any((place_id not in by_id for place_id in
+        # request.selected_place_ids)).
         if any(place_id not in by_id for place_id in request.selected_place_ids):
             raise ConflictError(
                 "Los lugares seleccionados cambiaron. Vuelve a buscar y selecciona "
@@ -684,7 +730,9 @@ class AdminLabService:
                 code="geo_places_changed",
             )
         selected = [by_id[place_id] for place_id in request.selected_place_ids]
-        algorithm_result = optimize_project_place_route(
+        # El cálculo corre en un hilo aparte para no bloquear al servidor mientras calcula.
+        algorithm_result = await asyncio.to_thread(
+            optimize_project_place_route,
             request.latitude,
             request.longitude,
             [
@@ -731,6 +779,7 @@ class AdminLabService:
     async def budget_plan(
         self, project_id: UUID, request: HypothesisBudgetRequest
     ) -> HypothesisBudgetResponse:
+        """Gestiona plan en laboratorio admin."""
         project = await self._get_project(project_id)
         ids = [item.hypothesis_id for item in request.items]
         rows = await self.session.scalars(
@@ -741,6 +790,7 @@ class AdminLabService:
             )
         )
         hypotheses = {hypothesis.id: hypothesis for hypothesis in rows}
+        # Rama condicional: se cumple set(hypotheses) != set(ids).
         if set(hypotheses) != set(ids):
             raise ConflictError(
                 "Una o más hipótesis ya no pertenecen al proyecto o fueron rechazadas.",
@@ -757,7 +807,10 @@ class AdminLabService:
             }
             for hypothesis in hypotheses.values()
         ]
-        result = optimize_hypothesis_budget(items, request.budget, request.algorithm)
+        # El cálculo corre en un hilo aparte para no bloquear al servidor mientras calcula.
+        result = await asyncio.to_thread(
+            optimize_hypothesis_budget, items, request.budget, request.algorithm
+        )
         return HypothesisBudgetResponse(
             project_id=project.id,
             algorithm=request.algorithm,
@@ -781,6 +834,7 @@ class AdminLabService:
     async def schedule(
         self, project_id: UUID, request: ValidationScheduleRequest
     ) -> ValidationScheduleResponse:
+        """Gestiona el flujo en laboratorio admin."""
         project = await self._get_project(project_id)
         ids = [task.hypothesis_id for task in request.tasks]
         rows = await self.session.scalars(
@@ -791,6 +845,7 @@ class AdminLabService:
             )
         )
         hypotheses = {hypothesis.id: hypothesis for hypothesis in rows}
+        # Rama condicional: se cumple set(hypotheses) != set(ids).
         if set(hypotheses) != set(ids):
             raise ConflictError(
                 "Una o más hipótesis ya no pertenecen al proyecto o fueron rechazadas.",
@@ -826,7 +881,9 @@ class AdminLabService:
         )
 
     async def _get_project(self, project_id: UUID) -> Project:
+        """Obtiene project en laboratorio admin."""
         project = await self.session.get(Project, project_id)
+        # Rama condicional: se cumple project is None.
         if project is None:
             raise ProjectNotFoundError()
         return project
@@ -834,6 +891,7 @@ class AdminLabService:
     async def _add_analysis_nodes(
         self, project_id, root_id, finding_ids, nodes, edges, add_node, add_edge
     ) -> None:
+        """Agrega analysis nodes en laboratorio admin."""
         definitions = (
             (Opportunity, OpportunityFinding, "opportunity_id", "opportunity", "title"),
             (Risk, RiskFinding, "risk_id", "risk", "title"),
@@ -846,6 +904,7 @@ class AdminLabService:
             ),
             (MissingInformation, None, None, "missing_information", "question"),
         )
+        # Itera (model, link_model, item_field, kind, label_field) sobre definitions.
         for model, link_model, item_field, kind, label_field in definitions:
             items = list(
                 await self.session.scalars(
@@ -858,6 +917,7 @@ class AdminLabService:
                     .limit(MAX_TRACE_ANALYSIS_ITEMS)
                 )
             )
+            # Itera item sobre items.
             for item in items:
                 node_id = f"{kind}:{item.id}"
                 details = {
@@ -869,12 +929,15 @@ class AdminLabService:
                 }
                 add_node(node_id, getattr(item, label_field), kind, **details)
                 add_edge(root_id, node_id, "contiene elemento de análisis")
+            # Rama condicional: evalua link_model is not None and item_field and finding_ids and
+            # items.
             if link_model is not None and item_field and finding_ids and items:
                 links = await self.session.execute(
                     select(getattr(link_model, item_field), link_model.finding_id)
                     .join(model, getattr(link_model, item_field) == model.id)
                     .where(model.project_id == project_id, link_model.finding_id.in_(finding_ids))
                 )
+                # Itera (item_id, finding_id) sobre links.tuples().
                 for item_id, finding_id in links.tuples():
                     add_edge(
                         f"finding:{finding_id}",
@@ -885,6 +948,7 @@ class AdminLabService:
     async def _add_report_nodes(
         self, project_id, root_id, nodes, edges, add_node, add_edge
     ) -> None:
+        """Agrega report nodes en laboratorio admin."""
         reports = list(
             await self.session.scalars(
                 select(Report)
@@ -893,6 +957,7 @@ class AdminLabService:
                 .limit(10)
             )
         )
+        # Itera report sobre reports.
         for report in reports:
             report_node = f"report:{report.id}"
             add_node(
@@ -910,6 +975,7 @@ class AdminLabService:
                 .order_by(ReportSection.position)
                 .limit(10)
             )
+            # Itera section sobre sections.
             for section in sections:
                 section_node = f"report-section:{section.id}"
                 add_node(

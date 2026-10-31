@@ -19,6 +19,8 @@ from app.modules.analysis.models import (
 
 @dataclass(frozen=True, slots=True)
 class AnalysisKind:
+    """Representa analisis kind."""
+
     key: str  # segmento de la URL
     label: str  # para mensajes: "La oportunidad no existe."
     model: type[Base]

@@ -1,3 +1,5 @@
+"""Utilidad de soporte. Area: proveedores de IA."""
+
 import time
 from collections.abc import Sequence
 from dataclasses import replace
@@ -26,6 +28,7 @@ class AIOrchestrator(AIProvider):
         fallback: AIProvider | None = None,
         grounded_provider: AIProvider | None = None,
     ) -> None:
+        """Gestiona la inicializacion para inteligencia artificial."""
         self.primary = primary
         self.fallback = fallback
         self.grounded_provider = grounded_provider or (
@@ -37,19 +40,25 @@ class AIOrchestrator(AIProvider):
     async def generate_structured[T: BaseModel](
         self, messages: Sequence[AIMessage], schema: type[T]
     ) -> StructuredResult[T]:
+        """Gestiona generate structured."""
         started = time.perf_counter()
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             result = await self.primary.generate_structured(messages, schema)
+        # Maneja el error AIProviderError sin detener el flujo esperado.
         except AIProviderError as primary_error:
             primary_error.provider = self.primary.name
             primary_error.model = self.primary.model
             first_attempt = _failed_attempt(self.primary, primary_error, _elapsed_ms(started))
+            # Rama condicional: se cumple not primary_error.retryable or self.fallback is None.
             if not primary_error.retryable or self.fallback is None:
                 primary_error.attempts = (first_attempt,)
                 raise
             fallback_started = time.perf_counter()
+            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 result = await self.fallback.generate_structured(messages, schema)
+            # Maneja el error AIProviderError sin detener el flujo esperado.
             except AIProviderError as fallback_error:
                 fallback_error.provider = self.fallback.name
                 fallback_error.model = self.fallback.model
@@ -89,7 +98,9 @@ class AIOrchestrator(AIProvider):
         )
 
     async def generate_grounded(self, messages: Sequence[AIMessage]) -> GroundedResult:
+        """Gestiona generate fundamentada."""
         provider = self.grounded_provider
+        # Rama condicional: se cumple provider is None.
         if provider is None:
             error = AIGroundingUnavailableError()
             error.provider = self.primary.name
@@ -98,19 +109,25 @@ class AIOrchestrator(AIProvider):
             raise error
 
         started = time.perf_counter()
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             result = await provider.generate_grounded(messages)
+        # Maneja el error AIProviderError sin detener el flujo esperado.
         except AIProviderError as error:
             error.provider = provider.name
             error.model = provider.model
             first_attempt = _failed_attempt(provider, error, _elapsed_ms(started))
             fallback = self.fallback or (self.primary if self.primary is not provider else None)
+            # Rama condicional: se cumple not isinstance(error, AIRateLimitError) or fallback is
+            # None.
             if not isinstance(error, AIRateLimitError) or fallback is None:
                 error.attempts = (first_attempt,)
                 raise
             fallback_started = time.perf_counter()
+            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 result = await fallback.generate_grounded(messages)
+            # Maneja el error AIProviderError sin detener el flujo esperado.
             except AIProviderError as fallback_error:
                 fallback_error.provider = fallback.name
                 fallback_error.model = fallback.model
@@ -150,8 +167,10 @@ class AIOrchestrator(AIProvider):
         )
 
     async def aclose(self) -> None:
+        """Gestiona aclose."""
         configured = (self.primary, self.fallback, self.grounded_provider)
         providers = {id(provider): provider for provider in configured if provider is not None}
+        # Itera provider sobre providers.values().
         for provider in providers.values():
             await provider.aclose()
 
@@ -161,6 +180,7 @@ def _failed_attempt(
     error: AIProviderError,
     latency_ms: int,
 ) -> AIProviderAttempt:
+    """Gestiona fallido attempt."""
     return AIProviderAttempt(
         provider=provider.name,
         model=provider.model,
@@ -178,4 +198,5 @@ def _failed_attempt(
 
 
 def _elapsed_ms(started: float) -> int:
+    """Gestiona elapsed ms."""
     return round((time.perf_counter() - started) * 1000)

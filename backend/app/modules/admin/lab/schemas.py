@@ -1,3 +1,5 @@
+"""Valida contratos de entrada/salida. Area: laboratorio administrativo."""
+
 from datetime import date
 from typing import Any, Literal
 from uuid import UUID
@@ -8,13 +10,15 @@ from app.core.enums import Priority
 from app.modules.geo.schemas import GeoBusiness
 from app.modules.projects.models import ProjectStatus
 
-TraceAlgorithm = Literal["bfs", "dfs"]
-RouteAlgorithm = Literal["hill_climbing", "genetic", "exact"]
-BudgetAlgorithm = Literal["hill_climbing", "exact"]
+TraceAlgorithm = Literal["bfs", "dfs", "greedy", "astar"]
+RouteAlgorithm = Literal["exact", "nearest_neighbor", "hill_climbing", "two_opt", "genetic"]
+BudgetAlgorithm = Literal["hill_climbing", "exact", "greedy_ratio"]
 ShiftName = Literal["matutino", "vespertino", "nocturno"]
 
 
 class AdminLabProjectOption(BaseModel):
+    """Representa administrador lab proyecto option."""
+
     id: UUID
     title: str
     status: ProjectStatus
@@ -23,10 +27,14 @@ class AdminLabProjectOption(BaseModel):
 
 
 class AdminLabProjectsResponse(BaseModel):
+    """Representa administrador lab proyectos respuesta."""
+
     projects: list[AdminLabProjectOption]
 
 
 class TraceGraphNode(BaseModel):
+    """Representa trace graph node."""
+
     id: str
     label: str
     kind: Literal[
@@ -50,12 +58,16 @@ class TraceGraphNode(BaseModel):
 
 
 class TraceGraphEdge(BaseModel):
+    """Representa trace graph edge."""
+
     source: str
     target: str
     relation: str
 
 
 class ProjectTraceGraph(BaseModel):
+    """Representa proyecto trace graph."""
+
     project_id: UUID
     project_title: str
     root_id: str
@@ -65,6 +77,8 @@ class ProjectTraceGraph(BaseModel):
 
 
 class LabTracePathRequest(BaseModel):
+    """Representa lab trace path solicitud."""
+
     model_config = ConfigDict(extra="forbid")
 
     algorithm: TraceAlgorithm
@@ -72,6 +86,8 @@ class LabTracePathRequest(BaseModel):
 
 
 class LabTracePathResponse(BaseModel):
+    """Representa lab trace path respuesta."""
+
     algorithm: TraceAlgorithm
     root_id: str
     target_node_id: str
@@ -79,9 +95,13 @@ class LabTracePathResponse(BaseModel):
     visited_node_ids: list[str]
     expanded_count: int
     found: bool
+    # Pasos del camino más corto según BFS (referencia exacta). Sirve para comparar con A*/voraz.
+    shortest_path_steps: int | None = None
 
 
 class LabPlaceSearchRequest(BaseModel):
+    """Representa lab lugar busqueda solicitud."""
+
     model_config = ConfigDict(extra="forbid")
 
     latitude: float = Field(ge=-90, le=90)
@@ -91,6 +111,8 @@ class LabPlaceSearchRequest(BaseModel):
 
 
 class LabPlaceSearchResponse(BaseModel):
+    """Representa lab lugar busqueda respuesta."""
+
     project_id: UUID
     latitude: float
     longitude: float
@@ -105,6 +127,8 @@ class LabPlaceSearchResponse(BaseModel):
 
 
 class LabRouteRequest(BaseModel):
+    """Representa lab ruta solicitud."""
+
     model_config = ConfigDict(extra="forbid")
 
     latitude: float = Field(ge=-90, le=90)
@@ -119,12 +143,17 @@ class LabRouteRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_unique_places(self) -> "LabRouteRequest":
+        """Valida unique places en laboratorio admin."""
+        # Rama condicional: evalua len(set(self.selected_place_ids)) !=
+        # len(self.selected_place_ids).
         if len(set(self.selected_place_ids)) != len(self.selected_place_ids):
             raise ValueError("No repitas lugares en la ruta.")
         return self
 
 
 class LabRouteStop(BaseModel):
+    """Representa lab ruta stop."""
+
     osm_type: Literal["node", "way", "relation"]
     osm_id: int
     name: str
@@ -134,6 +163,8 @@ class LabRouteStop(BaseModel):
 
 
 class LabRouteResponse(BaseModel):
+    """Representa lab ruta respuesta."""
+
     project_id: UUID
     keyword: str
     algorithm: RouteAlgorithm
@@ -146,13 +177,15 @@ class LabRouteResponse(BaseModel):
     evaluations: int
     history_km: list[float]
     distance_note: str = (
-        "Distancia euclidiana aproximada en plano local; no representa distancia ni tiempo "
-        "por calles."
+        "Distancia en línea recta sobre la superficie de la Tierra (Haversine). No es la "
+        "distancia por calles ni incluye tiempo de traslado."
     )
     persisted: Literal[False] = False
 
 
 class HypothesisBudgetItemInput(BaseModel):
+    """Contrato de datos para hipotesis presupuesto elemento entrada."""
+
     model_config = ConfigDict(extra="forbid")
 
     hypothesis_id: UUID
@@ -161,6 +194,8 @@ class HypothesisBudgetItemInput(BaseModel):
 
 
 class HypothesisBudgetRequest(BaseModel):
+    """Representa hipotesis presupuesto solicitud."""
+
     model_config = ConfigDict(extra="forbid")
 
     budget: int = Field(ge=0, le=10_000_000)
@@ -169,13 +204,17 @@ class HypothesisBudgetRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_unique_hypotheses(self) -> "HypothesisBudgetRequest":
+        """Valida unique hypotheses en laboratorio admin."""
         ids = [item.hypothesis_id for item in self.items]
+        # Rama condicional: se cumple len(set(ids)) != len(ids).
         if len(set(ids)) != len(ids):
             raise ValueError("No repitas hipótesis en el plan de presupuesto.")
         return self
 
 
 class HypothesisBudgetSelection(BaseModel):
+    """Representa hipotesis presupuesto selection."""
+
     hypothesis_id: UUID
     statement: str
     priority: Priority
@@ -184,6 +223,8 @@ class HypothesisBudgetSelection(BaseModel):
 
 
 class HypothesisBudgetResponse(BaseModel):
+    """Representa hipotesis presupuesto respuesta."""
+
     project_id: UUID
     algorithm: BudgetAlgorithm
     budget: int
@@ -196,6 +237,8 @@ class HypothesisBudgetResponse(BaseModel):
 
 
 class ValidationScheduleTaskInput(BaseModel):
+    """Contrato de datos para validacion schedule task entrada."""
+
     model_config = ConfigDict(extra="forbid")
 
     hypothesis_id: UUID
@@ -203,6 +246,8 @@ class ValidationScheduleTaskInput(BaseModel):
 
 
 class ValidationScheduleRequest(BaseModel):
+    """Representa validacion schedule solicitud."""
+
     model_config = ConfigDict(extra="forbid")
 
     capacity_per_shift: int = Field(default=4, ge=1, le=8)
@@ -210,15 +255,20 @@ class ValidationScheduleRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_tasks(self) -> "ValidationScheduleRequest":
+        """Valida tasks en laboratorio admin."""
         ids = [task.hypothesis_id for task in self.tasks]
+        # Rama condicional: se cumple len(set(ids)) != len(ids).
         if len(set(ids)) != len(ids):
             raise ValueError("No repitas hipótesis en el calendario.")
+        # Rama condicional: se cumple len(self.tasks) > self.capacity_per_shift * 3.
         if len(self.tasks) > self.capacity_per_shift * 3:
             raise ValueError("La capacidad total por turnos no alcanza para todas las hipótesis.")
         return self
 
 
 class ValidationScheduleAssignment(BaseModel):
+    """Representa validacion schedule assignment."""
+
     hypothesis_id: UUID
     statement: str
     priority: Priority
@@ -227,6 +277,8 @@ class ValidationScheduleAssignment(BaseModel):
 
 
 class ValidationScheduleResponse(BaseModel):
+    """Representa validacion schedule respuesta."""
+
     project_id: UUID
     assignments: list[ValidationScheduleAssignment]
     satisfied_preferences: int
@@ -236,6 +288,8 @@ class ValidationScheduleResponse(BaseModel):
 
 
 class LabMetricPoint(BaseModel):
+    """Representa lab metric point."""
+
     day: date
     calls: int
     success_calls: int
@@ -246,22 +300,30 @@ class LabMetricPoint(BaseModel):
 
 
 class LabMetricsResponse(BaseModel):
+    """Representa lab metrics respuesta."""
+
     days: int
     points: list[LabMetricPoint]
 
 
 class PropositionDefinition(BaseModel):
+    """Representa proposition definition."""
+
     symbol: str
     name: str
     meaning: str
 
 
 class TruthTableRow(BaseModel):
+    """Representa truth table row."""
+
     values: dict[str, bool]
     result: bool
 
 
 class PropositionRuleTable(BaseModel):
+    """Representa proposition rule table."""
+
     id: str
     title: str
     description: str
@@ -274,11 +336,15 @@ class PropositionRuleTable(BaseModel):
 
 
 class PeasDimension(BaseModel):
+    """Representa peas dimension."""
+
     symbol: str
     name: str
     description: str
 
 
 class LabPropositionsResponse(BaseModel):
+    """Representa lab propositions respuesta."""
+
     rules: list[PropositionRuleTable]
     peas: list[PeasDimension]

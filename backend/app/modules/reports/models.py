@@ -1,3 +1,5 @@
+"""Define entidades ORM y restricciones de persistencia. Area: informes/veredicto."""
+
 import uuid
 from datetime import datetime
 from enum import StrEnum
@@ -13,12 +15,16 @@ from app.modules.research.models import research_run_fk
 
 
 class ReportStatus(StrEnum):
+    """Representa informe estado."""
+
     GENERATING = "generating"
     COMPLETED = "completed"
     FAILED = "failed"
 
 
 class ReportSectionType(StrEnum):
+    """Representa informe seccion tipo."""
+
     EXECUTIVE_SUMMARY = "executive_summary"
     IDEA_OVERVIEW = "idea_overview"
     MARKET = "market"
@@ -32,6 +38,8 @@ class ReportSectionType(StrEnum):
 
 
 class Report(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
+    """Representa informe."""
+
     __tablename__ = "reports"
     __table_args__ = (
         UniqueConstraint("project_id", "version"),
@@ -54,6 +62,8 @@ class Report(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
 
 
 class ReportSection(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
+    """Representa informe seccion."""
+
     __tablename__ = "report_sections"
     __table_args__ = (
         UniqueConstraint("report_id", "position"),

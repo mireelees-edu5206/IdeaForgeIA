@@ -1,3 +1,5 @@
+"""Expone endpoints HTTP del dominio. Area: analisis."""
+
 import uuid
 from typing import Annotated
 
@@ -14,10 +16,12 @@ router = APIRouter(prefix="/projects/{project_id}", tags=["analysis"])
 
 
 def get_analysis_service(db: DbSession) -> AnalysisService:
+    """Obtiene analysis service en analisis."""
     return AnalysisService(db)
 
 
 def get_runner(request: Request) -> AnalysisRunner:
+    """Obtiene runner en analisis."""
     return request.app.state.analysis_runner
 
 
@@ -38,6 +42,7 @@ async def start_analysis(
     runner: Runner,
     background: BackgroundTasks,
 ) -> ResearchRunRead:
+    """Inicia analysis en analisis."""
     run = await service.start(user, project_id, run_id)
     background.add_task(runner.run, run.id)
     return run
@@ -47,6 +52,7 @@ async def start_analysis(
 async def get_analysis(
     project_id: uuid.UUID, user: CurrentUser, service: Service, run_id: uuid.UUID | None = None
 ) -> AnalysisRead:
+    """Obtiene analysis en analisis."""
     return await service.overview(user, project_id, run_id)
 
 
@@ -59,6 +65,7 @@ def _register(kind: AnalysisKind) -> None:
     async def create(
         project_id: uuid.UUID, data: create_schema, user: CurrentUser, service: Service
     ):
+        """Crea el flujo en analisis."""
         return await service.create(kind, user, project_id, data)
 
     async def update(
@@ -68,11 +75,13 @@ def _register(kind: AnalysisKind) -> None:
         user: CurrentUser,
         service: Service,
     ):
+        """Actualiza el flujo en analisis."""
         return await service.update(kind, user, project_id, item_id, data)
 
     async def remove(
         project_id: uuid.UUID, item_id: uuid.UUID, user: CurrentUser, service: Service
     ):
+        """Elimina el flujo en analisis."""
         await service.delete(kind, user, project_id, item_id)
 
     router.add_api_route(
@@ -99,5 +108,6 @@ def _register(kind: AnalysisKind) -> None:
     )
 
 
+# Itera _kind sobre KINDS.
 for _kind in KINDS:
     _register(_kind)

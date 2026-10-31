@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de autenticacion. */
 import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -11,6 +12,7 @@ import { GuestOnly, LOGIN_PATH, RequireAuth } from "./guards";
 import { LoginPage } from "./LoginPage";
 import { RegisterPage } from "./RegisterPage";
 
+/** Define supabaseMock para el bloque de autenticacion. */
 const supabaseMock = vi.hoisted(() => {
   let session: { access_token: string; user: { id: string } } | null = null;
   let loginError: { code: string } | null = null;
@@ -22,6 +24,7 @@ const supabaseMock = vi.hoisted(() => {
     }),
     getSession: vi.fn(async () => ({ data: { session }, error: null })),
     signInWithPassword: vi.fn(async () => {
+      /** Rama condicional: loginError. */
       if (loginError) return { data: { session: null }, error: loginError };
       session = { access_token: "supabase-access", user: { id: "supabase-user" } };
       listeners.forEach((callback) => callback("SIGNED_IN", session));
@@ -44,6 +47,7 @@ const supabaseMock = vi.hoisted(() => {
       loginError = null;
       listeners.length = 0;
       Object.values(auth).forEach((method) => {
+        /** Rama condicional: typeof method === "function" && "mockClear" in method. */
         if (typeof method === "function" && "mockClear" in method) method.mockClear();
       });
     },
@@ -61,6 +65,7 @@ vi.mock("../../lib/supabaseClient", () => ({
   getSupabase: () => ({ auth: supabaseMock.auth }),
 }));
 
+/** Define USER para el bloque de autenticacion. */
 const USER = {
   id: "1",
   email: "ana@ideaforge.dev",
@@ -69,6 +74,7 @@ const USER = {
   created_at: "",
 };
 
+/** Renderiza render app de autenticacion. */
 function renderApp(initialPath: string) {
   const router = createMemoryRouter(
     [
@@ -96,13 +102,16 @@ function renderApp(initialPath: string) {
 beforeEach(() => supabaseMock.reset());
 afterEach(() => vi.unstubAllGlobals());
 
+/** Escenario de prueba: flujo de autenticación con Supabase. */
 describe("flujo de autenticación con Supabase", () => {
+  /** Escenario de prueba: una ruta privada sin sesión redirige al login. */
   it("una ruta privada sin sesión redirige al login", async () => {
     renderApp("/privado");
     expect(await screen.findByRole("heading", { name: "Bienvenido de nuevo" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Crear una cuenta" })).toBeInTheDocument();
   });
 
+  /** Escenario de prueba: mantiene la contraseña oculta y explica cómo mostrarla. */
   it("mantiene la contraseña oculta y explica cómo mostrarla", async () => {
     renderApp(LOGIN_PATH);
     const user = userEvent.setup();
@@ -114,6 +123,7 @@ describe("flujo de autenticación con Supabase", () => {
     expect(screen.getByRole("button", { name: "Ocultar contraseña" })).toBeInTheDocument();
   });
 
+  /** Escenario de prueba: valida la sesión con la API y vuelve a la ruta que se pidió. */
   it("valida la sesión con la API y vuelve a la ruta que se pidió", async () => {
     mockFetch(() => jsonResponse(200, USER));
     const router = renderApp("/privado");
@@ -131,6 +141,7 @@ describe("flujo de autenticación con Supabase", () => {
     });
   });
 
+  /** Escenario de prueba: muestra un error de credenciales en español. */
   it("muestra un error de credenciales en español", async () => {
     supabaseMock.setLoginError({ code: "invalid_credentials" });
     renderApp(LOGIN_PATH);
@@ -145,6 +156,7 @@ describe("flujo de autenticación con Supabase", () => {
     );
   });
 
+  /** Escenario de prueba: inicia el flujo OAuth de Google. */
   it("inicia el flujo OAuth de Google", async () => {
     renderApp(LOGIN_PATH);
     await userEvent.setup().click(await screen.findByRole("button", { name: "Continuar con Google" }));
@@ -154,6 +166,7 @@ describe("flujo de autenticación con Supabase", () => {
     });
   });
 
+  /** Escenario de prueba: informa que debe confirmar el correo antes de iniciar sesión. */
   it("informa que debe confirmar el correo antes de iniciar sesión", async () => {
     renderApp("/registro");
     const user = userEvent.setup();
@@ -178,6 +191,7 @@ describe("flujo de autenticación con Supabase", () => {
     );
   });
 
+  /** Escenario de prueba: con una sesión de Supabase guardada carga el perfil local. */
   it("con una sesión de Supabase guardada carga el perfil local", async () => {
     supabaseMock.setSession({ access_token: "saved-supabase-access", user: { id: "supabase-user" } });
     mockFetch(() => jsonResponse(200, USER));

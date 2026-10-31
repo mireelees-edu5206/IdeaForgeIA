@@ -1,3 +1,4 @@
+/** Resume resultados, revisión, alternativas, fuentes y actividad del proyecto visible. */
 import type { IconType } from "react-icons";
 import { FiBarChart2, FiBookOpen, FiPieChart, FiRefreshCw, FiTrendingUp, FiUsers } from "react-icons/fi";
 
@@ -12,9 +13,11 @@ import { COMPETITOR_TYPE_META, COMPETITOR_TYPES, REVIEW_LABELS } from "../findin
 import { useCompetitors, useFindings } from "../findings/queries";
 import type { CompetitorType, ReviewStatus } from "../findings/types";
 import { CATEGORY_LABELS, SOURCE_TYPE_LABELS } from "../research/constants";
+import { PieChart } from "../../components/ui/PieChart";
 import { useSources } from "../research/queries";
 import type { ResearchCategory, Source, SourceType } from "../research/types";
 
+/** Configuracion visual de CATEGORY_COLORS para ubicar colores/animaciones de graficas. */
 const CATEGORY_COLORS = [
   "bg-cyan-400",
   "bg-emerald-400",
@@ -26,21 +29,55 @@ const CATEGORY_COLORS = [
   "bg-slate-400",
 ];
 
+/** Configuracion visual de REVIEW_COLORS para ubicar colores/animaciones de graficas. */
 const REVIEW_COLORS: Record<ReviewStatus, string> = {
   accepted: "#34d399",
   proposed: "#fbbf24",
   rejected: "#fb7185",
 };
 
+/** Catalogo REVIEW_ORDER que define etiquetas o reglas de graficas. */
 const REVIEW_ORDER: ReviewStatus[] = ["accepted", "proposed", "rejected"];
+/** Configuracion visual de COMPETITOR_COLORS para ubicar colores/animaciones de graficas. */
 const COMPETITOR_COLORS = ["bg-rose-400", "bg-orange-400", "bg-amber-400", "bg-sky-400"];
 
+/*
+ * ─── TIPO DE CADA GRÁFICA (cambia aquí si el profesor pide otra gráfica) ───
+ * Para cambiar una gráfica, escribe otra palabra entre comillas. Nada más:
+ *   "barras" → gráfica de barras (la original en la mayoría de los casos)
+ *   "pastel" → gráfica de pastel (rebanadas)
+ *   "dona"   → pastel con hueco en el centro
+ *   "lineas" → solo para "Fuentes consultadas con el tiempo": línea por mes (original)
+ *
+ * Ejemplo: para que "Temas que aparecen" sea pastel, escribe:
+ *   const TIPO_TEMAS = "pastel" as TipoGrafica;
+ *
+ * Las palabras "as TipoGrafica" solo le dicen a la computadora que la palabra puede cambiar.
+ * No las quites.
+ */
+type TipoGrafica = "barras" | "pastel" | "dona";
+type TipoTiempo = "lineas" | "barras";
+
+/** Gráfica "Temas que aparecen". Valores: "barras", "pastel", "dona". */
+const TIPO_TEMAS = "barras" as TipoGrafica;
+/** Gráfica "Alternativas encontradas". Valores: "barras", "pastel", "dona". */
+const TIPO_ALTERNATIVAS = "barras" as TipoGrafica;
+/** Gráfica "De dónde viene la información". Valores: "barras", "pastel", "dona". */
+const TIPO_FUENTES = "barras" as TipoGrafica;
+/** Gráfica "Revisión de resultados". "dona" es la original; también sirven "barras" y "pastel". */
+const TIPO_REVISION = "dona" as TipoGrafica;
+/** Gráfica "Fuentes consultadas con el tiempo". "lineas" es la original; "barras" muestra un barra por mes. */
+const TIPO_TIEMPO = "lineas" as TipoTiempo;
+/* ─── FIN DEL SELECTOR DE TIPO ─── */
+
+/** Contrato de datos CountBarEntry utilizado por graficas. */
 interface CountBarEntry {
   label: string;
   count: number;
   color?: string;
 }
 
+/** Componente CountBarChart: renderiza la vista de graficas. */
 function CountBarChart({
   id,
   title,
@@ -88,10 +125,12 @@ function CountBarChart({
   );
 }
 
+/** Componente ReviewStatusChart: renderiza la vista de graficas. */
 function ReviewStatusChart({ counts }: { counts: Record<ReviewStatus, number> }) {
   const total = REVIEW_ORDER.reduce((sum, status) => sum + counts[status], 0);
   const radius = 42;
   const circumference = 2 * Math.PI * radius;
+  // SVG consume los segmentos como arcos continuos: cada offset inicia donde terminó el anterior.
   let offset = 0;
 
   return (
@@ -158,10 +197,13 @@ function ReviewStatusChart({ counts }: { counts: Record<ReviewStatus, number> })
   );
 }
 
+/** Gestiona sources by month de graficas. */
 function sourcesByMonth(sources: Source[]) {
+  // Agrupa por meses UTC para que el gráfico no cambie según la zona horaria del navegador.
   const dates = sources
     .map((source) => new Date(source.created_at))
     .filter((date) => Number.isFinite(date.getTime()));
+  /** Rama condicional: dates.length === 0. */
   if (dates.length === 0) return [];
 
   const latest = dates.reduce((newest, date) => (date > newest ? date : newest));
@@ -171,6 +213,7 @@ function sourcesByMonth(sources: Source[]) {
 
   dates.forEach((date) => {
     const month = date.getUTCFullYear() * 12 + date.getUTCMonth();
+    /** Rama condicional: month >= firstMonth && month <= latestMonth. */
     if (month >= firstMonth && month <= latestMonth) {
       counts.set(month, (counts.get(month) ?? 0) + 1);
     }
@@ -192,6 +235,7 @@ function sourcesByMonth(sources: Source[]) {
   });
 }
 
+/** Componente SourcesOverTimeChart: renderiza la vista de graficas. */
 function SourcesOverTimeChart({ points }: { points: ReturnType<typeof sourcesByMonth> }) {
   const width = 440;
   const height = 230;
@@ -270,12 +314,34 @@ function SourcesOverTimeChart({ points }: { points: ReturnType<typeof sourcesByM
   );
 }
 
+/** Datos que necesita cualquier gráfica de conteo. Son los mismos para barras, pastel o dona. */
+type CountChartProps = {
+  id: string;
+  title: string;
+  explanation: string;
+  entries: CountBarEntry[];
+  icon: IconType;
+};
+
+/**
+ * CountChart decide qué dibujo mostrar según el tipo elegido en los selectores TIPO_* de arriba.
+ * Recibe los mismos datos en los tres casos, por eso cambiar el tipo no requiere tocar nada más.
+ */
+function CountChart({ tipo, ...props }: CountChartProps & { tipo: TipoGrafica }) {
+  // "barras" usa la gráfica de barras original.
+  if (tipo === "barras") return <CountBarChart {...props} />;
+  // "pastel" y "dona" usan el componente de pastel; "dona" activa el hueco del centro.
+  return <PieChart {...props} donut={tipo === "dona"} />;
+}
+
+/** Expone la funcion visualizations tab para el flujo de visualizations. */
 export function VisualizationsTab() {
   const { project } = useProjectOutlet();
   const findings = useFindings(project.id, {});
   const competitors = useCompetitors(project.id);
   const sources = useSources(project.id);
 
+  /** Rama condicional: findings.isPending || competitors.isPending || sources.. */
   if (findings.isPending || competitors.isPending || sources.isPending) {
     return (
       <div role="status" className="flex items-center justify-center gap-3 py-16 text-slate-300">
@@ -284,6 +350,7 @@ export function VisualizationsTab() {
     );
   }
 
+  /** Rama condicional: findings.isError || competitors.isError || sources.isEr. */
   if (findings.isError || competitors.isError || sources.isError) {
     const error = findings.error ?? competitors.error ?? sources.error;
     return (
@@ -346,15 +413,28 @@ export function VisualizationsTab() {
         />
       )}
       <div className="grid gap-5 2xl:grid-cols-2">
-        <CountBarChart
+        <CountChart
+          tipo={TIPO_TEMAS}
           id="category-chart"
           title="Temas que aparecen"
           explanation="Te muestra qué temas —como mercado, clientes o competencia— aparecen más en la investigación."
           entries={categories.map((category) => ({ label: CATEGORY_LABELS[category], count: categoryCounts[category] }))}
           icon={FiBarChart2}
         />
-        <ReviewStatusChart counts={reviewCounts} />
-        <CountBarChart
+        {TIPO_REVISION === "dona" ? (
+          <ReviewStatusChart counts={reviewCounts} />
+        ) : (
+          <CountChart
+            tipo={TIPO_REVISION}
+            id="review-chart"
+            title="Revisión de resultados"
+            explanation="Muestra cuántos aceptaste, rechazaste o todavía tienes pendientes de revisar."
+            entries={REVIEW_ORDER.map((status) => ({ label: REVIEW_LABELS[status], count: reviewCounts[status] }))}
+            icon={FiPieChart}
+          />
+        )}
+        <CountChart
+          tipo={TIPO_ALTERNATIVAS}
           id="competitor-chart"
           title="Alternativas encontradas"
           explanation="Compara las opciones parecidas o sustitutas que siguen en revisión. Las descartadas no se cuentan."
@@ -365,14 +445,26 @@ export function VisualizationsTab() {
           }))}
           icon={FiUsers}
         />
-        <CountBarChart
+        <CountChart
+          tipo={TIPO_FUENTES}
           id="sources-chart"
           title="De dónde viene la información"
           explanation="Resume qué tipos de sitios aportan información, por ejemplo noticias, gobierno o páginas académicas."
           entries={sourceTypes.map((type) => ({ label: SOURCE_TYPE_LABELS[type], count: sourceCounts[type] }))}
           icon={FiBookOpen}
         />
-        <SourcesOverTimeChart points={sourceTimeline} />
+        {TIPO_TIEMPO === "lineas" ? (
+          <SourcesOverTimeChart points={sourceTimeline} />
+        ) : (
+          <CountChart
+            tipo="barras"
+            id="sources-over-time"
+            title="Fuentes consultadas con el tiempo"
+            explanation="Muestra cuándo se reunió más información, mes a mes, durante los últimos seis meses de actividad."
+            entries={sourceTimeline.map((point) => ({ label: point.label, count: point.count }))}
+            icon={FiTrendingUp}
+          />
+        )}
       </div>
     </div>
   );

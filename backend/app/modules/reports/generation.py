@@ -1,4 +1,4 @@
-"""Contexto y prompt de reportes: conserva la cadena hallazgo -> evidencia -> fuente."""
+"""Construye contexto, prompt y secciones del informe con la cadena hallazgo-evidencia-fuente."""
 
 import json
 import re
@@ -50,7 +50,9 @@ async def build_report_context(
     geo_provider: GeoProvider | None = None,
     geographic_scopes: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    """Construye report context en informes."""
     attributes = await IdeaAttributeRepository(session).list_for_project(project.id)
+    # Assign stable references from persisted project data before asking a provider to summarize it.
     geography = await _geographic_context(attributes, geo_provider, geographic_scopes)
     query_rows = await session.scalars(
         select(ResearchQuery).where(ResearchQuery.run_id == run.id).order_by(ResearchQuery.position)
@@ -80,6 +82,7 @@ async def build_report_context(
     sources = _unique_sources(list(source_rows))
 
     evidence_rows = []
+    # Rama condicional: se cumple findings.
     if findings:
         evidence_rows = (
             (
@@ -105,8 +108,10 @@ async def build_report_context(
     evidence_refs: dict[uuid.UUID, str] = {}
     finding_evidence: dict[uuid.UUID, list[dict[str, str]]] = {}
     evidence_truncated = False
+    # Itera (link, evidence, source) sobre evidence_rows.
     for link, evidence, source in evidence_rows:
         attached = finding_evidence.setdefault(link.finding_id, [])
+        # Rama condicional: se cumple len(attached) >= MAX_EVIDENCE_PER_FINDING.
         if len(attached) >= MAX_EVIDENCE_PER_FINDING:
             evidence_truncated = True
             continue
@@ -242,7 +247,10 @@ async def _geographic_context(
     provider: GeoProvider | None,
     requested_scopes: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
+    """Consulta zonas solicitadas o ubicaciones confirmadas y conserva limites del mapa."""
+    # Explicit map searches take priority; otherwise only confirmed location attributes are used.
     source_scopes = requested_scopes
+    # Rama condicional: se cumple source_scopes is None.
     if source_scopes is None:
         source_scopes = [
             {"query": attribute.value}
@@ -251,23 +259,29 @@ async def _geographic_context(
         ]
     scopes: list[dict[str, Any]] = []
     seen: set[tuple[str, float | None, float | None]] = set()
+    # Itera scope sobre source_scopes.
     for scope in source_scopes:
         query = " ".join(str(scope.get("query", "")).split()).strip()
+        # Rama condicional: se cumple not query.
         if not query:
             continue
         key = (query, scope.get("latitude"), scope.get("longitude"))
+        # Rama condicional: se cumple key in seen.
         if key in seen:
             continue
         seen.add(key)
         scopes.append({**scope, "query": query})
+        # Rama condicional: se cumple len(scopes) >= MAX_GEOGRAPHIC_SCOPES.
         if len(scopes) >= MAX_GEOGRAPHIC_SCOPES:
             break
+    # Rama condicional: se cumple not scopes.
     if not scopes:
         return {
             "status": "not_provided",
             "note": "No se indicó una zona geográfica confirmada para el proyecto.",
             "areas": [],
         }
+    # Rama condicional: se cumple provider is None.
     if provider is None:
         return {
             "status": "unavailable",
@@ -277,21 +291,27 @@ async def _geographic_context(
 
     areas: list[dict[str, Any]] = []
     place_index = 1
+    # Itera scope sobre scopes.
     for scope in scopes:
         query = scope["query"]
         latitude = scope.get("latitude")
         longitude = scope.get("longitude")
         radius_m = int(scope.get("radius_m", 1000))
         keyword = scope.get("keyword")
+        # Rama condicional: se cumple latitude is None or longitude is None.
         if latitude is None or longitude is None:
+            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 matches = await provider.geocode(query)
+            # Maneja el error GeoProviderUnavailableError sin detener el flujo esperado.
             except GeoProviderUnavailableError:
                 areas.append({"query": query, "status": "unavailable", "places": []})
                 continue
+            # Rama condicional: se cumple not matches.
             if not matches:
                 areas.append({"query": query, "status": "not_found", "places": []})
                 continue
+            # Rama condicional: se cumple len(matches) > 1.
             if len(matches) > 1:
                 areas.append(
                     {
@@ -308,6 +328,7 @@ async def _geographic_context(
             resolved_area = location.display_name
         else:
             resolved_area = query
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             businesses = await provider.find_places(
                 latitude,
@@ -316,6 +337,7 @@ async def _geographic_context(
                 "all",
                 keyword,
             )
+        # Maneja el error GeoProviderUnavailableError sin detener el flujo esperado.
         except GeoProviderUnavailableError:
             areas.append(
                 {
@@ -328,6 +350,7 @@ async def _geographic_context(
             continue
 
         places = []
+        # Itera place sobre businesses[:MAX_PLACES_PER_SCOPE].
         for place in businesses[:MAX_PLACES_PER_SCOPE]:
             places.append(
                 {
@@ -356,12 +379,16 @@ async def _geographic_context(
         )
 
     statuses = {area["status"] for area in areas}
+    # Rama condicional: se cumple 'places_found' in statuses.
     if "places_found" in statuses:
         status = "places_found"
+    # Rama condicional: se cumple 'ambiguous' in statuses.
     elif "ambiguous" in statuses:
         status = "ambiguous"
+    # Rama condicional: se cumple statuses.intersection({'unavailable', 'places_unavailable'}).
     elif statuses.intersection({"unavailable", "places_unavailable"}):
         status = "unavailable"
+    # Rama condicional: se cumple 'not_found' in statuses.
     elif "not_found" in statuses:
         status = "not_found"
     else:
@@ -384,6 +411,7 @@ async def _analysis_items(
     run_id: uuid.UUID,
     fields: Sequence[str],
 ) -> list[dict[str, Any]]:
+    """Gestiona items en informes."""
     rows = await session.scalars(
         select(model)
         .where(
@@ -405,9 +433,12 @@ async def _analysis_items(
 
 
 def _unique_sources(sources: Sequence[Source]) -> list[Source]:
+    """Gestiona sources en informes."""
     result: list[Source] = []
     seen: set[uuid.UUID] = set()
+    # Itera source sobre sources.
     for source in sources:
+        # Rama condicional: se cumple source.id not in seen.
         if source.id not in seen:
             seen.add(source.id)
             result.append(source)
@@ -415,6 +446,7 @@ def _unique_sources(sources: Sequence[Source]) -> list[Source]:
 
 
 def report_messages(context: dict[str, Any]) -> list[AIMessage]:
+    """Gestiona messages en informes."""
     system = (
         "Redacta un informe de validación de negocio en español, claro y útil para tomar "
         "decisiones. Devuelve el esquema solicitado, incluido un veredicto estructurado. "
@@ -470,6 +502,8 @@ def report_messages(context: dict[str, Any]) -> list[AIMessage]:
 def report_sections(
     draft: ReportDraft, context: dict[str, Any]
 ) -> list[tuple[ReportSectionType, str, dict[str, Any] | None]]:
+    """Filtra citas del borrador y produce las secciones que se guardan en el reporte."""
+    # Whitelist references from the fetched context so generated text cannot invent source IDs.
     valid_refs = {
         row["ref"]
         for group in (context.get("findings", []), context.get("sources", []))
@@ -518,6 +552,8 @@ def report_sections(
 
 
 def _financial_reference_ids(context: dict[str, Any]) -> set[str]:
+    """Devuelve solo referencias aceptadas o manuales que respaldan costos/precios."""
+    # Proposed AI items are not enough to support a numeric investment estimate.
     references: set[str] = set()
     financial_terms = (
         "precio",
@@ -528,7 +564,10 @@ def _financial_reference_ids(context: dict[str, Any]) -> set[str]:
         "renta",
         "presupuesto",
     )
+    # Itera finding sobre context.get(un valor, []).
     for finding in context.get("findings", []):
+        # Rama condicional: evalua finding.get(un valor) != Origin.USER.value and finding.get(un
+        # valor) != .
         if (
             finding.get("origin") != Origin.USER.value
             and finding.get("review_status") != ReviewStatus.ACCEPTED.value
@@ -538,6 +577,8 @@ def _financial_reference_ids(context: dict[str, Any]) -> set[str]:
             [finding.get("statement", "")]
             + [evidence.get("content", "") for evidence in finding.get("evidence", [])]
         ).lower()
+        # Rama condicional: evalua finding.get(un valor) == un valor or any((term in text for term
+        # in finan.
         if finding.get("category") == "pricing" or any(term in text for term in financial_terms):
             references.add(finding["ref"])
             references.update(evidence["ref"] for evidence in finding.get("evidence", []))
@@ -549,7 +590,9 @@ def _validate_verdict(
     valid_refs: set[str],
     financial_refs: set[str],
 ) -> BusinessVerdict:
+    """Valida verdict en informes."""
     investment = verdict.investment
+    # Rama condicional: se cumple investment is not None.
     if investment is not None:
         evidence_refs = [
             ref.strip("[]")
@@ -598,6 +641,7 @@ def _validate_verdict(
 
 
 def _validate_references(content: str, valid_refs: set[str]) -> str:
+    """Valida references en informes."""
     return _REFERENCE_RE.sub(
         lambda match: (
             match.group(0) if match.group(0)[1:-1] in valid_refs else "[referencia no disponible]"
@@ -607,14 +651,18 @@ def _validate_references(content: str, valid_refs: set[str]) -> str:
 
 
 def _sources_content(context: dict[str, Any]) -> str:
+    """Gestiona content en informes."""
     lines: list[str] = []
+    # Itera source sobre context.get(un valor, []).
     for source in context.get("sources", []):
         lines.append(f"- [{source['ref']}] {source['title']} ({source['domain']}): {source['url']}")
+    # Itera finding sobre context.get(un valor, []).
     for finding in context.get("findings", []):
         lines.append(
             f"- [{finding['ref']}] {finding['statement']} "
             f"(confianza: {finding['confidence']}; revisión: {finding['review_status']})"
         )
+        # Itera evidence sobre finding.get(un valor, []).
         for evidence in finding.get("evidence", []):
             source_ref = evidence.get("source_ref")
             source_suffix = f" — [{source_ref}]" if source_ref else ""
@@ -623,32 +671,41 @@ def _sources_content(context: dict[str, Any]) -> str:
                 f"“{evidence['content']}”{source_suffix}"
             )
     geography = context.get("geography", {})
+    # Rama condicional: se cumple geography.get('status') != 'not_provided' and
+    # geography.get('note').
     if geography.get("status") != "not_provided" and geography.get("note"):
         lines.append(f"Consulta de zonas: {geography['note']}")
+    # Itera area sobre geography.get(un valor, []).
     for area in geography.get("areas", []):
         resolved = area.get("resolved_area")
+        # Rama condicional: se cumple resolved.
         if resolved:
             lines.append(
                 f"- Zona consultada: {resolved} "
                 f"(radio aproximado de {area.get('radius_m', 1000)} m)"
             )
+        # Itera place sobre area.get(un valor, []).
         for place in area.get("places", []):
             lines.append(
                 f"- [{place['ref']}] Lugar registrado: {place['name']} "
                 f"({place.get('subtype') or place['category']}): {place['osm_url']}"
             )
+        # Rama condicional: se cumple area.get('status') == 'ambiguous'.
         if area.get("status") == "ambiguous":
             lines.append(
                 f"- Zona ambigua «{area['query']}». Coincidencias: "
                 + "; ".join(area.get("matches", []))
             )
+        # Rama condicional: se cumple area.get('status') == 'no_places'.
         elif area.get("status") == "no_places":
             lines.append(
                 f"- No se encontraron lugares mapeados alrededor de {resolved or area['query']}; "
                 "esto no demuestra que no existan."
             )
+    # Rama condicional: se cumple geography.get('attribution').
     if geography.get("attribution"):
         lines.append(geography["attribution"])
+    # Rama condicional: se cumple not lines.
     if not lines:
         return (
             "No hay fuentes ni evidencias registradas para esta ejecución. "

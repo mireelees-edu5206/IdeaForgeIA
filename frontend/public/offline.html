@@ -1,4 +1,5 @@
 <!doctype html>
+  <!-- Pantalla estatica que explica el estado sin conexion. -->
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
@@ -6,6 +7,7 @@
     <meta name="theme-color" content="#f8fafc" />
     <title>Sin conexión · IdeaForge AI</title>
     <style>
+      /* Fondo, tipografia y colores de respaldo para una visita sin red. */
       :root {
         color-scheme: light;
         font-family: "Fira Sans", "Segoe UI", sans-serif;
@@ -24,6 +26,7 @@
           radial-gradient(ellipse at 95% 100%, #fef3c7 0, transparent 34%),
           #f8fafc;
       }
+      /* Tarjeta central responsiva que mantiene el aviso legible en movil/escritorio. */
       main {
         width: min(32rem, 100%);
         border: 1px solid #cbd5e1;
@@ -32,21 +35,25 @@
         background: rgb(255 255 255 / 92%);
         box-shadow: 0 24px 70px rgb(30 58 138 / 12%);
       }
+      /* Etiqueta pequena que identifica el estado de la aplicacion. */
       .eyebrow {
         color: #1e40af;
         font: 600 0.75rem ui-monospace, monospace;
         letter-spacing: 0.18em;
         text-transform: uppercase;
       }
+      /* Jerarquia del mensaje, texto auxiliar y accion de reintento. */
       h1 {
         margin: 0.75rem 0;
         font-size: clamp(1.8rem, 8vw, 2.6rem);
         line-height: 1.08;
       }
+      /* Texto auxiliar sobre la falta de conexion y la privacidad offline. */
       p {
         color: #475569;
         line-height: 1.7;
       }
+      /* Enlace principal para volver a intentar cargar la SPA. */
       a {
         display: inline-flex;
         margin-top: 0.75rem;
@@ -57,6 +64,7 @@
         font-weight: 700;
         text-decoration: none;
       }
+      /* Indicador visible de teclado para el enlace de reintento. */
       a:focus-visible {
         outline: 3px solid #d97706;
         outline-offset: 3px;
@@ -64,6 +72,7 @@
     </style>
   </head>
   <body>
+    <!-- Contenido minimo disponible sin JavaScript ni API. -->
     <main>
       <p class="eyebrow">IdeaForge AI · Modo sin conexión</p>
       <h1>Tu espacio está sin conexión.</h1>

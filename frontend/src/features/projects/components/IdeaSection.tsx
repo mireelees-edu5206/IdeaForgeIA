@@ -1,3 +1,4 @@
+/** Edita la propuesta principal de la idea. */
 import { type FormEvent, useState } from "react";
 import { FiEdit2 } from "react-icons/fi";
 
@@ -11,18 +12,22 @@ import { useUpdateProject } from "../queries";
 import type { ProjectDetail } from "../types";
 import { OriginBadge } from "./badges";
 
+/** Expone la funcion idea section para el flujo de projects. */
 export function IdeaSection({ project }: { project: ProjectDetail }) {
   const updateProject = useUpdateProject(project.id);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(project.raw_idea);
   const [error, setError] = useState<string | undefined>();
 
+  /** Gestiona save de proyectos. */
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    /** Rama condicional: draft.trim().length < RAW_IDEA_MIN_LENGTH. */
     if (draft.trim().length < RAW_IDEA_MIN_LENGTH) {
       setError(`Escribe una frase breve sobre tu idea (al menos ${RAW_IDEA_MIN_LENGTH} caracteres).`);
       return;
     }
+    /** Maneja fallos de la operacion del bloque proyectos. */
     try {
       await updateProject.mutateAsync({ raw_idea: draft.trim() });
       setError(undefined);

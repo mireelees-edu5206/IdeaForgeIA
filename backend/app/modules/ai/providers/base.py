@@ -1,3 +1,5 @@
+"""Define el contrato comun de adaptadores. Area: proveedores de IA."""
+
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 

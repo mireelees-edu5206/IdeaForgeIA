@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de mapa y zonas. */
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -14,7 +15,9 @@ vi.mock("./GeoMap", () => ({
   ),
 }));
 
+/** Define NOW para el bloque de mapa y zonas. */
 const NOW = "2026-10-15T10:00:00Z";
+/** Define PROJECT para el bloque de mapa y zonas. */
 const PROJECT: ProjectDetail = {
   id: "p1",
   title: "Ropa básica",
@@ -25,6 +28,7 @@ const PROJECT: ProjectDetail = {
   attributes: [],
   structure: { ready: true, missing: [], pending_suggestions: 0 },
 };
+/** Define PLACE para el bloque de mapa y zonas. */
 const PLACE: GeoPlace = {
   place_id: "osm:1",
   display_name: "Toluca, México",
@@ -33,6 +37,7 @@ const PLACE: GeoPlace = {
   category: "boundary",
   place_type: "administrative",
 };
+/** Define NEARBY para el bloque de mapa y zonas. */
 const NEARBY: GeoPlacesResponse = {
   latitude: PLACE.latitude,
   longitude: PLACE.longitude,
@@ -57,7 +62,9 @@ const NEARBY: GeoPlacesResponse = {
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Escenario de prueba: Exploración geográfica. */
 describe("Exploración geográfica", () => {
+  /** Escenario de prueba: no geocodifica mientras se escribe y busca lugares solo tras confirmarlo. */
   it("no geocodifica mientras se escribe y busca lugares solo tras confirmarlo", async () => {
     const user = userEvent.setup();
     const fetchMock = mockFetch(

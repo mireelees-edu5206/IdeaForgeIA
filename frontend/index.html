@@ -1,6 +1,8 @@
 <!doctype html>
+  <!-- Shell de la SPA, metadatos de IdeaForge y punto de montaje de React. -->
 <html lang="es">
   <head>
+    <!-- Metadata del navegador: descripcion, escala movil y color de la barra del sistema. -->
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="IdeaForge AI: investiga, evalúa y valida ideas de negocio con evidencia." />
@@ -9,16 +11,19 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="IdeaForge" />
+    <!-- Enlaces para instalar la PWA y cargar sus iconos en cada dispositivo. -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" href="/app-icon.svg" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Fuentes de marca que se usan en el tema visual de la SPA. -->
     <link
       href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
     <script>
+      // Aplica el tema antes de montar React para evitar un destello con colores equivocados.
       (() => {
         try {
           if (localStorage.getItem("ideaforge-theme") === "dark") {
@@ -30,6 +35,7 @@
     <title>IdeaForge AI</title>
   </head>
   <body>
+    <!-- React inserta aqui la aplicacion; main.tsx registra proveedores y rutas. -->
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

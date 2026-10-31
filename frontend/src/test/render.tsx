@@ -1,3 +1,4 @@
+/** Monta pantallas con router y servicios de prueba. */
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { type RouteObject, RouterProvider, createMemoryRouter } from "react-router";
@@ -16,6 +17,7 @@ export function renderRoutes(routes: RouteObject[], initialPath: string) {
   return router;
 }
 
+/** Contrato de datos Route utilizado por aplicacion. */
 interface Route {
   method?: string;
   path: string | RegExp;

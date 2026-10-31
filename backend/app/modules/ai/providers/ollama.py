@@ -1,3 +1,5 @@
+"""Adapta Ollama y ensambla su salida al esquema del informe."""
+
 import json
 import re
 import uuid
@@ -20,15 +22,19 @@ from app.modules.reports.schemas import BusinessVerdict
 
 
 class OllamaProvider(AIProvider):
+    """Adaptador que ofrece servicios de ollama."""
+
     name = AIProviderName.OLLAMA
 
     def __init__(self, base_url: str, model: str, timeout: float, think: bool = False) -> None:
+        """Gestiona la inicializacion para inteligencia artificial."""
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout = timeout
         self.think = think
 
     def _annotate(self, error: AIProviderError) -> AIProviderError:
+        """Gestiona annotate."""
         error.provider = self.name
         error.model = self.model
         return error
@@ -36,8 +42,10 @@ class OllamaProvider(AIProvider):
     async def generate_structured[T: BaseModel](
         self, messages: Sequence[AIMessage], schema: type[T]
     ) -> StructuredResult[T]:
+        """Gestiona generate structured."""
         is_chat_answer = schema.__name__ == "ChatAnswer"
         is_report_draft = schema.__name__ == "ReportDraft"
+        # Rama condicional: se cumple is_report_draft.
         if is_report_draft:
             return await self._generate_report_draft(messages, schema)
 
@@ -60,17 +68,23 @@ class OllamaProvider(AIProvider):
         # En el chat no forzamos GBNF JSON (`format`), para que no corte tras ":" + salto de línea
         if not is_chat_answer:
             payload["format"] = schema.model_json_schema()
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             response = await post_json(f"{self.base_url}/api/chat", payload, {}, self.timeout)
             message = response.get("message")
             content = message.get("content") if isinstance(message, dict) else None
+            # Rama condicional: se cumple not isinstance(content, str).
             if not isinstance(content, str):
                 raise AIInvalidResponseError()
+            # Rama condicional: se cumple is_chat_answer.
             if is_chat_answer:
                 data = _parse_chat_content(content, schema)
             else:
                 data = schema.model_validate_json(content)
+        # Maneja el error (AIProviderError, ValidationError, json.JSONDecodeError) sin detener el
+        # flujo esperado.
         except (AIProviderError, ValidationError, json.JSONDecodeError) as exc:
+            # Rama condicional: se cumple isinstance(exc, AIProviderError).
             if isinstance(exc, AIProviderError):
                 raise self._annotate(exc) from None
             raise self._annotate(AIInvalidResponseError()) from None
@@ -89,13 +103,17 @@ class OllamaProvider(AIProvider):
     async def _generate_report_draft[T: BaseModel](
         self, messages: Sequence[AIMessage], schema: type[T]
     ) -> StructuredResult[T]:
+        """Pide a Ollama una síntesis corta y completa el borrador con el contexto confiable."""
         user_msg = next((m.content for m in reversed(messages) if m.role == "user"), "")
         raw_json = user_msg.removeprefix("<report_data>").removesuffix("</report_data>")
         raw_json = raw_json.replace("\\u003c", "<").replace("\\u003e", ">").replace("\\u0026", "&")
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             ctx = json.loads(raw_json)
+        # Maneja el error json.JSONDecodeError sin detener el flujo esperado.
         except json.JSONDecodeError:
             ctx = {}
+        # Rama condicional: se cumple not isinstance(ctx, dict).
         if not isinstance(ctx, dict):
             ctx = {}
 
@@ -155,15 +173,20 @@ class OllamaProvider(AIProvider):
             "keep_alive": "30m",
             "options": {"num_ctx": 2048, "num_predict": 420, "temperature": 0.2},
         }
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             response = await post_json(f"{self.base_url}/api/chat", payload, {}, self.timeout)
             message = response.get("message")
             content = message.get("content") if isinstance(message, dict) else None
+            # Rama condicional: se cumple not isinstance(content, str).
             if not isinstance(content, str):
                 raise AIInvalidResponseError()
             draft_dict = _assemble_report_draft_from_context(ctx, content)
             data = schema.model_validate(draft_dict)
+        # Maneja el error (AIProviderError, ValidationError, json.JSONDecodeError) sin detener el
+        # flujo esperado.
         except (AIProviderError, ValidationError, json.JSONDecodeError) as exc:
+            # Rama condicional: se cumple isinstance(exc, AIProviderError).
             if isinstance(exc, AIProviderError):
                 raise self._annotate(exc) from None
             raise self._annotate(AIInvalidResponseError()) from None
@@ -180,8 +203,11 @@ class OllamaProvider(AIProvider):
         )
 
     async def generate_grounded(self, messages: Sequence[AIMessage]) -> GroundedResult:
+        """Gestiona generate fundamentada."""
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             return await synthesize_grounded_from_web(self, messages, self.timeout)
+        # Maneja el error AIProviderError sin detener el flujo esperado.
         except AIProviderError as exc:
             raise self._annotate(exc) from None
 
@@ -192,18 +218,26 @@ _UUID_RE = re.compile(
 
 
 def _parse_chat_content[T: BaseModel](content: str, schema: type[T]) -> T:
+    """Interpreta chat content."""
     stripped = content.strip()
+    # Rama condicional: se cumple stripped.startswith('{') and stripped.endswith('}').
     if stripped.startswith("{") and stripped.endswith("}"):
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             return schema.model_validate_json(stripped)
+        # Maneja el error ValidationError sin detener el flujo esperado.
         except ValidationError:
             pass
     found_ids: list[uuid.UUID] = []
+    # Itera raw_id sobre _UUID_RE.findall(stripped).
     for raw_id in _UUID_RE.findall(stripped):
+        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             uid = uuid.UUID(raw_id)
+            # Rama condicional: se cumple uid not in found_ids.
             if uid not in found_ids:
                 found_ids.append(uid)
+        # Maneja el error ValueError sin detener el flujo esperado.
         except ValueError:
             continue
     clean_answer = re.sub(
@@ -218,6 +252,7 @@ def _parse_chat_content[T: BaseModel](content: str, schema: type[T]) -> T:
 
 
 def _assemble_report_draft_from_context(ctx: dict[str, Any], llm_text: str) -> dict[str, Any]:
+    """Adapta el texto del modelo al esquema completo que consume el informe."""
     parts = llm_text.split("===CONCLUSIONES===", 1)
     exec_summary = re.sub(r"^\*\*Resumen Ejecutivo\*\*\s*", "", parts[0].strip(), flags=re.I)
     conclusions = (
@@ -229,6 +264,7 @@ def _assemble_report_draft_from_context(ctx: dict[str, Any], llm_text: str) -> d
             "antes de comprometer capital fijo."
         )
     )
+    # Rama condicional: se cumple len(exec_summary) < 40.
     if len(exec_summary) < 40:
         title = ctx.get("project", {}).get("title") or "el proyecto"
         exec_summary = (
@@ -259,6 +295,7 @@ def _assemble_report_draft_from_context(ctx: dict[str, Any], llm_text: str) -> d
         in {"market", "customers", "pricing", "regulation", "technology", "other"}
     ] or findings
     market_lines = []
+    # Itera f sobre market_findings.
     for f in market_findings:
         ev_refs = " ".join(f"[{e['ref']}]" for e in f.get("evidence", []) if e.get("ref"))
         src_refs = " ".join(
@@ -286,6 +323,7 @@ def _assemble_report_draft_from_context(ctx: dict[str, Any], llm_text: str) -> d
         f"{c.get('rationale') or 'Identificado en la investigación.'}"
         for c in competitors
     ]
+    # Itera f sobre comp_findings.
     for f in comp_findings:
         comp_lines.append(f"- Hallazgo competitivo [{f.get('ref')}]: {f.get('statement')}")
     competition_text = (
@@ -362,6 +400,7 @@ def _assemble_report_draft_from_context(ctx: dict[str, Any], llm_text: str) -> d
 
 
 def _ollama_report_verdict(ctx: dict[str, Any], summary: str) -> BusinessVerdict:
+    """Forma un veredicto prudente sin inventar inversión ni afirmar demanda desde el mapa."""
     findings = ctx.get("findings", [])
     accepted_findings = [
         item
@@ -382,17 +421,21 @@ def _ollama_report_verdict(ctx: dict[str, Any], summary: str) -> BusinessVerdict
         for item in ctx.get("analysis", {}).get("missing_information", [])
         if item.get("question")
     ]
+    # Rama condicional: se cumple not accepted_findings.
     if not accepted_findings:
         missing.append(
             "Faltan resultados revisados con evidencia suficiente para apoyar la decisión."
         )
+    # Rama condicional: se cumple not sources.
     if not sources:
         missing.append("Faltan fuentes verificables sobre el mercado y sus alternativas.")
+    # Rama condicional: se cumple ctx.get('context_truncated').
     if ctx.get("context_truncated"):
         missing.append("El informe usa solo una parte de la información disponible.")
 
     geography = ctx.get("geography", {})
     zones = []
+    # Itera area sobre geography.get(un valor, [])[:3].
     for area in geography.get("areas", [])[:3]:
         places = area.get("places", [])
         refs = [
@@ -400,7 +443,10 @@ def _ollama_report_verdict(ctx: dict[str, Any], summary: str) -> BusinessVerdict
             for place in places
             if isinstance(place.get("ref"), str) and place["ref"].startswith("G")
         ][:8]
+        # Rama condicional: se cumple not refs.
         if not refs:
+            # Rama condicional: evalua area.get(un valor) in {un valor, un valor, un valor, un
+            # valor}.
             if area.get("status") in {"ambiguous", "not_found", "unavailable", "no_places"}:
                 missing.append(
                     f"No se pudo evaluar con claridad la zona {area.get('query') or 'indicada'}."
@@ -423,19 +469,26 @@ def _ollama_report_verdict(ctx: dict[str, Any], summary: str) -> BusinessVerdict
         )
 
     next_steps = []
+    # Itera hypothesis sobre ctx.get(un valor, {}).get(un valor, []).
     for hypothesis in ctx.get("analysis", {}).get("hypotheses", []):
         method = hypothesis.get("validation_method") or hypothesis.get("statement")
+        # Rama condicional: se cumple method.
         if method:
             next_steps.append(f"Comprueba esta hipótesis: {str(method).strip()[:200]}")
+        # Rama condicional: se cumple len(next_steps) == 3.
         if len(next_steps) == 3:
             break
+    # Rama condicional: se cumple not next_steps.
     if not next_steps:
         next_steps.append(
             "Habla con posibles clientes y registra cuántos pagarían por la propuesta."
         )
+    # Rama condicional: evalua not any((item.get(un valor) == un valor for item in
+    # accepted_findings)).
     if not any(item.get("category") == "pricing" for item in accepted_findings):
         missing.append("Faltan costos comprobables para estimar la inversión inicial.")
         next_steps.append("Cotiza renta, equipo, insumos y permisos antes de comprometer capital.")
+    # Rama condicional: se cumple zones.
     if zones:
         next_steps.append("Visita la zona evaluada y comprueba en campo los lugares registrados.")
 
@@ -450,15 +503,18 @@ def _ollama_report_verdict(ctx: dict[str, Any], summary: str) -> BusinessVerdict
 
 
 def _bounded_report_text(value: str) -> str:
+    """Gestiona bounded informe texto."""
     cleaned = value.strip()
     return cleaned[:5900] if len(cleaned) > 5900 else cleaned
 
 
 def _geography_summary(area: dict[str, Any]) -> str:
+    """Gestiona geography resumen."""
     place_names = ", ".join(str(place.get("name") or "") for place in area.get("places", [])[:4])
     area_name = area.get("resolved_area") or area.get("query")
     return f"{area_name}: {place_names or area.get('status')}"
 
 
 def _token_count(value: Any) -> int | None:
+    """Gestiona token cantidad."""
     return value if isinstance(value, int) and value >= 0 else None

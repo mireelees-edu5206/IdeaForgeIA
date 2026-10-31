@@ -1,3 +1,4 @@
+/** Organiza los pasos y herramientas de un proyecto. */
 import { type FormEvent, useEffect, useState } from "react";
 import {
   FiActivity,
@@ -40,14 +41,18 @@ import type { ProjectOutletContext } from "./outlet";
 import { useDeleteProject, useProject, useUpdateProject } from "./queries";
 import type { ProjectDetail, ProjectStatus } from "./types";
 
+/** Componente TitleEditor: renderiza la vista de proyectos. */
 function TitleEditor({ project }: { project: ProjectDetail }) {
   const updateProject = useUpdateProject(project.id);
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(project.title);
 
+  /** Gestiona save de proyectos. */
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    /** Rama condicional: !title.trim(). */
     if (!title.trim()) return;
+    /** Maneja fallos de la operacion del bloque proyectos. */
     try {
       await updateProject.mutateAsync({ title: title.trim() });
       setEditing(false);
@@ -56,6 +61,7 @@ function TitleEditor({ project }: { project: ProjectDetail }) {
     }
   }
 
+  /** Rama condicional: !editing. */
   if (!editing) {
     return (
       <div className="flex min-w-0 items-start gap-2">
@@ -103,6 +109,7 @@ function TitleEditor({ project }: { project: ProjectDetail }) {
   );
 }
 
+/** Componente DeleteProjectButton: renderiza la vista de proyectos. */
 function DeleteProjectButton({ project }: { project: ProjectDetail }) {
   const navigate = useNavigate();
   const deleteProject = useDeleteProject(project.id);
@@ -137,6 +144,7 @@ function DeleteProjectButton({ project }: { project: ProjectDetail }) {
   );
 }
 
+/** Define NEXT_STAGE_GUIDE para el bloque de proyectos. */
 const NEXT_STAGE_GUIDE: Record<
   ProjectStatus,
   { title: string; detail: string; to: string; cta: string; heat: number }
@@ -171,6 +179,7 @@ const NEXT_STAGE_GUIDE: Record<
   },
 };
 
+/** Define PRIMARY_TABS para el bloque de proyectos. */
 const PRIMARY_TABS = [
   { path: "", label: "Idea", step: "01", hint: "Cuéntanos qué quieres crear", icon: FiEdit3 },
   { path: "/investigacion", label: "Investigar", step: "02", hint: "Busca información", icon: FiCompass },
@@ -179,6 +188,7 @@ const PRIMARY_TABS = [
   { path: "/reportes", label: "Veredicto", step: "05", hint: "Recomendación y siguientes pasos", icon: FiFileText },
 ];
 
+/** Define TOOL_TABS para el bloque de proyectos. */
 const TOOL_TABS = [
   { path: "/competidores", label: "Otras opciones", icon: FiUsers },
   { path: "/asistente", label: "Preguntar al asistente", icon: FiMessageCircle },
@@ -186,6 +196,7 @@ const TOOL_TABS = [
   { path: "/visualizaciones", label: "Gráficos", icon: FiBarChart2 },
 ];
 
+/** Expone la funcion project detail page para el flujo de projects. */
 export function ProjectDetailPage() {
   const { projectId = "" } = useParams();
   const { pathname } = useLocation();
@@ -197,6 +208,7 @@ export function ProjectDetailPage() {
   const confirmedRequired = REQUIRED_ATTRIBUTES.length - missingCount;
 
   useEffect(() => {
+    /** Rama condicional: !status. */
     if (!status) return;
     forgeSceneStore.set({
       mode: "workspace",
@@ -205,6 +217,7 @@ export function ProjectDetailPage() {
     });
   }, [status, confirmedRequired]);
 
+  /** Rama condicional: project.isPending. */
   if (project.isPending) {
     return (
       <div role="status" className="flex items-center justify-center gap-3 py-24 text-slate-300">
@@ -213,6 +226,7 @@ export function ProjectDetailPage() {
     );
   }
 
+  /** Rama condicional: project.isError. */
   if (project.isError) {
     const notFound =
       project.error instanceof ApiError && (project.error.status === 404 || project.error.status === 422);
@@ -299,6 +313,7 @@ export function ProjectDetailPage() {
   );
 }
 
+/** Componente ProjectTabs: renderiza la vista de proyectos. */
 function ProjectTabs({ projectId }: { projectId: string }) {
   const { pathname } = useLocation();
   const toolsOpen = TOOL_TABS.some(({ path }) => pathname.endsWith(path));

@@ -1,3 +1,5 @@
+"""Declara errores tipados del dominio. Area: aplicacion."""
+
 import logging
 from typing import Any
 
@@ -25,6 +27,7 @@ class AppError(Exception):
         headers: dict[str, str] | None = None,
         details: list[dict[str, Any]] | None = None,
     ) -> None:
+        """Gestiona la inicializacion para aplicacion."""
         self.message = message or self.message
         self.code = code or self.code
         self.headers = headers or self.headers
@@ -33,18 +36,24 @@ class AppError(Exception):
 
 
 class NotFoundError(AppError):
+    """Error que representa no found."""
+
     status_code = status.HTTP_404_NOT_FOUND
     code = "not_found"
     message = "El recurso solicitado no existe."
 
 
 class ConflictError(AppError):
+    """Error que representa conflict."""
+
     status_code = status.HTTP_409_CONFLICT
     code = "conflict"
     message = "La operación entra en conflicto con el estado actual."
 
 
 class UnauthorizedError(AppError):
+    """Error que representa unauthorized."""
+
     status_code = status.HTTP_401_UNAUTHORIZED
     code = "unauthorized"
     message = "Se requiere autenticación."
@@ -52,18 +61,24 @@ class UnauthorizedError(AppError):
 
 
 class ForbiddenError(AppError):
+    """Error que representa forbidden."""
+
     status_code = status.HTTP_403_FORBIDDEN
     code = "forbidden"
     message = "No tienes permiso para realizar esta acción."
 
 
 class TooManyRequestsError(AppError):
+    """Error que representa too many solicitudes."""
+
     status_code = status.HTTP_429_TOO_MANY_REQUESTS
     code = "too_many_requests"
     message = "Demasiadas solicitudes. Inténtalo más tarde."
 
 
 class ServiceUnavailableError(AppError):
+    """Error que representa servicio unavailable."""
+
     status_code = status.HTTP_503_SERVICE_UNAVAILABLE
     code = "service_unavailable"
     message = "El servicio no está disponible temporalmente."
@@ -87,19 +102,23 @@ def error_response(
     details: list[dict[str, Any]] | None = None,
     headers: dict[str, str] | None = None,
 ) -> JSONResponse:
+    """Gestiona error respuesta."""
     error: dict[str, Any] = {"code": code, "message": message}
+    # Rama condicional: se cumple details.
     if details:
         error["details"] = details
     return JSONResponse(status_code=status_code, content={"error": error}, headers=headers)
 
 
 async def _app_error_handler(_: Request, exc: AppError) -> JSONResponse:
+    """Gestiona aplicacion error handler."""
     return error_response(
         exc.status_code, exc.code, exc.message, details=exc.details, headers=exc.headers
     )
 
 
 async def _http_error_handler(_: Request, exc: StarletteHTTPException) -> JSONResponse:
+    """Gestiona http error handler."""
     code, message = _HTTP_ERRORS.get(exc.status_code, ("http_error", "Error en la solicitud."))
     return error_response(exc.status_code, code, message, headers=exc.headers)
 
@@ -123,18 +142,25 @@ _VALIDATION_MESSAGES: dict[str, str] = {
 
 
 def _validation_message(err: dict[str, Any]) -> str:
+    """Selecciona un mensaje publico para el tipo de validacion que fallo."""
+    # Rama condicional: evalua err[un valor] == un valor and err.get(un valor, {}).get(un valor) ==
+    # 1.
     if err["type"] == "string_too_short" and err.get("ctx", {}).get("min_length") == 1:
         return "Este campo no puede estar vacío."
     template = _VALIDATION_MESSAGES.get(err["type"])
+    # Rama condicional: se cumple template is None.
     if template is None:
         return "El valor no es válido."
+    # Protege la operacion y dirige sus errores a manejadores explicitos.
     try:
         return template.format(**err.get("ctx", {}))
+    # Maneja el error (KeyError, IndexError) sin detener el flujo esperado.
     except (KeyError, IndexError):
         return "El valor no es válido."
 
 
 async def _validation_error_handler(_: Request, exc: RequestValidationError) -> JSONResponse:
+    """Traduce errores de Pydantic a detalles publicos sin devolver valores recibidos."""
     # Solo campo y mensaje: nunca se devuelve el valor recibido.
     details = [
         {
@@ -152,6 +178,7 @@ async def _validation_error_handler(_: Request, exc: RequestValidationError) -> 
 
 
 async def _unhandled_error_handler(request: Request, exc: Exception) -> JSONResponse:
+    """Gestiona unhandled error handler."""
     logger.exception("Error no controlado en %s %s", request.method, request.url.path)
     return error_response(
         status.HTTP_500_INTERNAL_SERVER_ERROR, "internal_error", "Ocurrió un error interno."
@@ -159,6 +186,7 @@ async def _unhandled_error_handler(request: Request, exc: Exception) -> JSONResp
 
 
 def register_exception_handlers(app: FastAPI) -> None:
+    """Registra exception handlers."""
     app.add_exception_handler(AppError, _app_error_handler)
     app.add_exception_handler(StarletteHTTPException, _http_error_handler)
     app.add_exception_handler(RequestValidationError, _validation_error_handler)

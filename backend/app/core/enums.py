@@ -7,17 +7,23 @@ from enum import StrEnum
 
 
 class Origin(StrEnum):
+    """Representa procedencia."""
+
     AI = "ai"
     USER = "user"
 
 
 class ReviewStatus(StrEnum):
+    """Representa review estado."""
+
     PROPOSED = "proposed"
     ACCEPTED = "accepted"
     REJECTED = "rejected"
 
 
 class Level(StrEnum):
+    """Representa nivel."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -25,12 +31,16 @@ class Level(StrEnum):
 
 
 class Priority(StrEnum):
+    """Representa priority."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
 
 
 class ResearchCategory(StrEnum):
+    """Representa investigacion categoria."""
+
     MARKET = "market"
     CUSTOMERS = "customers"
     COMPETITION = "competition"
@@ -42,6 +52,8 @@ class ResearchCategory(StrEnum):
 
 
 class AttributeType(StrEnum):
+    """Representa atributo tipo."""
+
     PROBLEM = "problem"
     SOLUTION = "solution"
     CUSTOMER_SEGMENT = "customer_segment"
@@ -54,6 +66,8 @@ class AttributeType(StrEnum):
 
 
 class AIProviderName(StrEnum):
+    """Representa aiprovider nombre."""
+
     GEMINI = "gemini"
     OLLAMA = "ollama"
     FAKE = "fake"

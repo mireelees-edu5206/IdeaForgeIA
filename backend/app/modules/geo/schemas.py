@@ -1,3 +1,5 @@
+"""Valida contratos de entrada/salida. Area: geografia."""
+
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -6,6 +8,8 @@ GeoCategory = Literal["all", "clothing", "food", "groceries", "services"]
 
 
 class GeoPlace(BaseModel):
+    """Representa geografico lugar."""
+
     model_config = ConfigDict(extra="forbid")
 
     place_id: str
@@ -17,6 +21,8 @@ class GeoPlace(BaseModel):
 
 
 class GeoBusiness(BaseModel):
+    """Representa geografico business."""
+
     model_config = ConfigDict(extra="forbid")
 
     osm_type: Literal["node", "way", "relation"]
@@ -31,6 +37,8 @@ class GeoBusiness(BaseModel):
 
 
 class GeoPlacesResponse(BaseModel):
+    """Representa geografico lugares respuesta."""
+
     latitude: float
     longitude: float
     radius_m: int

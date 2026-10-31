@@ -39,10 +39,12 @@ _USER_DATA_NOTICE = (
 def idea_context(project: Project, attributes: list[IdeaAttribute]) -> str:
     """Solo datos confirmados: las sugerencias de IA sin confirmar no se usan para investigar."""
     lines = [f"Título: {project.title}", f"Idea original: {project.raw_idea}"]
+    # Itera (attribute_type, label) sobre ATTRIBUTE_LABELS.items().
     for attribute_type, label in ATTRIBUTE_LABELS.items():
         values = [
             a.value for a in attributes if a.attribute_type == attribute_type and a.is_confirmed
         ]
+        # Rama condicional: se cumple values.
         if values:
             lines.append(f"{label}:")
             lines.extend(f"- {value}" for value in values)
@@ -51,6 +53,7 @@ def idea_context(project: Project, attributes: list[IdeaAttribute]) -> str:
 
 
 def planning_messages(context: str, max_questions: int) -> list[AIMessage]:
+    """Gestiona planning messages."""
     system = (
         "Eres un analista de investigación de mercado. Diseña un plan para validar la idea de"
         f" negocio con búsquedas web. {_USER_DATA_NOTICE}\n"
@@ -66,6 +69,7 @@ def planning_messages(context: str, max_questions: int) -> list[AIMessage]:
 
 
 def search_messages(context: str, category: ResearchCategory, question: str) -> list[AIMessage]:
+    """Gestiona busqueda messages."""
     system = (
         "Eres un investigador riguroso. Responde la pregunta buscando en la web y citando las"
         f" fuentes. {_USER_DATA_NOTICE}\n"

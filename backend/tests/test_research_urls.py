@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para research urls."""
+
 import pytest
 
 from app.modules.research.models import SourceType
@@ -20,6 +22,7 @@ from app.modules.research.urls import guess_source_type, normalize_url
     ],
 )
 def test_normalize_url(raw: str, canonical: str, domain: str) -> None:
+    """Prueba el escenario: normalize URL."""
     normalized = normalize_url(raw)
     assert normalized is not None
     assert normalized.canonical == canonical
@@ -40,6 +43,7 @@ def test_normalize_url(raw: str, canonical: str, domain: str) -> None:
     ],
 )
 def test_normalize_url_rejects_invalid(raw: str) -> None:
+    """Prueba el escenario: normalize URL rejects invalido."""
     assert normalize_url(raw) is None
 
 
@@ -55,4 +59,5 @@ def test_normalize_url_rejects_invalid(raw: str) -> None:
     ],
 )
 def test_guess_source_type(domain: str, expected: SourceType) -> None:
+    """Prueba el escenario: guess fuente tipo."""
     assert guess_source_type(domain) == expected

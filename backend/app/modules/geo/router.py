@@ -1,3 +1,5 @@
+"""Expone endpoints HTTP del dominio. Area: geografia."""
+
 import uuid
 from typing import Annotated
 
@@ -11,6 +13,7 @@ router = APIRouter(tags=["geo"])
 
 
 def get_geo_service(request: Request, db: DbSession) -> GeoService:
+    """Obtiene geo service en geografia."""
     return GeoService(db, request.app.state.geo_provider)
 
 
@@ -39,6 +42,7 @@ async def nearby_places(
     category: GeoCategory = "all",
     keyword: KeywordQuery = None,
 ) -> GeoPlacesResponse:
+    """Gestiona places en geografia."""
     clean_keyword = " ".join((keyword or "").split()).strip() or None
     places = await service.nearby_places(
         user, project_id, latitude, longitude, radius_m, category, clean_keyword

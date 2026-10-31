@@ -1,3 +1,5 @@
+"""Define entidades ORM y restricciones de persistencia. Area: acceso local heredado."""
+
 import uuid
 from datetime import datetime
 
@@ -8,6 +10,8 @@ from app.db.base import Base, CreatedAtMixin, UUIDPrimaryKeyMixin
 
 
 class RefreshToken(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
+    """Representa renovacion token."""
+
     __tablename__ = "refresh_tokens"
     __table_args__ = (CheckConstraint("expires_at > created_at", name="expiry_after_creation"),)
 

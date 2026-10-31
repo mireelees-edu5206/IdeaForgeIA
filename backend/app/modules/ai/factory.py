@@ -1,3 +1,5 @@
+"""Construye el adaptador configurado. Area: proveedores de IA."""
+
 from app.core.config import Settings
 from app.core.enums import AIProviderName
 from app.modules.ai.orchestrator import AIOrchestrator
@@ -14,6 +16,8 @@ def build_ai_provider(settings: Settings) -> AIProvider:
         _build(settings.ai_fallback_provider, settings) if settings.ai_fallback_provider else None
     )
     grounded = primary if primary.name in {AIProviderName.GEMINI, AIProviderName.FAKE} else None
+    # Rama condicional: evalua grounded is None and settings.gemini_search_grounding_enabled and
+    # settin.
     if grounded is None and settings.gemini_search_grounding_enabled and settings.gemini_api_key:
         grounded = (
             fallback
@@ -24,10 +28,14 @@ def build_ai_provider(settings: Settings) -> AIProvider:
 
 
 def _build(provider: AIProviderName, settings: Settings) -> AIProvider:
+    """Construye el flujo principal."""
+    # Rama condicional: se cumple provider == AIProviderName.FAKE.
     if provider == AIProviderName.FAKE:
         return FakeProvider(latency_ms=settings.ai_fake_latency_ms)
+    # Rama condicional: se cumple provider == AIProviderName.GEMINI.
     if provider == AIProviderName.GEMINI:
         return _build_gemini(settings)
+    # Rama condicional: se cumple provider == AIProviderName.OLLAMA.
     if provider == AIProviderName.OLLAMA:
         return OllamaProvider(
             settings.ollama_base_url,
@@ -39,6 +47,8 @@ def _build(provider: AIProviderName, settings: Settings) -> AIProvider:
 
 
 def _build_gemini(settings: Settings) -> GeminiProvider:
+    """Construye gemini."""
+    # Rama condicional: se cumple settings.gemini_api_key is None.
     if settings.gemini_api_key is None:
         raise ValueError("GEMINI_API_KEY es obligatoria para Gemini.")
     return GeminiProvider(

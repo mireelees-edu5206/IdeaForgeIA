@@ -1,3 +1,5 @@
+"""Aplica reglas de negocio y permisos. Area: informes/veredicto."""
+
 import uuid
 from datetime import UTC, datetime
 
@@ -23,11 +25,16 @@ from app.modules.users.models import User
 
 
 class ReportNotFoundError(NotFoundError):
+    """Error que representa informe no found."""
+
     code = "report_not_found"
 
 
 class ReportService:
+    """Servicio de reglas de negocio para informe."""
+
     def __init__(self, session: AsyncSession) -> None:
+        """Gestiona la inicializacion para informes."""
         self.session = session
 
     async def start(
@@ -37,11 +44,13 @@ class ReportService:
         provider: AIProvider,
         geographic_scopes: list[GeographicScopeInput] | None = None,
     ) -> ReportRead:
+        """Inicia el flujo en informes."""
         project = await get_owned_project(self.session, user, project_id)
         await self.session.scalar(
             select(Project.id).where(Project.id == project.id).with_for_update()
         )
 
+        # Rama condicional: se cumple project.status != ProjectStatus.ANALYZED.
         if project.status != ProjectStatus.ANALYZED:
             raise ConflictError(
                 "Completa la investigación y el análisis antes de generar el informe.",
@@ -54,12 +63,14 @@ class ReportService:
             .order_by(ResearchRun.created_at.desc(), ResearchRun.id.desc())
             .limit(1)
         )
+        # Rama condicional: se cumple run is None.
         if run is None:
             raise ConflictError(
                 "No hay una investigación completada para documentar.",
                 code="completed_research_required",
             )
 
+        # Rama condicional: se cumple geographic_scopes is None.
         if geographic_scopes is None:
             attributes = await IdeaAttributeRepository(self.session).list_for_project(project.id)
             geographic_scopes_data = [
@@ -79,6 +90,7 @@ class ReportService:
                 Report.status == ReportStatus.GENERATING,
             )
         )
+        # Rama condicional: se cumple pending is not None.
         if pending is not None:
             raise ConflictError("Ya se está generando un informe.", code="report_in_progress")
 
@@ -104,6 +116,7 @@ class ReportService:
         return ReportRead.model_validate(report)
 
     async def list_for_project(self, user: User, project_id: uuid.UUID) -> list[ReportListItem]:
+        """Lista for project en informes."""
         project = await get_owned_project(self.session, user, project_id)
         rows = await self.session.execute(
             select(Report, func.count(ReportSection.id))
@@ -120,10 +133,12 @@ class ReportService:
         ]
 
     async def get(self, user: User, project_id: uuid.UUID, report_id: uuid.UUID) -> ReportDetail:
+        """Obtiene el flujo en informes."""
         project = await get_owned_project(self.session, user, project_id)
         report = await self.session.scalar(
             select(Report).where(Report.id == report_id, Report.project_id == project.id)
         )
+        # Rama condicional: se cumple report is None.
         if report is None:
             raise ReportNotFoundError()
         sections = await self.session.scalars(
@@ -137,7 +152,10 @@ class ReportService:
         )
 
     async def fail(self, report_id: uuid.UUID, error_code: str) -> None:
+        """Gestiona el flujo en informes."""
         report = await self.session.get(Report, report_id)
+        # Rama condicional: se cumple report is None or report.status !=
+        # ReportStatus.GENERATING.
         if report is None or report.status != ReportStatus.GENERATING:
             return
         report.status = ReportStatus.FAILED

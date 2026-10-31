@@ -1,3 +1,5 @@
+"""Migracion de esquema: 3f9c5a1b2d4e add report verdict."""
+
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
@@ -10,6 +12,7 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Gestiona el flujo en migracion."""
     op.add_column(
         "reports",
         sa.Column(
@@ -30,5 +33,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """Gestiona el flujo en migracion."""
     op.drop_column("report_sections", "verdict")
     op.drop_column("reports", "geographic_scopes")

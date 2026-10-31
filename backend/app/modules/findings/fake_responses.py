@@ -19,6 +19,7 @@ _LINE = re.compile(r"^\[(E\d+)\] categoría: (\w+) \|", re.MULTILINE)
 
 @register_fake_response(ExtractionResult)
 def fake_extraction(messages: Sequence[AIMessage]) -> ExtractionResult:
+    """Gestiona extraction en resultados."""
     lines = _LINE.findall(messages[-1].content)
     findings = [
         # Dos dominios distintos: se admite confianza alta.
@@ -32,6 +33,7 @@ def fake_extraction(messages: Sequence[AIMessage]) -> ExtractionResult:
         )
         for (ref_a, category), (ref_b, _) in zip(lines[::2], lines[1::2], strict=False)
     ]
+    # Rama condicional: se cumple lines.
     if lines:
         # Una sola fuente: la regla la limita a confianza media.
         findings.append(

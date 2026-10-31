@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de investigacion. */
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -9,9 +10,12 @@ import type { ProjectDetail } from "../projects/types";
 import { segmentText } from "./components/CitedText";
 import type { Evidence, ResearchQuery, ResearchRunDetail, Source } from "./types";
 
+/** Define NOW para el bloque de investigacion. */
 const NOW = "2026-09-24T10:00:00Z";
+/** Define TEXT para el bloque de investigacion. */
 const TEXT = "Hay demanda creciente. Existe un competidor. Interpretación: parece viable.";
 
+/** Gestiona project de investigacion. */
 function project(overrides: Partial<ProjectDetail> = {}): ProjectDetail {
   return {
     id: "p1",
@@ -26,10 +30,12 @@ function project(overrides: Partial<ProjectDetail> = {}): ProjectDetail {
   };
 }
 
+/** Gestiona evidence de investigacion. */
 function evidence(sourceId: string, start: number, end: number): Evidence {
   return { id: crypto.randomUUID(), source_id: sourceId, content: TEXT.slice(start, end), span_start: start, span_end: end };
 }
 
+/** Gestiona query de investigacion. */
 function query(overrides: Partial<ResearchQuery> = {}): ResearchQuery {
   return {
     id: "q1",
@@ -50,6 +56,7 @@ function query(overrides: Partial<ResearchQuery> = {}): ResearchQuery {
   };
 }
 
+/** Gestiona run de investigacion. */
 function run(overrides: Partial<ResearchRunDetail> = {}): ResearchRunDetail {
   return {
     id: "r1",
@@ -68,6 +75,7 @@ function run(overrides: Partial<ResearchRunDetail> = {}): ResearchRunDetail {
   };
 }
 
+/** Renderiza render research de investigacion. */
 function renderResearch(detail: ProjectDetail, runs: ResearchRunDetail[], extra: Parameters<typeof apiRoutes>[0] = []) {
   const fetchMock = mockFetch(
     apiRoutes([
@@ -86,7 +94,9 @@ function renderResearch(detail: ProjectDetail, runs: ResearchRunDetail[], extra:
 
 afterEach(() => vi.unstubAllGlobals());
 
+/** Escenario de prueba: segmentText. */
 describe("segmentText", () => {
+  /** Escenario de prueba: divide el texto según los fragmentos citados, incluso si se solapan. */
   it("divide el texto según los fragmentos citados, incluso si se solapan", () => {
     const segments = segmentText("abcdefghij", [
       evidence("s1", 0, 4),
@@ -102,7 +112,9 @@ describe("segmentText", () => {
   });
 });
 
+/** Escenario de prueba: Pestaña de investigación. */
 describe("Pestaña de investigación", () => {
+  /** Escenario de prueba: resalta los fragmentos citados y enlaza solo URLs http(s). */
   it("resalta los fragmentos citados y enlaza solo URLs http(s)", async () => {
     renderResearch(project(), [run()]);
 
@@ -117,6 +129,7 @@ describe("Pestaña de investigación", () => {
     expect(screen.getByRole("button", { name: "Buscar información otra vez" })).toBeInTheDocument();
   });
 
+  /** Escenario de prueba: muestra el progreso de una investigación en curso y avisa si es simulada. */
   it("muestra el progreso de una investigación en curso y avisa si es simulada", async () => {
     renderResearch(project(), [
       run({ status: "running", current_step: "searching", progress_pct: 40, ai_provider: "fake", queries: [query({ status: "pending", response_text: null, sources: [], evidence: [] })] }),
@@ -130,6 +143,7 @@ describe("Pestaña de investigación", () => {
     expect(screen.queryByRole("button", { name: /investigación/ })).not.toBeInTheDocument();
   });
 
+  /** Escenario de prueba: explica el error de una investigación fallida. */
   it("explica el error de una investigación fallida", async () => {
     renderResearch(project({ status: "structured" }), [
       run({ status: "failed", error_code: "ai_timeout", error_message: "El proveedor de IA tardó demasiado en responder.", queries: [] }),
@@ -138,6 +152,7 @@ describe("Pestaña de investigación", () => {
     expect(screen.getByText("Fallida")).toBeInTheDocument();
   });
 
+  /** Escenario de prueba: en borrador pide confirmar la estructura antes de investigar. */
   it("en borrador pide confirmar la estructura antes de investigar", async () => {
     renderResearch(project({ status: "draft" }), []);
     expect(await screen.findByText(/primero confirma la estructura/)).toBeInTheDocument();
@@ -146,7 +161,9 @@ describe("Pestaña de investigación", () => {
   });
 });
 
+/** Escenario de prueba: Iniciar investigación. */
 describe("Iniciar investigación", () => {
+  /** Escenario de prueba: desde el panel de estructura lanza la investigación y abre su pestaña. */
   it("desde el panel de estructura lanza la investigación y abre su pestaña", async () => {
     const pending = run({ status: "pending", progress_pct: 0, queries: [], finished_at: null });
     const { fetchMock, router } = renderResearch(project({ status: "structured" }), [pending], [
@@ -162,6 +179,7 @@ describe("Iniciar investigación", () => {
     expect(await screen.findByText("En cola")).toBeInTheDocument();
   });
 
+  /** Escenario de prueba: muestra el motivo si el backend rechaza la investigación. */
   it("muestra el motivo si el backend rechaza la investigación", async () => {
     renderResearch(project({ status: "structured" }), [], [
       {
@@ -177,7 +195,9 @@ describe("Iniciar investigación", () => {
   });
 });
 
+/** Escenario de prueba: Pestaña de fuentes. */
 describe("Pestaña de fuentes", () => {
+  /** Escenario de prueba: lista las fuentes y permite ver solo las citadas. */
   it("lista las fuentes y permite ver solo las citadas", async () => {
     const sources: Source[] = [
       { id: "s1", url: "https://example.com/a", domain: "example.com", title: "Informe A", source_type: "government", created_at: NOW, citation_count: 2, evidence_count: 3 },

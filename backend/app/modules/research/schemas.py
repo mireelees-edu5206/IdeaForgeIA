@@ -1,3 +1,5 @@
+"""Valida contratos de entrada/salida. Area: investigacion web."""
+
 import uuid
 from datetime import datetime
 from typing import Annotated
@@ -11,6 +13,8 @@ from app.modules.research.models import QueryStatus, RunStatus, RunStep, SourceT
 
 
 class PlannedQuestion(BaseModel):
+    """Representa planned question."""
+
     category: ResearchCategory
     question: Annotated[
         str, StringConstraints(strip_whitespace=True, min_length=10, max_length=500)
@@ -27,6 +31,8 @@ class ResearchPlan(BaseModel):
 
 
 class ResearchRunRead(BaseModel):
+    """Contrato de datos para investigacion ejecucion read."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -43,6 +49,8 @@ class ResearchRunRead(BaseModel):
 
 
 class QuerySourceRead(BaseModel):
+    """Contrato de datos para consulta fuente read."""
+
     source_id: uuid.UUID
     url: str
     domain: str
@@ -65,6 +73,8 @@ class EvidenceRead(BaseModel):
 
 
 class ResearchQueryRead(BaseModel):
+    """Contrato de datos para investigacion consulta read."""
+
     id: uuid.UUID
     position: int
     category: ResearchCategory
@@ -79,10 +89,14 @@ class ResearchQueryRead(BaseModel):
 
 
 class ResearchRunDetail(ResearchRunRead):
+    """Representa investigacion ejecucion detalle."""
+
     queries: list[ResearchQueryRead]
 
 
 class SourceRead(BaseModel):
+    """Contrato de datos para fuente read."""
+
     id: uuid.UUID
     url: str
     domain: str

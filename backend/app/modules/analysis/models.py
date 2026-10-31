@@ -12,6 +12,8 @@ from app.modules.research.models import research_run_fk
 
 
 class RiskCategory(StrEnum):
+    """Representa risk categoria."""
+
     MARKET = "market"
     COMPETITION = "competition"
     TECHNICAL = "technical"
@@ -22,6 +24,8 @@ class RiskCategory(StrEnum):
 
 
 class ValidationStatus(StrEnum):
+    """Representa validacion estado."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     VALIDATED = "validated"
@@ -30,6 +34,8 @@ class ValidationStatus(StrEnum):
 
 
 class ResolutionStatus(StrEnum):
+    """Representa resolution estado."""
+
     OPEN = "open"
     RESOLVED = "resolved"
     DISMISSED = "dismissed"
@@ -40,6 +46,7 @@ class AnalysisItemMixin(UUIDPrimaryKeyMixin, ReviewableMixin, TimestampMixin):
 
     @declared_attr.directive
     def __table_args__(cls) -> tuple:
+        """Gestiona table args para analisis."""
         return (research_run_fk(ondelete="SET NULL (run_id)"),)
 
     project_id: Mapped[uuid.UUID] = mapped_column(
@@ -49,6 +56,8 @@ class AnalysisItemMixin(UUIDPrimaryKeyMixin, ReviewableMixin, TimestampMixin):
 
 
 class Opportunity(AnalysisItemMixin, Base):
+    """Representa opportunity."""
+
     __tablename__ = "opportunities"
 
     title: Mapped[str] = mapped_column(String(200))
@@ -59,6 +68,8 @@ class Opportunity(AnalysisItemMixin, Base):
 
 
 class Risk(AnalysisItemMixin, Base):
+    """Representa risk."""
+
     __tablename__ = "risks"
 
     title: Mapped[str] = mapped_column(String(200))
@@ -74,6 +85,8 @@ class Risk(AnalysisItemMixin, Base):
 
 
 class ValidationHypothesis(AnalysisItemMixin, Base):
+    """Representa validacion hipotesis."""
+
     __tablename__ = "validation_hypotheses"
 
     statement: Mapped[str]
@@ -93,6 +106,8 @@ class ValidationHypothesis(AnalysisItemMixin, Base):
 
 
 class MissingInformation(AnalysisItemMixin, Base):
+    """Representa faltante informacion."""
+
     __tablename__ = "missing_information"
 
     question: Mapped[str]
@@ -111,6 +126,8 @@ class MissingInformation(AnalysisItemMixin, Base):
 
 
 class OpportunityFinding(Base):
+    """Representa opportunity hallazgo."""
+
     __tablename__ = "opportunity_findings"
 
     opportunity_id: Mapped[uuid.UUID] = mapped_column(
@@ -122,6 +139,8 @@ class OpportunityFinding(Base):
 
 
 class RiskFinding(Base):
+    """Representa risk hallazgo."""
+
     __tablename__ = "risk_findings"
 
     risk_id: Mapped[uuid.UUID] = mapped_column(
@@ -133,6 +152,8 @@ class RiskFinding(Base):
 
 
 class HypothesisFinding(Base):
+    """Representa hipotesis hallazgo."""
+
     __tablename__ = "hypothesis_findings"
 
     hypothesis_id: Mapped[uuid.UUID] = mapped_column(

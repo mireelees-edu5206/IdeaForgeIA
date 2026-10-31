@@ -1,3 +1,5 @@
+"""Define entidades ORM y restricciones de persistencia. Area: proveedores de IA."""
+
 import uuid
 from decimal import Decimal
 from enum import StrEnum
@@ -10,6 +12,8 @@ from app.db.base import Base, CreatedAtMixin, UUIDPrimaryKeyMixin, str_enum
 
 
 class AIOperation(StrEnum):
+    """Representa aioperation."""
+
     IDEA_STRUCTURING = "idea_structuring"
     RESEARCH_PLANNING = "research_planning"
     GROUNDED_SEARCH = "grounded_search"
@@ -20,6 +24,8 @@ class AIOperation(StrEnum):
 
 
 class AICallStatus(StrEnum):
+    """Representa aicall estado."""
+
     SUCCESS = "success"
     ERROR = "error"
 

@@ -1,9 +1,11 @@
+/** Consultas y cache React Query de mapa y zonas. */
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { projectKeys } from "../projects/queries";
 import { geoApi } from "./api";
 import type { GeoSearchParams } from "./types";
 
+/** Define geo keys como dato o funcion publica de geo. */
 export const geoKeys = {
   geocode: () => ["geo", "geocode"] as const,
   places: (projectId: string, params: GeoSearchParams | null) =>
@@ -15,6 +17,7 @@ export function useGeocode() {
   return useMutation({ mutationFn: (query: string) => geoApi.geocode(query) });
 }
 
+/** Expone la funcion use nearby places para el flujo de geo. */
 export function useNearbyPlaces(projectId: string, params: GeoSearchParams | null) {
   return useQuery({
     queryKey: geoKeys.places(projectId, params),

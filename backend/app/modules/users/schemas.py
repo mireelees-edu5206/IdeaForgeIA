@@ -1,3 +1,5 @@
+"""Valida contratos de entrada/salida. Area: perfiles."""
+
 import uuid
 from datetime import datetime
 from typing import Annotated
@@ -19,6 +21,8 @@ FullName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1,
 
 
 class UserRead(BaseModel):
+    """Contrato de datos para usuario read."""
+
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID
@@ -29,12 +33,16 @@ class UserRead(BaseModel):
 
 
 class UserUpdate(BaseModel):
+    """Representa usuario actualizacion."""
+
     model_config = ConfigDict(extra="forbid")
 
     full_name: FullName
 
 
 class PasswordChange(BaseModel):
+    """Representa contrasena change."""
+
     model_config = ConfigDict(extra="forbid")
 
     current_password: ExistingPassword

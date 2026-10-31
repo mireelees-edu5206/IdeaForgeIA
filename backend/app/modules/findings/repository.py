@@ -1,3 +1,5 @@
+"""Agrupa consultas SQL del dominio. Area: resultados/evidencia."""
+
 import uuid
 
 from sqlalchemy import case, or_, select
@@ -15,7 +17,10 @@ _CONFIDENCE_ORDER = case(
 
 
 class FindingRepository:
+    """Repositorio de consultas para hallazgo."""
+
     def __init__(self, session: AsyncSession) -> None:
+        """Gestiona la inicializacion para resultados."""
         self.session = session
 
     async def list_for_project(
@@ -25,12 +30,16 @@ class FindingRepository:
         finding_type: ResearchCategory | None,
         review_status: ReviewStatus | None,
     ) -> list[Finding]:
+        """Lista for project en resultados."""
         conditions = [Finding.project_id == project_id]
+        # Rama condicional: se cumple run_id is not None.
         if run_id is not None:
             # Los hallazgos del usuario no pertenecen a ninguna ejecución: siempre se incluyen.
             conditions.append(or_(Finding.run_id == run_id, Finding.origin == Origin.USER))
+        # Rama condicional: se cumple finding_type is not None.
         if finding_type is not None:
             conditions.append(Finding.finding_type == finding_type)
+        # Rama condicional: se cumple review_status is not None.
         if review_status is not None:
             conditions.append(Finding.review_status == review_status)
         findings = await self.session.scalars(
@@ -41,6 +50,7 @@ class FindingRepository:
         return list(findings)
 
     async def get(self, project_id: uuid.UUID, finding_id: uuid.UUID) -> Finding | None:
+        """Obtiene el flujo en resultados."""
         return await self.session.scalar(
             select(Finding).where(Finding.id == finding_id, Finding.project_id == project_id)
         )
@@ -48,6 +58,8 @@ class FindingRepository:
     async def evidence_for(
         self, finding_ids: list[uuid.UUID]
     ) -> list[tuple[FindingEvidence, Evidence, Source]]:
+        """Gestiona for en resultados."""
+        # Rama condicional: se cumple not finding_ids.
         if not finding_ids:
             return []
         rows = await self.session.execute(
@@ -62,6 +74,8 @@ class FindingRepository:
     async def entities_for(
         self, finding_ids: list[uuid.UUID]
     ) -> list[tuple[FindingEntity, Entity]]:
+        """Gestiona for en resultados."""
+        # Rama condicional: se cumple not finding_ids.
         if not finding_ids:
             return []
         rows = await self.session.execute(
@@ -75,6 +89,8 @@ class FindingRepository:
     async def evidence_ids_in_project(
         self, project_id: uuid.UUID, ids: set[uuid.UUID]
     ) -> set[uuid.UUID]:
+        """Gestiona ids in project en resultados."""
+        # Rama condicional: se cumple not ids.
         if not ids:
             return set()
         found = await self.session.scalars(
@@ -83,7 +99,9 @@ class FindingRepository:
         return set(found)
 
     def add(self, finding: Finding) -> None:
+        """Agrega el flujo en resultados."""
         self.session.add(finding)
 
     async def delete(self, finding: Finding) -> None:
+        """Elimina el flujo en resultados."""
         await self.session.delete(finding)

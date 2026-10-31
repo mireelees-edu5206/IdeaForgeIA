@@ -11,6 +11,7 @@ from app.modules.reports.schemas import BusinessVerdict, ReportDraft
 
 @register_fake_response(ReportDraft)
 def report_response(_: Sequence[AIMessage]) -> BaseModel:
+    """Gestiona response en informes."""
     simulated = (
         f"{FAKE_MARKER} Contenido simulado para probar el informe; no es evidencia "
         "ni representa una conclusión validada."

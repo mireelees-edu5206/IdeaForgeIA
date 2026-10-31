@@ -1,3 +1,5 @@
+"""Define entidades ORM y restricciones de persistencia. Area: resultados/evidencia."""
+
 import uuid
 from decimal import Decimal
 from enum import StrEnum
@@ -18,17 +20,23 @@ from app.modules.research.models import research_run_fk
 
 
 class EvidenceKind(StrEnum):
+    """Representa evidencia kind."""
+
     CITED_CLAIM = "cited_claim"  # frase del modelo acompañada de una URL (grounding)
     SOURCE_EXCERPT = "source_excerpt"  # fragmento literal de la fuente
 
 
 class EvidenceStance(StrEnum):
+    """Representa evidencia stance."""
+
     SUPPORTS = "supports"
     CONTRADICTS = "contradicts"
     CONTEXT = "context"
 
 
 class Evidence(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
+    """Representa evidencia."""
+
     __tablename__ = "evidence"
     __table_args__ = (
         ForeignKeyConstraint(
@@ -60,6 +68,8 @@ class Evidence(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
 
 
 class Finding(UUIDPrimaryKeyMixin, ReviewableMixin, TimestampMixin, Base):
+    """Representa hallazgo."""
+
     __tablename__ = "findings"
     __table_args__ = (
         research_run_fk(ondelete="CASCADE"),
@@ -83,6 +93,8 @@ class Finding(UUIDPrimaryKeyMixin, ReviewableMixin, TimestampMixin, Base):
 
 
 class FindingEvidence(Base):
+    """Representa hallazgo evidencia."""
+
     __tablename__ = "finding_evidence"
 
     finding_id: Mapped[uuid.UUID] = mapped_column(
@@ -95,6 +107,8 @@ class FindingEvidence(Base):
 
 
 class FindingEntity(Base):
+    """Representa hallazgo entidad."""
+
     __tablename__ = "finding_entities"
 
     finding_id: Mapped[uuid.UUID] = mapped_column(

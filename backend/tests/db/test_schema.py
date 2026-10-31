@@ -1,3 +1,5 @@
+"""Pruebas de comportamiento para schema."""
+
 import uuid
 
 import pytest
@@ -16,6 +18,7 @@ IDEA = "Una plataforma que conecta agricultores locales con restaurantes."
 
 
 async def _user(conn: AsyncConnection, email: str = "ana@example.com") -> uuid.UUID:
+    """Gestiona usuario."""
     result = await conn.execute(
         text(
             "INSERT INTO users (email, password_hash, full_name)"
@@ -27,6 +30,7 @@ async def _user(conn: AsyncConnection, email: str = "ana@example.com") -> uuid.U
 
 
 async def _project(conn: AsyncConnection, user_id: uuid.UUID) -> uuid.UUID:
+    """Gestiona proyecto."""
     result = await conn.execute(
         text("INSERT INTO projects (user_id, title, raw_idea) VALUES (:u, 'P', :i) RETURNING id"),
         {"u": user_id, "i": IDEA},
@@ -35,6 +39,7 @@ async def _project(conn: AsyncConnection, user_id: uuid.UUID) -> uuid.UUID:
 
 
 async def _run(conn: AsyncConnection, project_id: uuid.UUID, status: str = "pending") -> uuid.UUID:
+    """Ejecuta el flujo principal."""
     result = await conn.execute(
         text(
             "INSERT INTO research_runs (project_id, status, ai_provider, ai_model)"
@@ -46,6 +51,7 @@ async def _run(conn: AsyncConnection, project_id: uuid.UUID, status: str = "pend
 
 
 async def _source(conn: AsyncConnection, project_id: uuid.UUID) -> uuid.UUID:
+    """Gestiona fuente."""
     result = await conn.execute(
         text(
             "INSERT INTO sources (project_id, url, canonical_url, domain)"
@@ -57,13 +63,19 @@ async def _source(conn: AsyncConnection, project_id: uuid.UUID) -> uuid.UUID:
 
 
 async def _expect_integrity_error(conn: AsyncConnection, sql: str, params: dict) -> None:
+    """Gestiona expect integrity error."""
+    # Abre y libera los recursos declarados en este bloque.
     with pytest.raises(IntegrityError):
+        # Abre y libera los recursos declarados en este bloque.
         async with conn.begin_nested():
             await conn.execute(text(sql), params)
 
 
 async def test_models_match_migrations(conn: AsyncConnection) -> None:
+    """Prueba el escenario: models match migrations."""
+
     def diff(sync_conn):  # type: ignore[no-untyped-def]
+        """Gestiona diff."""
         context = MigrationContext.configure(sync_conn, opts={"compare_type": True})
         return compare_metadata(context, Base.metadata)
 
@@ -71,11 +83,13 @@ async def test_models_match_migrations(conn: AsyncConnection) -> None:
 
 
 async def test_uuidv7_primary_keys(conn: AsyncConnection) -> None:
+    """Prueba el escenario: uuidv7 primary claves."""
     user_id = await _user(conn)
     assert user_id.version == 7
 
 
 async def test_email_is_case_insensitive_unique(conn: AsyncConnection) -> None:
+    """Prueba el escenario: correo is case insensitive unique."""
     await _user(conn, "ana@example.com")
     await _expect_integrity_error(
         conn,
@@ -85,6 +99,7 @@ async def test_email_is_case_insensitive_unique(conn: AsyncConnection) -> None:
 
 
 async def test_updated_at_trigger(conn: AsyncConnection) -> None:
+    """Prueba el escenario: updated at trigger."""
     user_id = await _user(conn)
     await conn.execute(
         text("UPDATE users SET updated_at = '2000-01-01' WHERE id = :u"), {"u": user_id}
@@ -97,6 +112,7 @@ async def test_updated_at_trigger(conn: AsyncConnection) -> None:
 
 
 async def test_raw_idea_length_check(conn: AsyncConnection) -> None:
+    """Prueba el escenario: raw idea length check."""
     user_id = await _user(conn)
     await _expect_integrity_error(
         conn,
@@ -106,6 +122,7 @@ async def test_raw_idea_length_check(conn: AsyncConnection) -> None:
 
 
 async def test_only_one_active_run_per_project(conn: AsyncConnection) -> None:
+    """Prueba el escenario: only one activo ejecucion per proyecto."""
     project_id = await _project(conn, await _user(conn))
     await _run(conn, project_id, "running")
     await _run(conn, project_id, "completed")  # las finalizadas no cuentan
@@ -117,6 +134,7 @@ async def test_only_one_active_run_per_project(conn: AsyncConnection) -> None:
 
 
 async def test_evidence_cannot_mix_projects(conn: AsyncConnection) -> None:
+    """Prueba el escenario: evidencia cannot mix proyectos."""
     user_id = await _user(conn)
     project_a, project_b = await _project(conn, user_id), await _project(conn, user_id)
     source_a = await _source(conn, project_a)
@@ -129,6 +147,7 @@ async def test_evidence_cannot_mix_projects(conn: AsyncConnection) -> None:
 
 
 async def test_cited_claim_requires_query_and_span(conn: AsyncConnection) -> None:
+    """Prueba el escenario: cited claim requires consulta and span."""
     project_id = await _project(conn, await _user(conn))
     source_id = await _source(conn, project_id)
     await _expect_integrity_error(
@@ -140,6 +159,7 @@ async def test_cited_claim_requires_query_and_span(conn: AsyncConnection) -> Non
 
 
 async def test_ai_finding_requires_run(conn: AsyncConnection) -> None:
+    """Prueba el escenario: ai hallazgo requires ejecucion."""
     project_id = await _project(conn, await _user(conn))
     await _expect_integrity_error(
         conn,
@@ -150,6 +170,7 @@ async def test_ai_finding_requires_run(conn: AsyncConnection) -> None:
 
 
 async def test_deleting_run_keeps_analysis(conn: AsyncConnection) -> None:
+    """Prueba el escenario: deleting ejecucion keeps analisis."""
     project_id = await _project(conn, await _user(conn))
     run_id = await _run(conn, project_id)
     risk = await conn.execute(
@@ -168,6 +189,7 @@ async def test_deleting_run_keeps_analysis(conn: AsyncConnection) -> None:
 
 
 async def test_deleting_project_cascades_and_keeps_ai_logs(conn: AsyncConnection) -> None:
+    """Prueba el escenario: deleting proyecto cascades and keeps ai logs."""
     user_id = await _user(conn)
     project_id = await _project(conn, user_id)
     await _source(conn, project_id)

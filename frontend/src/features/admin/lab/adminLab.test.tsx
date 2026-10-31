@@ -1,3 +1,4 @@
+/** Pruebas de regresion para el flujo de administracion. */
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -5,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AdminLabPage } from "./AdminLabPage";
 
+/** Define hooks para el bloque de administracion. */
 const hooks = vi.hoisted(() => ({
   tracePathMutate: vi.fn(),
   placesMutate: vi.fn(),
@@ -14,6 +16,7 @@ const hooks = vi.hoisted(() => ({
   geocodeMutateAsync: vi.fn(),
 }));
 
+/** Define traceGraph para el bloque de administracion. */
 const traceGraph = {
   project_id: "p1",
   project_title: "Heladería local",
@@ -124,11 +127,13 @@ vi.mock("../../geo/GeoMap", () => ({
   GeoMap: () => <div data-testid="geo-map" />,
 }));
 
+/** Escenario de prueba: Laboratorio aplicado al proyecto. */
 describe("Laboratorio aplicado al proyecto", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  /** Escenario de prueba: muestra el proyecto real, métricas y el acceso al apartado lógico. */
   it("muestra el proyecto real, métricas y el acceso al apartado lógico", async () => {
     render(
       <MemoryRouter>
@@ -137,7 +142,7 @@ describe("Laboratorio aplicado al proyecto", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Análisis del proyecto" }),
+      await screen.findByRole("heading", { name: "Laboratorio de algoritmos" }),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Heladería local").length).toBeGreaterThan(0);
     expect(screen.getByText(/Toluca Centro/)).toBeInTheDocument();
@@ -150,6 +155,7 @@ describe("Laboratorio aplicado al proyecto", () => {
     ).toHaveAttribute("href", "/admin/laboratorio/proposiciones");
   });
 
+  /** Escenario de prueba: envía la búsqueda BFS sobre el grafo de trazabilidad real. */
   it("envía la búsqueda BFS sobre el grafo de trazabilidad real", async () => {
     const user = userEvent.setup();
     render(
@@ -172,6 +178,7 @@ describe("Laboratorio aplicado al proyecto", () => {
     });
   });
 
+  /** Escenario de prueba: usa hipótesis reales del proyecto para el plan de presupuesto. */
   it("usa hipótesis reales del proyecto para el plan de presupuesto", async () => {
     const user = userEvent.setup();
     render(

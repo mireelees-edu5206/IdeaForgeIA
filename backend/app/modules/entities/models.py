@@ -1,3 +1,5 @@
+"""Define entidades ORM y restricciones de persistencia. Area: entidades."""
+
 import uuid
 from enum import StrEnum
 
@@ -17,6 +19,8 @@ from app.modules.research.models import research_run_fk
 
 
 class EntityType(StrEnum):
+    """Representa entidad tipo."""
+
     COMPANY = "company"
     PRODUCT = "product"
     TECHNOLOGY = "technology"
@@ -25,6 +29,8 @@ class EntityType(StrEnum):
 
 
 class CompetitorType(StrEnum):
+    """Representa alternativa tipo."""
+
     DIRECT = "direct"
     INDIRECT = "indirect"
     SUBSTITUTE = "substitute"
@@ -32,6 +38,8 @@ class CompetitorType(StrEnum):
 
 
 class Entity(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Representa entidad."""
+
     __tablename__ = "entities"
     __table_args__ = (
         UniqueConstraint("project_id", "entity_type", "normalized_name"),
@@ -54,6 +62,8 @@ class Entity(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 
 class EntityAlias(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
+    """Representa entidad alias."""
+
     __tablename__ = "entity_aliases"
     __table_args__ = (
         UniqueConstraint("entity_id", "normalized_alias"),
@@ -71,6 +81,8 @@ class EntityAlias(UUIDPrimaryKeyMixin, CreatedAtMixin, Base):
 
 
 class Competitor(UUIDPrimaryKeyMixin, ReviewableMixin, TimestampMixin, Base):
+    """Representa alternativa."""
+
     __tablename__ = "competitors"
     __table_args__ = (
         UniqueConstraint("project_id", "entity_id"),

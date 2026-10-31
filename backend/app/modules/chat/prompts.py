@@ -1,3 +1,5 @@
+"""Mantiene prompts versionados para IA. Area: asistente contextual."""
+
 import json
 from collections.abc import Sequence
 from typing import Any
@@ -57,6 +59,7 @@ CHAT_SYSTEM_PROMPT = (
 def build_chat_messages(
     context: dict[str, Any], history: Sequence[ChatTurn], message: str
 ) -> list[AIMessage]:
+    """Construye chat messages en chat."""
     encoded_context = json.dumps(context, ensure_ascii=False, separators=(",", ":"))
     encoded_context = (
         encoded_context.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")

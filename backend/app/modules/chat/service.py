@@ -1,3 +1,5 @@
+"""Aplica reglas de negocio y permisos. Area: asistente contextual."""
+
 import re
 import unicodedata
 import uuid
@@ -46,9 +48,11 @@ _GREETINGS = {
 
 
 def _greeting_reply(message: str, project_title: str, has_history: bool) -> ChatResponse | None:
+    """Gestiona reply en chat."""
     normalized = unicodedata.normalize("NFD", message.casefold())
     normalized = "".join(char for char in normalized if unicodedata.category(char) != "Mn")
     normalized = " ".join(re.sub(r"[^\w\s]", " ", normalized).split())
+    # Rama condicional: se cumple normalized not in _GREETINGS.
     if normalized not in _GREETINGS:
         return None
     greeting = "Estoy listo" if has_history else "¡Hola! Estoy listo"
@@ -61,28 +65,41 @@ def _greeting_reply(message: str, project_title: str, has_history: bool) -> Chat
 
 
 def _is_question_echo(user_message: str, answer: str) -> bool:
+    """Indica si question echo en chat."""
     stripped = answer.strip()
+    # Rama condicional: evalua len(stripped) < 120 and stripped.startswith(un valor) and
+    # stripped.endsw.
     if len(stripped) < 120 and stripped.startswith("¿") and stripped.endswith("?"):
         return True
+    # Rama condicional: evalua len(stripped) < 95 and stripped.endswith(un valor) and (un valor not
+    # in .
     if len(stripped) < 95 and stripped.endswith("?") and "\n" not in stripped:
         return True
     norm_q = re.sub(r"[^\w\s]", "", user_message.casefold()).split()
     norm_a = re.sub(r"[^\w\s]", "", stripped.casefold()).split()
+    # Rama condicional: se cumple norm_q and len(norm_a) <= len(norm_q) + 5.
     if norm_q and len(norm_a) <= len(norm_q) + 5:
         overlap = sum(1 for w in norm_a if w in set(norm_q))
+        # Rama condicional: se cumple overlap / max(len(norm_a), 1) >= 0.65.
         if overlap / max(len(norm_a), 1) >= 0.65:
             return True
     return False
 
 
 class ChatService:
+    """Servicio de reglas de negocio para chat."""
+
     def __init__(self, session: AsyncSession, provider: AIProvider, settings: Settings) -> None:
+        """Gestiona la inicializacion para chat."""
         self.session = session
         self.provider = provider
         self.settings = settings
 
     async def ask(self, user: User, project_id: uuid.UUID, data: ChatRequest) -> ChatResponse:
+        """Gestiona el flujo en chat."""
         project = await get_owned_project(self.session, user, project_id)
+        # Rama condicional: evalua (greeting := _greeting_reply(data.message, project.title,
+        # bool(data.hist.
         if greeting := _greeting_reply(data.message, project.title, bool(data.history)):
             return greeting
         project_id = project.id
@@ -114,6 +131,7 @@ class ChatService:
                 self.provider.generate_structured(retry_messages, ChatAnswer),
                 self.settings.ai_timeout_seconds,
             )
+            # Rama condicional: se cumple retry_outcome.result is not None.
             if retry_outcome.result is not None:
                 outcome = retry_outcome
         usage = outcome.result.usage if outcome.result else None
@@ -129,6 +147,7 @@ class ChatService:
         )
         await self.session.commit()
 
+        # Rama condicional: se cumple outcome.result is None.
         if outcome.result is None:
             error = outcome.error or AIProviderError()
             raise ServiceUnavailableError(
@@ -138,8 +157,10 @@ class ChatService:
 
         seen: set[str] = set()
         cited = []
+        # Itera finding_id sobre outcome.result.data.finding_ids.
         for finding_id in outcome.result.data.finding_ids:
             key = str(finding_id)
+            # Rama condicional: se cumple key in references and key not in seen.
             if key in references and key not in seen:
                 seen.add(key)
                 cited.append(references[key])

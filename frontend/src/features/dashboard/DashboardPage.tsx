@@ -1,3 +1,4 @@
+/** Resume el avance y orienta el siguiente paso. */
 import { useEffect } from "react";
 import { FiActivity, FiArrowRight, FiCheckCircle, FiCompass, FiEdit3, FiPlus } from "react-icons/fi";
 import { Link } from "react-router";
@@ -18,8 +19,10 @@ import { PROJECT_STATUSES, STATUS_META } from "../projects/constants";
 import { useProjectList, useProjectsOverview } from "../projects/queries";
 import type { ProjectStatus } from "../projects/types";
 
+/** Define RECENT_COUNT para el bloque de panel inicial. */
 const RECENT_COUNT = 6;
 
+/** Catalogo STATUS_ICON que define etiquetas o reglas de panel inicial. */
 const STATUS_ICON = {
   draft: FiEdit3,
   structured: FiCheckCircle,
@@ -27,6 +30,7 @@ const STATUS_ICON = {
   analyzed: FiActivity,
 };
 
+/** Catalogo STATUS_ACTION que define etiquetas o reglas de panel inicial. */
 const STATUS_ACTION: Record<ProjectStatus, { pct: number; action: string; route: string }> = {
   draft: { pct: 25, action: "Completa la información base de la idea.", route: "" },
   structured: { pct: 50, action: "Inicia la investigación para encontrar evidencia.", route: "/investigacion" },
@@ -34,6 +38,7 @@ const STATUS_ACTION: Record<ProjectStatus, { pct: number; action: string; route:
   analyzed: { pct: 100, action: "Consulta el veredicto y los siguientes pasos sugeridos.", route: "/reportes" },
 };
 
+/** Define VALIDATION_STEPS para el bloque de panel inicial. */
 const VALIDATION_STEPS = [
   { number: "01", title: "Cuéntanos tu idea", text: "Qué problema resuelve y para quién.", icon: FiEdit3 },
   { number: "02", title: "Completa lo básico", text: "Te diremos qué información falta.", icon: FiCheckCircle },
@@ -42,6 +47,7 @@ const VALIDATION_STEPS = [
   { number: "05", title: "Lee el veredicto", text: "Consulta la recomendación y los próximos pasos.", icon: FiCheckCircle },
 ];
 
+/** Componente FirstProjectGuide: renderiza la vista de panel inicial. */
 function FirstProjectGuide() {
   return (
     <section aria-labelledby="first-project-guide-title" className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr)_minmax(17rem,0.7fr)]">
@@ -81,6 +87,7 @@ function FirstProjectGuide() {
   );
 }
 
+/** Expone la funcion dashboard page para el flujo de dashboard. */
 export function DashboardPage() {
   useDocumentTitle("Panel");
   const { user } = useAuth();
