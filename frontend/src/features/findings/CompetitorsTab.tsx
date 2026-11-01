@@ -13,13 +13,13 @@
  * ¿Quién la usa?
  * Se muestra dentro del detalle del proyecto (routes.tsx, ruta "competidores").
  *
- * Partes de la pantalla:
- * - Botón para mostrar u ocultar el mapa circular (CompetitorConstellation).
- * - Botón "Añadir opción" con su formulario (CompetitorForm).
- * - El buscador de zonas y lugares (GeoExplorer).
- * - Las opciones agrupadas por tipo (CompetitorCard).
- * - Un grupo extra "Otros nombres mencionados": empresas que aparecen en los resultados pero que
- *   todavía no se añadieron como opción (EntityRow).
+ * Orden de la pantalla (pensado para celular, lo más importante primero):
+ * 1. Título y botón "Añadir opción". El botón del mapa circular solo se ve en pantallas medianas o grandes.
+ * 2. Hallazgos importantes: hasta 3 resultados de confianza alta o aportados por ti.
+ * 3. Las opciones agrupadas por tipo (CompetitorCard), incluidas las que encontró la IA.
+ * 4. "Otros nombres mencionados": empresas de los resultados que todavía no son opciones (EntityRow).
+ * 5. Un desplegable "Buscar lugares en el mapa" con el explorador de zonas (GeoExplorer), cerrado al inicio.
+ * El mapa circular (CompetitorConstellation) empieza oculto; se abre con su botón.
  */
 
 /* "useState" guarda si el formulario está abierto, si el mapa se ve, y qué opción está seleccionada en el mapa. */
@@ -49,7 +49,7 @@ import { CompetitorForm } from "./components/CompetitorForm";
 /* Textos de tipo, nombres de entidad y textos de riesgo. */
 import { COMPETITOR_TYPE_META, COMPETITOR_TYPES, ENTITY_TYPE_LABELS, THREAT_META } from "./constants";
 /* Consultas y acción de crear, desde la caché. */
-import { useCompetitors, useCreateCompetitor, useEntities } from "./queries";
+import { useCompetitors, useCreateCompetitor, useEntities, useFindings } from "./queries";
 /* Tipos de competidor, entidad y nivel. */
 import type { Competitor, CompetitorType, Entity, Level } from "./types";
 
@@ -277,7 +277,10 @@ export function CompetitorsTab() {
   const entities = useEntities(project.id);
   // "creating": si el formulario de añadir está abierto. "showConstellation": si el mapa circular se ve.
   const [creating, setCreating] = useState(false);
-  const [showConstellation, setShowConstellation] = useState(true);
+  // El mapa circular empieza oculto para que el celular no muestre tanta información al abrir.
+  const [showConstellation, setShowConstellation] = useState(false);
+  // Todos los resultados del proyecto; de ellos se eligen los importantes.
+  const findings = useFindings(project.id, {});
 
   // Caso 1: cargando los competidores. Mostramos la ruedita.
   /** Rama condicional: competitors.isPending. */
@@ -304,6 +307,10 @@ export function CompetitorsTab() {
   // Los nombres que todavía NO son competidores. "=== null" significa que no se han convertido en opción.
   // "?? []" usa lista vacía si los nombres todavía no cargaron.
   const others = entities.data?.filter((entity) => entity.competitor_id === null) ?? [];
+  // Hallazgos importantes: no rechazados y que sean de confianza alta o aportados por la persona. Máximo 3.
+  const importantFindings = (findings.data ?? [])
+    .filter((finding) => finding.review_status !== "rejected" && (finding.origin === "user" || finding.confidence_level === "high"))
+    .slice(0, 3);
 
   return (
     <div className="flex flex-col gap-6">
@@ -312,7 +319,7 @@ export function CompetitorsTab() {
         <div>
           <h2 className="text-lg font-semibold">Otras opciones del mercado</h2>
           <p className="text-sm text-slate-400">
-            Negocios o alternativas que resuelven un problema parecido. Aparecer aquí no confirma que sean competencia: revisa cada caso.
+            Competidores que encontró la IA o que añadiste tú. Aparecer aquí no confirma que sean competencia; revisa cada caso.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -322,6 +329,7 @@ export function CompetitorsTab() {
               size="sm"
               variant="secondary"
               icon={showConstellation ? <FiList aria-hidden="true" /> : <FiGrid aria-hidden="true" />}
+              className="hidden md:inline-flex"
               onClick={() => setShowConstellation((current) => !current)}
             >
               {showConstellation ? "Ocultar mapa de opciones" : "Ver mapa de opciones"}
@@ -344,8 +352,20 @@ export function CompetitorsTab() {
         </GlassPanel>
       )}
 
-      {/* El buscador de zonas y lugares del mapa (carpeta de geografía). */}
-      <GeoExplorer />
+      {/* Hallazgos importantes, arriba de las opciones. Solo aparece si hay alguno. */}
+      {importantFindings.length > 0 && (
+        <section aria-labelledby="hallazgos-importantes" className="surface-panel flex flex-col gap-3 rounded-2xl p-4">
+          <h3 id="hallazgos-importantes" className="font-semibold">Hallazgos importantes</h3>
+          <ul className="flex flex-col gap-2">
+            {importantFindings.map((finding) => (
+              <li key={finding.id} className="border-l-2 border-kind-finding/50 pl-3 text-sm text-slate-200">
+                {finding.statement}
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-slate-400">Revísalos completos en la pestaña Resultados.</p>
+        </section>
+      )}
 
       {/* Si no hay competidores, un mensaje de orientación. Si los hay, el mapa (si está visible) y los grupos. */}
       {competitors.data.length === 0 ? (
@@ -404,6 +424,17 @@ export function CompetitorsTab() {
           </GlassPanel>
         </section>
       )}
+
+      {/* El explorador de zonas va al final y cerrado, para no ocupar la pantalla del celular al entrar. */}
+      <details className="surface-panel rounded-2xl p-4">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-xl px-3 text-sm font-semibold text-primary [&::-webkit-details-marker]:hidden">
+          <span>Buscar lugares en el mapa</span>
+          <span className="text-xs font-normal text-slate-400">Opcional</span>
+        </summary>
+        <div className="mt-4">
+          <GeoExplorer />
+        </div>
+      </details>
     </div>
   );
 }

@@ -110,17 +110,25 @@ export function CompetitorCard({ projectId, competitor }: { projectId: string; c
           <span className="sr-only">(se abre en una pestaña nueva)</span>
         </a>
       )}
-      {/* La descripción de la entidad, si existe. */}
-      {entity.description && <p className="text-sm text-slate-300">{entity.description}</p>}
-      {/* El análisis del competidor, si existe. Lleva una etiqueta que dice de quién es. */}
-      {competitor.rationale && (
-        <p className="rounded-xl border-l-2 border-kind-analysis/50 bg-kind-analysis/5 px-3 py-2 text-sm text-slate-300">
-          {/* Si es de la IA, se aclara que es interpretación y no un hecho comprobado. */}
-          <span className="block text-xs font-medium text-kind-analysis">
-            {competitor.origin === "ai" ? "Análisis de la IA (interpretación, no un hecho)" : "Tu análisis"}
-          </span>
-          {competitor.rationale}
-        </p>
+      {/* La descripción y el análisis van plegados, para que la tarjeta no ocupe tanto espacio en el celular. */}
+      {(entity.description || competitor.rationale) && (
+        <details className="rounded-xl bg-slate-400/5 px-3 py-2 text-sm text-slate-300">
+          <summary className="flex min-h-9 cursor-pointer list-none items-center text-xs font-medium text-slate-300 [&::-webkit-details-marker]:hidden">
+            Ver descripción y análisis
+          </summary>
+          {/* La descripción de la entidad, si existe. */}
+          {entity.description && <p className="mt-2 text-sm text-slate-300">{entity.description}</p>}
+          {/* El análisis del competidor, si existe. Lleva una etiqueta que dice de quién es. */}
+          {competitor.rationale && (
+            <p className="mt-2 border-l-2 border-kind-analysis/50 pl-3 text-sm text-slate-300">
+              {/* Si es de la IA, se aclara que es interpretación y no un hecho comprobado. */}
+              <span className="block text-xs font-medium text-kind-analysis">
+                {competitor.origin === "ai" ? "Análisis de la IA (interpretación, no un hecho)" : "Tu análisis"}
+              </span>
+              {competitor.rationale}
+            </p>
+          )}
+        </details>
       )}
 
       {/* Los dos menús para cambiar el tipo y la amenaza. Al elegir, se guarda de inmediato. */}
