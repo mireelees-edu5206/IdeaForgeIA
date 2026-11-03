@@ -1,4 +1,27 @@
-"""Construye el contexto acotado para el asistente. Area: asistente contextual."""
+"""Construye el contexto acotado para el asistente. Area: asistente contextual.
+
+ARCHIVO: backend/app/modules/chat/context.py
+
+¿Qué es?
+El armador del "resumen del proyecto" que se le envía a la IA junto con cada pregunta. Reúne la
+idea, sus atributos, los hallazgos, los competidores, el análisis y el último informe, y lo recorta
+para que quepa en un tamaño fijo.
+
+¿Para qué sirve?
+Para que la IA responda con los datos reales del proyecto y no tenga que adivinar. Al mismo tiempo,
+cuida el tamaño: si el contexto es muy grande, quita primero lo menos importante.
+
+¿Quién lo usa?
+service.py (build_project_context antes de cada respuesta del chat).
+
+Límites principales:
+- Tamaño máximo del contexto: 3500 caracteres (MAX_CONTEXT_CHARS).
+- Hasta 12 hallazgos, 2 evidencias por hallazgo, 8 competidores y 6 elementos de análisis por tipo.
+
+Importante: la función devuelve también las referencias de cada hallazgo (con sus fuentes). Así la
+respuesta del chat puede mostrar de dónde sale cada dato. Un hallazgo que no entró en el contexto
+no se puede citar.
+"""
 
 import json
 import uuid
@@ -25,29 +48,27 @@ from app.modules.findings.repository import FindingRepository
 from app.modules.projects.models import IdeaAttribute, Project
 from app.modules.reports.models import Report, ReportSection, ReportStatus
 
-MAX_CONTEXT_CHARS = 3500
-MAX_FINDINGS = 12
-MAX_EVIDENCE_PER_FINDING = 2
-MAX_COMPETITORS = 8
-MAX_ANALYSIS_ITEMS = 6
-MAX_REPORT_SECTIONS = 6
+# Límites del contexto. Cambiarlos afecta cuánto ve la IA y cuánto cuesta cada pregunta.
+MAX_CONTEXT_CHARS = 3500  # Tamaño máximo del resumen completo, en caracteres.
+MAX_FINDINGS = 12  # Hallazgos más recientes que se incluyen.
+MAX_EVIDENCE_PER_FINDING = 2  # Evidencias por hallazgo.
+MAX_COMPETITORS = 8  # Competidores que se incluyen.
+MAX_ANALYSIS_ITEMS = 6  # Elementos por cada tipo de análisis.
+MAX_REPORT_SECTIONS = 6  # Secciones del último informe.
 
 
 def _short(value: str | None, limit: int) -> str | None:
-    """Gestiona el flujo en chat."""
+    """Recorta un texto a un máximo de caracteres. Si está vacío o es nulo, devuelve None."""
     return value[:limit] if value else None
 
 
 def _safe_source_url(value: str) -> str | None:
-    """Gestiona source url en chat."""
-    # Protege la operacion y dirige sus errores a manejadores explicitos.
+    """Devuelve la dirección de la fuente solo si es http o https y sin credenciales."""
     try:
         parts = urlsplit(value)
-    # Maneja el error ValueError sin detener el flujo esperado.
     except ValueError:
         return None
-    # Rama condicional: evalua parts.scheme not in {un valor, un valor} or not parts.hostname or
-    # parts..
+    # Descarta esquemas raros (por ejemplo "javascript:") y direcciones con usuario o contraseña.
     if (
         parts.scheme not in {"https", "http"}
         or not parts.hostname
@@ -61,13 +82,19 @@ def _safe_source_url(value: str) -> str | None:
 async def build_project_context(
     session: AsyncSession, project: Project
 ) -> tuple[dict, dict[str, ChatFindingReference]]:
-    """Construye project context en chat."""
+    """Arma el resumen del proyecto y las referencias de hallazgos que se pueden citar.
+
+    Devuelve dos cosas:
+    - el contexto (un diccionario que se manda a la IA como JSON);
+    - las referencias de los hallazgos que sí cupieron en el contexto, indexadas por su id.
+    """
     attributes = await session.scalars(
         select(IdeaAttribute)
         .where(IdeaAttribute.project_id == project.id)
         .order_by(IdeaAttribute.attribute_type, IdeaAttribute.position)
         .limit(20)
     )
+    # Los hallazgos más recientes que no estén rechazados.
     findings = list(
         await session.scalars(
             select(Finding)
@@ -81,23 +108,21 @@ async def build_project_context(
     )
     finding_repository = FindingRepository(session)
     finding_ids = [finding.id for finding in findings]
+    # Agrupa las evidencias por hallazgo, y guarda solo las primeras dos de cada uno.
     evidence_by_finding: dict = defaultdict(list)
-    # Itera (link, evidence, source) sobre await finding_repository.evidence_for(finding_ids).
     for link, evidence, source in await finding_repository.evidence_for(finding_ids):
-        # Rama condicional: evalua len(evidence_by_finding[link.finding_id]) >=
-        # MAX_EVIDENCE_PER_FINDING.
         if len(evidence_by_finding[link.finding_id]) >= MAX_EVIDENCE_PER_FINDING:
             continue
         evidence_by_finding[link.finding_id].append((link, evidence, source))
+    # Agrupa las entidades (empresas) mencionadas en cada hallazgo.
     entities_by_finding: dict = defaultdict(list)
-    # Itera (link, entity) sobre await finding_repository.entities_for(finding_ids).
     for link, entity in await finding_repository.entities_for(finding_ids):
         entities_by_finding[link.finding_id].append(entity)
 
     references: dict[str, ChatFindingReference] = {}
     finding_context: list[dict] = []
-    # Itera finding sobre findings.
     for finding in findings:
+        # Cada evidencia con su fuente, recortada para no ocupar demasiado.
         evidence_refs = [
             ChatEvidenceReference(
                 stance=link.stance.value,
@@ -108,6 +133,7 @@ async def build_project_context(
             )
             for link, evidence, source in evidence_by_finding[finding.id]
         ]
+        # La referencia que el frontend puede mostrar junto a la respuesta.
         reference = ChatFindingReference(
             id=finding.id,
             finding_type=finding.finding_type,
@@ -118,6 +144,7 @@ async def build_project_context(
             evidence=evidence_refs,
         )
         references[str(finding.id)] = reference
+        # La versión resumida que se manda a la IA.
         finding_context.append(
             {
                 "id": str(finding.id),
@@ -127,6 +154,7 @@ async def build_project_context(
                 "confidence_rationale": _short(finding.confidence_rationale, 250),
                 "origin": finding.origin.value,
                 "review_status": finding.review_status.value,
+                # Hasta 5 nombres de empresas por hallazgo.
                 "entities": [entity.name for entity in entities_by_finding[finding.id][:5]],
                 "evidence": [
                     {
@@ -143,6 +171,7 @@ async def build_project_context(
             }
         )
 
+    # Competidores no rechazados, con su tipo y su nivel de amenaza. Los más recientes primero.
     competitor_rows = await session.execute(
         select(Competitor, Entity)
         .join(Entity, Entity.id == Competitor.entity_id)
@@ -170,6 +199,7 @@ async def build_project_context(
     risks = await _analysis_items(session, Risk, project)
     hypotheses = await _analysis_items(session, ValidationHypothesis, project)
     missing = await _analysis_items(session, MissingInformation, project)
+    # Solo se enlazan hallazgos que están en el contexto visible.
     visible_findings = set(references)
     await _add_linked_findings(
         session, opportunities, OpportunityFinding, "opportunity_id", visible_findings
@@ -179,6 +209,7 @@ async def build_project_context(
         session, hypotheses, HypothesisFinding, "hypothesis_id", visible_findings
     )
 
+    # El último informe completado del proyecto, con sus secciones.
     report = await session.scalar(
         select(Report)
         .where(Report.project_id == project.id, Report.status == ReportStatus.COMPLETED)
@@ -186,7 +217,6 @@ async def build_project_context(
         .limit(1)
     )
     reports: list[dict] = []
-    # Rama condicional: se cumple report is not None.
     if report is not None:
         sections = await session.scalars(
             select(ReportSection)
@@ -208,6 +238,7 @@ async def build_project_context(
             }
         )
 
+    # El contexto completo, con todas sus partes. Después se recorta si es necesario.
     context = {
         "project": {
             "title": project.title,
@@ -238,10 +269,9 @@ async def build_project_context(
         ),
     }
     _fit_context(context)
+    # Después de recortar, se quitan de cada elemento del análisis los hallazgos que ya no están.
     visible_ids = {item["id"] for item in context["findings"]}
-    # Itera items sobre context[un valor].values().
     for items in context["analysis"].values():
-        # Itera item sobre items.
         for item in items:
             item["finding_ids"] = [
                 finding_id
@@ -256,7 +286,10 @@ async def build_project_context(
 
 
 async def _analysis_items(session: AsyncSession, model, project: Project) -> list[dict]:
-    """Gestiona items en chat."""
+    """Trae los elementos de un tipo de análisis (no rechazados) en su versión resumida.
+
+    Cada tipo de elemento tiene sus propios campos, por eso hay una rama para cada uno.
+    """
     items = await session.scalars(
         select(model)
         .where(
@@ -267,16 +300,13 @@ async def _analysis_items(session: AsyncSession, model, project: Project) -> lis
         .limit(MAX_ANALYSIS_ITEMS)
     )
     result = []
-    # Itera item sobre items.
     for item in items:
-        # Rama condicional: se cumple isinstance(item, Opportunity).
         if isinstance(item, Opportunity):
             value = {
                 "title": _short(item.title, 200),
                 "description": _short(item.description, 350),
                 "potential": item.potential.value,
             }
-        # Rama condicional: se cumple isinstance(item, Risk).
         elif isinstance(item, Risk):
             value = {
                 "title": _short(item.title, 200),
@@ -286,7 +316,6 @@ async def _analysis_items(session: AsyncSession, model, project: Project) -> lis
                 "impact": item.impact.value,
                 "mitigation": _short(item.mitigation, 250),
             }
-        # Rama condicional: se cumple isinstance(item, ValidationHypothesis).
         elif isinstance(item, ValidationHypothesis):
             value = {
                 "statement": _short(item.statement, 350),
@@ -296,7 +325,6 @@ async def _analysis_items(session: AsyncSession, model, project: Project) -> lis
                 "validation_status": item.validation_status.value,
                 "result_notes": _short(item.result_notes, 250),
             }
-        # Rama condicional: se cumple isinstance(item, MissingInformation).
         elif isinstance(item, MissingInformation):
             value = {
                 "question": _short(item.question, 350),
@@ -325,8 +353,10 @@ async def _add_linked_findings(
     item_field: str,
     visible_finding_ids: set[str],
 ) -> None:
-    """Agrega linked findings en chat."""
-    # Rama condicional: se cumple not items.
+    """Agrega a cada elemento del análisis la lista de hallazgos que lo respaldan.
+
+    Solo incluye hallazgos que estén en el contexto visible.
+    """
     if not items:
         return
     item_ids = [uuid.UUID(item["id"]) for item in items]
@@ -335,25 +365,29 @@ async def _add_linked_findings(
         select(item_fk, link_model.finding_id).where(item_fk.in_(item_ids))
     )
     by_item: dict[uuid.UUID, list[str]] = defaultdict(list)
-    # Itera (item_id, finding_id) sobre rows.tuples().
     for item_id, finding_id in rows.tuples():
-        # Rama condicional: se cumple str(finding_id) in visible_finding_ids.
         if str(finding_id) in visible_finding_ids:
             by_item[item_id].append(str(finding_id))
-    # Itera item sobre items.
     for item in items:
         item["finding_ids"] = by_item[uuid.UUID(item["id"])]
 
 
 def _fit_context(context: dict) -> None:
-    """Gestiona context en chat."""
+    """Recorta el contexto hasta que quepa en MAX_CONTEXT_CHARS.
+
+    Quita primero lo menos importante.
+
+    Orden de recorte: primero el informe, después los competidores y el análisis, luego los
+    hallazgos y, por último, los atributos y la idea. Marca context_truncated si hubo recorte.
+    """
     context["context_truncated"] = False
 
     def serialize() -> str:
-        """Gestiona el flujo en chat."""
+        """Convierte el contexto en texto JSON compacto, para medir su tamaño."""
         return json.dumps(context, ensure_ascii=False, separators=(",", ":"))
 
-    # Repite el bloque mientras len(serialize()) > MAX_CONTEXT_CHARS.
+    # Mientras el texto siga siendo demasiado grande, quitamos un elemento de la lista menos
+    # importante.
     while len(serialize()) > MAX_CONTEXT_CHARS:
         context["context_truncated"] = True
         lists = [
@@ -368,12 +402,12 @@ def _fit_context(context: dict) -> None:
             context["attributes"],
         ]
         candidates = [items for items in lists if items]
-        # Rama condicional: se cumple candidates.
         if candidates:
+            # pop() quita el último elemento de la primera lista que todavía tenga datos.
             candidates[0].pop()
             continue
+        # Si ya no quedan listas, se recorta la idea a la mitad, hasta 500 caracteres.
         idea = context["project"]["idea"] or ""
-        # Rama condicional: se cumple len(idea) > 500.
         if len(idea) > 500:
             context["project"]["idea"] = idea[: len(idea) // 2]
             continue

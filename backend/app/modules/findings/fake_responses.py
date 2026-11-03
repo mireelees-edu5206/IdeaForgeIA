@@ -1,4 +1,23 @@
-"""Extracción simulada para el proveedor falso (ejercita las reglas de validación)."""
+"""Extracción simulada para el proveedor falso (ejercita las reglas de validación).
+
+ARCHIVO: backend/app/modules/findings/fake_responses.py
+
+¿Qué es?
+Una extracción de mentira: en lugar de llamar a una IA real, arma hallazgos a partir de las
+evidencias que encuentra en el texto (las líneas "[E#] categoría: ..."). Está pensada para probar
+las reglas de validación, no para dar resultados reales.
+
+¿Para qué sirve?
+Para probar en desarrollo y en las pruebas que el sistema descarta lo que no debe:
+- Un hallazgo con dos fuentes distintas sí puede quedar con confianza alta.
+- Un hallazgo con una sola fuente se limita a confianza media.
+- Una evidencia que no existe (E999) se descarta.
+- Una empresa que no aparece en el texto se descarta.
+
+¿Quién lo usa?
+El proveedor falso, cuando la extracción de una investigación pide un ExtractionResult.
+Todos los textos llevan la marca [Simulado].
+"""
 
 import re
 from collections.abc import Sequence
@@ -14,15 +33,17 @@ from app.modules.findings.extraction import (
     ExtractionResult,
 )
 
+# Busca en el texto líneas como "[E3] categoría: market |" y captura la referencia y la categoría.
 _LINE = re.compile(r"^\[(E\d+)\] categoría: (\w+) \|", re.MULTILINE)
 
 
 @register_fake_response(ExtractionResult)
 def fake_extraction(messages: Sequence[AIMessage]) -> ExtractionResult:
-    """Gestiona extraction en resultados."""
+    """Arma una extracción falsa a partir de las evidencias que aparecen en el último mensaje."""
     lines = _LINE.findall(messages[-1].content)
     findings = [
         # Dos dominios distintos: se admite confianza alta.
+        # Se toman las evidencias de dos en dos (la 1 con la 2, la 3 con la 4...).
         ExtractedFinding(
             finding_type=category,
             statement=f"{FAKE_MARKER} Hallazgo de prueba respaldado por {ref_a} y {ref_b}.",
@@ -33,7 +54,6 @@ def fake_extraction(messages: Sequence[AIMessage]) -> ExtractionResult:
         )
         for (ref_a, category), (ref_b, _) in zip(lines[::2], lines[1::2], strict=False)
     ]
-    # Rama condicional: se cumple lines.
     if lines:
         # Una sola fuente: la regla la limita a confianza media.
         findings.append(

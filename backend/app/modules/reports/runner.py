@@ -1,4 +1,20 @@
-"""Genera reportes en segundo plano y conserva el consumo de IA y su estado final."""
+"""Genera reportes en segundo plano y conserva el consumo de IA y su estado final.
+
+ARCHIVO: backend/app/modules/reports/runner.py
+
+¿Qué es?
+El trabajador que escribe el informe. Reúne el contexto del proyecto, le pide a la IA el borrador
+(ReportDraft), lo convierte en secciones y guarda el resultado.
+
+¿Para qué sirve?
+Para que la persona no tenga que esperar: el informe se escribe después de responder la petición.
+
+¿Quién lo usa?
+router.py lo lanza en segundo plano. main.py lo crea al arrancar.
+
+Si algo falla, el informe queda marcado como fallido con su código de error.
+Nada se propaga al servidor.
+"""
 
 import logging
 import uuid
@@ -24,11 +40,12 @@ from app.modules.reports.models import Report, ReportSection, ReportStatus
 from app.modules.reports.schemas import SECTION_TITLES, ReportDraft
 from app.modules.research.models import ResearchRun
 
+# Registro de mensajes del backend (aparecen en la consola del servidor).
 logger = logging.getLogger(__name__)
 
 
 class ReportRunner:
-    """Representa informe runner."""
+    """Escribe un informe en segundo plano, con su contexto y las llamadas a la IA."""
 
     def __init__(
         self,
@@ -37,49 +54,46 @@ class ReportRunner:
         settings: Settings,
         geo_provider: GeoProvider | None = None,
     ) -> None:
-        """Gestiona la inicializacion para informes."""
+        """Guarda la fábrica de sesiones, el proveedor de IA, la configuración y el de mapas."""
         self.sessionmaker = sessionmaker
         self.provider = provider
         self.settings = settings
+        # El proveedor de mapas es opcional: sirve para buscar lugares de las zonas del informe.
         self.geo_provider = geo_provider
 
     async def run(self, report_id: uuid.UUID) -> None:
-        """La tarea de fondo registra fallos sin propagar excepciones al servidor."""
-        # Abre y libera los recursos declarados en este bloque.
+        """Tarea de fondo: registra los fallos sin propagar excepciones al servidor."""
+        # Cada informe usa su propia sesión de base de datos.
         async with self.sessionmaker() as session:
-            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 await self._execute(session, report_id)
-            # Maneja el error Exception sin detener el flujo esperado.
             except Exception as exc:
                 code = exc.code if isinstance(exc, AIProviderError) else "report_generation_failed"
-                # Rama condicional: se cumple isinstance(exc, AIProviderError).
                 if isinstance(exc, AIProviderError):
                     logger.warning("El informe %s falló: %s", report_id, code)
                 else:
                     logger.exception("Error no controlado al generar el informe %s", report_id)
-                # Protege la operacion y dirige sus errores a manejadores explicitos.
+                # Se deshace lo que quedó a medias y se marca el informe como fallido.
                 try:
                     await session.rollback()
                     await self._mark_failed(session, report_id, code)
-                # Maneja el error Exception sin detener el flujo esperado.
                 except Exception:
                     logger.exception("No se pudo registrar el fallo del informe %s", report_id)
 
     async def _execute(self, session: AsyncSession, report_id: uuid.UUID) -> None:
-        """Gestiona el flujo en informes."""
+        """Genera el informe: arma el contexto, pide el borrador a la IA y guarda las secciones."""
         report = await session.get(Report, report_id)
-        # Rama condicional: se cumple report is None or report.status !=
-        # ReportStatus.GENERATING.
+        # Solo se genera si el informe todavía está en estado "generando".
         if report is None or report.status != ReportStatus.GENERATING:
             return
         project = await session.get(Project, report.project_id)
         run = await session.get(ResearchRun, report.run_id) if report.run_id else None
-        # Rama condicional: se cumple project is None or run is None.
+        # Sin proyecto o sin investigación de origen, el informe no se puede generar.
         if project is None or run is None:
             await self._mark_failed(session, report.id, "report_context_missing")
             return
 
+        # Reúne la información del proyecto que se le mandará a la IA.
         context = await build_report_context(
             session,
             project,
@@ -91,6 +105,7 @@ class ReportRunner:
             self.provider.generate_structured(report_messages(context), ReportDraft),
             self.settings.ai_timeout_seconds,
         )
+        # Se guarda la bitácora de la llamada, bien o mal.
         session.add_all(
             build_call_logs(
                 AICallContext(
@@ -105,8 +120,8 @@ class ReportRunner:
                 outcome.result.usage if outcome.result else None,
             )
         )
-        # Rama condicional: se cumple outcome.result is None.
         if outcome.result is None:
+            # La IA no respondió: el informe queda fallido con el código del error.
             error = outcome.error or AIProviderError()
             report.status = ReportStatus.FAILED
             report.error_code = error.code
@@ -114,6 +129,7 @@ class ReportRunner:
             await session.commit()
             return
 
+        # Convierte el borrador en secciones, cada una con su tipo, posición y título.
         sections = report_sections(outcome.result.data, context)
         session.add_all(
             ReportSection(
@@ -126,6 +142,7 @@ class ReportRunner:
             )
             for position, (section_type, content, verdict) in enumerate(sections)
         )
+        # El informe queda completado y guarda qué proveedor y modelo lo escribieron.
         report.status = ReportStatus.COMPLETED
         report.ai_provider = outcome.result.provider or self.provider.name
         report.ai_model = outcome.result.model or self.provider.model
@@ -134,10 +151,8 @@ class ReportRunner:
         await session.commit()
 
     async def _mark_failed(self, session: AsyncSession, report_id: uuid.UUID, code: str) -> None:
-        """Gestiona failed en informes."""
+        """Marca el informe como fallido con su código, solo si todavía se estaba generando."""
         report = await session.get(Report, report_id)
-        # Rama condicional: se cumple report is None or report.status !=
-        # ReportStatus.GENERATING.
         if report is None or report.status != ReportStatus.GENERATING:
             return
         report.status = ReportStatus.FAILED

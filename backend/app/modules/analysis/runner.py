@@ -1,7 +1,25 @@
 """Análisis en segundo plano sobre una ejecución ya completada (lo lanza el usuario).
 
-Mientras analiza, la ejecución vuelve a `running` con el paso `analyzing`: así sigue valiendo la
-regla de una sola ejecución activa por proyecto y el frontend reutiliza el mismo progreso.
+ARCHIVO: backend/app/modules/analysis/runner.py
+
+¿Qué es?
+El trabajador que arma el análisis. Toma una investigación ya terminada, le pide a la IA que
+proponga oportunidades, riesgos, hipótesis y datos faltantes, y guarda el resultado.
+
+¿Para qué sirve?
+Para convertir los hallazgos en un plan de acción: qué aprovechar, qué cuidar, qué comprobar y
+qué falta saber.
+
+¿Quién lo usa?
+router.py lo lanza en segundo plano (POST /research-runs/{run_id}/analysis).
+main.py lo crea al arrancar.
+
+Cómo sigue el progreso:
+Mientras analiza, la investigación vuelve a "running" con el paso "analyzing". Así sigue valiendo
+la regla de una sola actividad por proyecto, y el frontend reutiliza la misma barra de progreso.
+
+Si algo falla, la investigación no se marca como fallida: sus hallazgos siguen siendo válidos.
+Solo se anota el error del análisis (ver mark_run_failed en research/orchestrator.py).
 """
 
 import logging
@@ -30,11 +48,12 @@ from app.modules.research.models import ResearchRun, RunStatus, RunStep
 from app.modules.research.orchestrator import mark_run_failed
 from app.modules.research.prompts import idea_context
 
+# Registro de mensajes del backend (aparecen en la consola del servidor).
 logger = logging.getLogger(__name__)
 
 
 class AnalysisRunner:
-    """Representa analisis runner."""
+    """Hace el análisis de una investigación terminada, en segundo plano."""
 
     def __init__(
         self,
@@ -42,21 +61,21 @@ class AnalysisRunner:
         provider: AIProvider,
         settings: Settings,
     ) -> None:
-        """Gestiona la inicializacion para analisis."""
+        """Guarda la fábrica de sesiones, el proveedor de IA y la configuración."""
         self.sessionmaker = sessionmaker
         self.provider = provider
         self.settings = settings
 
     async def run(self, run_id: uuid.UUID) -> None:
-        """Tarea en segundo plano: nunca propaga excepciones."""
-        # Abre y libera los recursos declarados en este bloque.
+        """Tarea en segundo plano: nunca propaga excepciones.
+
+        Si algo falla, lo registra y deja la investigación con el error del análisis.
+        """
+        # Cada análisis usa su propia sesión de base de datos.
         async with self.sessionmaker() as session:
-            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 await self._execute(session, run_id)
-            # Maneja el error Exception sin detener el flujo esperado.
             except Exception as exc:
-                # Rama condicional: se cumple isinstance(exc, AIProviderError).
                 if isinstance(exc, AIProviderError):
                     logger.warning("El análisis de %s falló: %s", run_id, exc.code)
                 else:
@@ -68,34 +87,36 @@ class AnalysisRunner:
                 )
 
     async def _fail(self, session: AsyncSession, run_id: uuid.UUID, code: str) -> None:
-        """Gestiona el flujo en analisis."""
-        # Protege la operacion y dirige sus errores a manejadores explicitos.
+        """Registra el error del análisis en la investigación.
+
+        Si no se puede registrar, lo anota en el log.
+        """
         try:
+            # Se deshace lo que quedó a medias antes de anotar el error.
             await session.rollback()
             run = await session.get(ResearchRun, run_id)
-            # Rama condicional: se cumple run is not None.
             if run is not None:
+                # Pasar None como proyecto: el análisis no debe devolver el proyecto a "structured".
                 mark_run_failed(run, None, code)
                 await session.commit()
-        # Maneja el error Exception sin detener el flujo esperado.
         except Exception:
             logger.exception("No se pudo registrar el fallo del análisis de %s", run_id)
 
     async def _execute(self, session: AsyncSession, run_id: uuid.UUID) -> None:
-        """Gestiona el flujo en analisis."""
+        """Arma el análisis: pide la propuesta a la IA, la revisa y la guarda."""
         run = await session.get(ResearchRun, run_id)
-        # Rama condicional: evalua run is None or run.status != RunStatus.RUNNING or
-        # run.current_step != Ru.
+        # Solo se analiza si la investigación está corriendo en el paso de análisis.
         if run is None or run.status != RunStatus.RUNNING or run.current_step != RunStep.ANALYZING:
             return
         project = await session.get(Project, run.project_id)
-        # Rama condicional: se cumple project is None.
         if project is None:
             return
         attributes = await IdeaAttributeRepository(session).list_for_project(project.id)
+        # Reúne los hallazgos, competidores y preguntas que servirán de base para el análisis.
         refs, competitors, queries = await analysis_inputs(session, project.id, run.id)
         ctx = AICallContext(user_id=project.user_id, project_id=project.id, research_run_id=run.id)
 
+        # Le pide a la IA la propuesta completa del análisis, con el tiempo máximo de espera.
         outcome = await timed_call(
             self.provider.generate_structured(
                 analysis_messages(idea_context(project, attributes), refs, competitors, queries),
@@ -113,18 +134,20 @@ class AnalysisRunner:
                 outcome.result.usage if outcome.result else None,
             )
         )
-        # Rama condicional: se cumple outcome.result is None.
         if outcome.result is None:
             await session.commit()  # conserva el registro de consumo del intento fallido
             raise outcome.error or AIProviderError()
 
+        # Antes de guardar lo nuevo, se borran las propuestas de la IA que nadie revisó.
+        # Lo que ya fue aceptado o cambiado por la persona se conserva.
         await replace_unreviewed_ai_items(session, project.id, run.id)
         stats = await save_analysis(session, project.id, run.id, outcome.result.data, refs)
-        # Rama condicional: se cumple stats.discarded.
+        # Solo se anota en el log cuántos elementos se descartaron por no tener respaldo.
         if stats.discarded:
             logger.info(
                 "Análisis %s: %d elementos descartados sin respaldo", run.id, stats.discarded
             )
+        # El análisis terminó: la investigación queda completada y el proyecto, analizado.
         run.status = RunStatus.COMPLETED
         run.current_step = None
         run.progress_pct = 100

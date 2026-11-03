@@ -1,4 +1,21 @@
-"""Ejecución medida de llamadas a la IA y su registro en ai_api_logs."""
+"""Ejecución medida de llamadas a la IA y su registro en ai_api_logs.
+
+ARCHIVO: backend/app/modules/ai/calls.py
+
+¿Qué es?
+Dos piezas que envuelven cada llamada a la IA:
+1. timed_call: ejecuta la llamada con un límite de tiempo y mide cuánto tardó. Si pasa el límite,
+   lo convierte en un error de timeout en lugar de quedarse esperando para siempre.
+2. build_call_logs: convierte el resultado (bueno o malo) en filas de la bitácora ai_api_logs.
+
+¿Para qué sirve?
+Para que cada llamada a la IA quede medida y registrada, sin guardar el texto que se envió ni
+las claves de acceso.
+
+¿Quién lo usa?
+Los servicios de investigación, análisis, reportes y chat llaman timed_call y luego
+build_call_logs.
+"""
 
 import asyncio
 import time
@@ -14,7 +31,12 @@ from app.modules.ai.types import AIProviderAttempt, AIUsage
 
 @dataclass(frozen=True, slots=True)
 class AICallContext:
-    """Representa aicall context."""
+    """Quién y para qué hizo la llamada: se guarda en cada registro de la bitácora.
+
+    - user_id: la persona que pidió la operación.
+    - project_id: el proyecto relacionado.
+    - research_run_id: la investigación relacionada, si la hay.
+    """
 
     user_id: uuid.UUID
     project_id: uuid.UUID
@@ -23,7 +45,10 @@ class AICallContext:
 
 @dataclass(frozen=True, slots=True)
 class AICallOutcome[T]:
-    """Representa aicall outcome."""
+    """El resultado medido de una llamada: el dato o el error, y cuánto tardó.
+
+    Solo uno de los dos (result o error) tiene valor. El otro es None.
+    """
 
     result: T | None
     error: AIProviderError | None
@@ -31,22 +56,24 @@ class AICallOutcome[T]:
 
 
 async def timed_call[T](call: Awaitable[T], timeout_s: float) -> AICallOutcome[T]:
-    """Ejecuta la llamada con límite de tiempo. Solo captura errores del proveedor."""
+    """Ejecuta la llamada con límite de tiempo. Solo captura errores del proveedor.
+
+    - Si tarda más de timeout_s segundos, devuelve un AITimeoutError.
+    - Si el proveedor lanza un AIProviderError, lo devuelve en el resultado (no lo lanza).
+    - Cualquier otro error (un bug) sí se lanza, para no ocultarlo.
+    """
     started = time.perf_counter()
 
     def elapsed() -> int:
-        """Gestiona elapsed."""
+        """Milisegundos transcurridos desde que empezó la llamada."""
         return round((time.perf_counter() - started) * 1000)
 
-    # Protege la operacion y dirige sus errores a manejadores explicitos.
     try:
-        # Abre y libera los recursos declarados en este bloque.
+        # asyncio.timeout cancela la llamada si pasa el tiempo límite.
         async with asyncio.timeout(timeout_s):
             result = await call
-    # Maneja el error TimeoutError sin detener el flujo esperado.
     except TimeoutError:
         return AICallOutcome(None, AITimeoutError(), elapsed())
-    # Maneja el error AIProviderError sin detener el flujo esperado.
     except AIProviderError as exc:
         return AICallOutcome(None, exc, elapsed())
     return AICallOutcome(result, None, elapsed())
@@ -60,14 +87,20 @@ def build_call_logs(
     outcome: AICallOutcome[object],
     usage: AIUsage | None,
 ) -> list[AIApiLog]:
-    """Registra cada proveedor intentado, nunca prompts, respuestas ni claves."""
+    """Convierte el resultado de una llamada en filas de la bitácora (una por intento).
+
+    Si el resultado ya trae la lista de intentos (por ejemplo, cuando hubo respaldo), se usa esa
+    lista. Si no, se crea un solo registro con los datos de esta llamada.
+    Nunca se guardan prompts, respuestas ni claves.
+    """
     result = outcome.result
     attempts = getattr(result, "attempts", ()) if result is not None else ()
-    # Rama condicional: se cumple outcome.error is not None.
+    # Si hubo un error, la lista de intentos viene dentro del error.
     if outcome.error is not None:
         attempts = outcome.error.attempts
-    # Rama condicional: se cumple not attempts.
     if not attempts:
+        # Sin lista de intentos, se arma un solo registro con lo que se conoce.
+        # "or" usa el primer valor que no esté vacío.
         actual_provider = (
             getattr(result, "provider", None)
             or getattr(outcome.error, "provider", None)
@@ -88,6 +121,7 @@ def build_call_logs(
                 error_code=outcome.error.code if outcome.error else None,
             ),
         )
+    # Una fila por cada intento, con sus tokens, costo y código de error.
     return [
         AIApiLog(
             user_id=ctx.user_id,

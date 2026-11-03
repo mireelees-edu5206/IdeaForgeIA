@@ -1,4 +1,20 @@
-"""Análisis simulado para el proveedor falso (ejercita las reglas de respaldo)."""
+"""Análisis simulado para el proveedor falso (ejercita las reglas de respaldo).
+
+ARCHIVO: backend/app/modules/analysis/fake_responses.py
+
+¿Qué es?
+Un análisis de mentira para pruebas. Arma oportunidades, riesgos, hipótesis e información faltante
+a partir de las referencias de hallazgos [H#] que encuentra en el texto.
+
+¿Para qué sirve?
+Para probar en desarrollo que el sistema descarta lo que no debe:
+- Una oportunidad sin hallazgos se descarta.
+- Un riesgo que cita un hallazgo que no existe (H999) se descarta.
+- Una hipótesis sin hallazgos sí se acepta, porque sirve para cubrir lo que no se verificó.
+
+¿Quién lo usa?
+El proveedor falso, cuando el análisis pide un AnalysisResult. Todos los textos llevan [Simulado].
+"""
 
 import re
 from collections.abc import Sequence
@@ -15,13 +31,16 @@ from app.modules.analysis.generation import (
 )
 from app.modules.analysis.models import RiskCategory
 
+# Busca en el texto líneas que empiezan con una referencia de hallazgo, por ejemplo "[H2]".
 _REF = re.compile(r"^\[(H\d+)\]", re.MULTILINE)
 
 
 @register_fake_response(AnalysisResult)
 def fake_analysis(messages: Sequence[AIMessage]) -> AnalysisResult:
-    """Gestiona analysis en analisis."""
+    """Arma un análisis falso usando los hallazgos que aparecen en el último mensaje."""
     refs = _REF.findall(messages[-1].content)
+    # Toma los dos primeros hallazgos. Si solo hay uno, lo repite. Si no hay ninguno, usa H999
+    # (inexistente).
     first, second = (refs + refs)[:2] if refs else ("H999", "H999")
     return AnalysisResult(
         opportunities=[

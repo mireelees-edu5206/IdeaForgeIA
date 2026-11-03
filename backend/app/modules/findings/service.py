@@ -1,4 +1,26 @@
-"""Aplica reglas de negocio y permisos. Area: resultados/evidencia."""
+"""Aplica reglas de negocio y permisos. Area: resultados/evidencia.
+
+ARCHIVO: backend/app/modules/findings/service.py
+
+¿Qué es?
+Las reglas de los resultados. Decide qué se puede crear, cambiar o borrar, y arma los datos que
+recibe el frontend.
+
+¿Para qué sirve?
+Para que nadie cambie un hallazgo de la IA sin que quede registrado, y para que no se borre una
+evidencia de la que dependen otros datos.
+
+¿Quién lo usa?
+router.py (cada endpoint de resultados llama a un método de FindingService).
+
+Reglas principales:
+- Solo el dueño del proyecto puede ver o cambiar sus resultados.
+- Crear un resultado propio deja la persona como autora (origin = user) y lo acepta de inmediato.
+- Cambiar el contenido de un hallazgo de la IA lo convierte en dato del usuario.
+  Deja de ser de la IA.
+- Los hallazgos de la IA no se borran (para conservar la trazabilidad); solo se pueden rechazar.
+- Las evidencias y entidades que se vinculan deben existir en el mismo proyecto.
+"""
 
 import uuid
 from collections import defaultdict
@@ -21,31 +43,35 @@ from app.modules.findings.schemas import (
 from app.modules.projects.service import get_owned_project
 from app.modules.users.models import User
 
-# Cambiar estos campos de un hallazgo de la IA lo convierte en un dato del usuario.
+# Si cambia alguno de estos campos en un hallazgo de la IA, pasa a ser dato del usuario.
 _CONTENT_FIELDS = ("finding_type", "statement", "confidence_level", "confidence_rationale")
 
 
 class FindingNotFoundError(NotFoundError):
-    """Error que representa hallazgo no found."""
+    """El hallazgo no existe en ese proyecto. Responde 404."""
 
     code = "finding_not_found"
     message = "El hallazgo no existe."
 
 
 class FindingService:
-    """Servicio de reglas de negocio para hallazgo."""
+    """Reglas de negocio de los resultados para cada petición de la API."""
 
     def __init__(self, session: AsyncSession) -> None:
-        """Gestiona la inicializacion para resultados."""
+        """Crea los repositorios de hallazgos y entidades con la misma sesión."""
         self.session = session
         self.findings = FindingRepository(session)
         self.entities = EntityRepository(session)
 
     async def _to_read(self, findings: list[Finding]) -> list[FindingRead]:
-        """Gestiona read en resultados."""
+        """Convierte hallazgos de la base de datos en datos listos para el frontend.
+
+        Junta las evidencias y las entidades de todos los hallazgos con dos consultas en lugar de
+        hacer una por hallazgo.
+        """
         ids = [f.id for f in findings]
+        # Agrupa las evidencias por hallazgo: { id_del_hallazgo: [evidencia, ...] }.
         evidence: dict[uuid.UUID, list[FindingEvidenceRead]] = defaultdict(list)
-        # Itera (link, item, source) sobre await self.findings.evidence_for(ids).
         for link, item, source in await self.findings.evidence_for(ids):
             evidence[link.finding_id].append(
                 FindingEvidenceRead(
@@ -61,12 +87,13 @@ class FindingService:
                     ),
                 )
             )
+        # Agrupa las entidades por hallazgo, igual que las evidencias.
         entities: dict[uuid.UUID, list[FindingEntityRead]] = defaultdict(list)
-        # Itera (link, entity) sobre await self.findings.entities_for(ids).
         for link, entity in await self.findings.entities_for(ids):
             entities[link.finding_id].append(
                 FindingEntityRead(id=entity.id, name=entity.name, entity_type=entity.entity_type)
             )
+        # "model_copy" crea una copia del dato con las listas de evidencias y entidades ya llenas.
         return [
             FindingRead.model_validate(f).model_copy(
                 update={"evidence": evidence[f.id], "entities": entities[f.id]}
@@ -75,10 +102,9 @@ class FindingService:
         ]
 
     async def _get(self, user: User, project_id: uuid.UUID, finding_id: uuid.UUID) -> Finding:
-        """Obtiene el flujo en resultados."""
+        """Busca un hallazgo del proyecto del usuario. Si no existe, lanza 404."""
         project = await get_owned_project(self.session, user, project_id)
         finding = await self.findings.get(project.id, finding_id)
-        # Rama condicional: se cumple finding is None.
         if finding is None:
             raise FindingNotFoundError()
         return finding
@@ -91,7 +117,7 @@ class FindingService:
         finding_type: ResearchCategory | None,
         review_status: ReviewStatus | None,
     ) -> list[FindingRead]:
-        """Lista findings en resultados."""
+        """Lista los resultados del proyecto del usuario, con los filtros pedidos."""
         project = await get_owned_project(self.session, user, project_id)
         findings = await self.findings.list_for_project(
             project.id, run_id, finding_type, review_status
@@ -101,20 +127,22 @@ class FindingService:
     async def create_finding(
         self, user: User, project_id: uuid.UUID, data: FindingCreate
     ) -> FindingRead:
-        """Crea finding en resultados."""
+        """Crea un hallazgo que escribe la persona.
+
+        Antes de guardar, revisa que las evidencias y entidades indicadas existan
+        en ese mismo proyecto.
+        Si alguna no existe, responde error.
+        """
         project = await get_owned_project(self.session, user, project_id)
         # Las tablas intermedias no llevan project_id: la pertenencia se comprueba aquí.
         links = {link.evidence_id: link.stance for link in data.evidence}
-        # Rama condicional: evalua await self.findings.evidence_ids_in_project(project.id,
-        # set(links)) != s.
         if await self.findings.evidence_ids_in_project(project.id, set(links)) != set(links):
             raise AppError("Alguna evidencia no existe en este proyecto.", code="invalid_evidence")
         entity_ids = set(data.entity_ids)
-        # Rama condicional: evalua await self.entities.ids_in_project(project.id, entity_ids) !=
-        # entity_ids.
         if await self.entities.ids_in_project(project.id, entity_ids) != entity_ids:
             raise AppError("Alguna entidad no existe en este proyecto.", code="invalid_entity")
 
+        # El hallazgo nace como dato del usuario, ya aceptado. No tiene investigación de origen.
         finding = Finding(
             project_id=project.id,
             origin=Origin.USER,
@@ -122,9 +150,11 @@ class FindingService:
             finding_type=data.finding_type,
             statement=data.statement,
             confidence_level=data.confidence_level,
+            # Si la justificación viene vacía, se guarda como nulo.
             confidence_rationale=data.confidence_rationale or None,
         )
         self.findings.add(finding)
+        # flush manda el hallazgo a la base para obtener su id, sin cerrar la transacción todavía.
         await self.session.flush()
         self.session.add_all(
             FindingEvidence(finding_id=finding.id, evidence_id=evidence_id, stance=stance)
@@ -137,23 +167,24 @@ class FindingService:
     async def update_finding(
         self, user: User, project_id: uuid.UUID, finding_id: uuid.UUID, data: FindingUpdate
     ) -> FindingRead:
-        """Actualiza finding en resultados."""
+        """Cambia los campos que se mandan del hallazgo.
+
+        Si cambia el contenido de un hallazgo de la IA, pasa a ser del usuario y queda aceptado.
+        Si solo se cambia su revisión, se aplica tal cual.
+        """
         finding = await self._get(user, project_id, finding_id)
+        # Solo los campos que realmente se mandaron (exclude_unset): lo que no viene no se toca.
         changes = data.model_dump(exclude_unset=True)
         content = {k: v for k, v in changes.items() if k in _CONTENT_FIELDS}
-        # Rama condicional: se cumple any((getattr(finding, k) != v for k, v in
-        # content.items())).
         if any(getattr(finding, k) != v for k, v in content.items()):
-            # Itera (field, value) sobre content.items().
             for field, value in content.items():
-                # Rama condicional: se cumple field == 'confidence_rationale'.
+                # Una justificación vacía se guarda como nulo.
                 if field == "confidence_rationale":
                     value = value or None
                 setattr(finding, field, value)
             # El usuario asume el contenido: deja de ser una propuesta de la IA.
             finding.origin = Origin.USER
             finding.review_status = ReviewStatus.ACCEPTED
-        # Rama condicional: se cumple 'review_status' in changes.
         if "review_status" in changes:
             finding.review_status = changes["review_status"]
         await self.session.commit()
@@ -162,9 +193,8 @@ class FindingService:
     async def delete_finding(
         self, user: User, project_id: uuid.UUID, finding_id: uuid.UUID
     ) -> None:
-        """Elimina finding en resultados."""
+        """Borra un hallazgo propio. Los de la IA no se pueden borrar: solo rechazar."""
         finding = await self._get(user, project_id, finding_id)
-        # Rama condicional: se cumple finding.origin != Origin.USER.
         if finding.origin != Origin.USER:
             raise ConflictError(
                 "Los hallazgos de la IA no se borran para conservar la trazabilidad; recházalo.",

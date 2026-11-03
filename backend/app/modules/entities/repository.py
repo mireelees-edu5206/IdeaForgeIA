@@ -1,4 +1,21 @@
-"""Agrupa consultas SQL del dominio. Area: entidades."""
+"""Agrupa consultas SQL del dominio. Area: entidades.
+
+ARCHIVO: backend/app/modules/entities/repository.py
+
+¿Qué es?
+La capa que habla con la base de datos para entidades y competidores. Cada función responde una
+pregunta concreta, por ejemplo "dame las entidades con cuántos hallazgos las mencionan".
+
+¿Para qué sirve?
+Para que service.py no tenga SQL mezclado con las reglas de negocio.
+
+¿Quién lo usa?
+service.py (las pantallas de competencia) y findings/extraction.py (guarda lo que propone la IA).
+
+Hay dos repositorios:
+- EntityRepository: las entidades (empresas, productos, etc.).
+- CompetitorRepository: los competidores.
+"""
 
 import uuid
 
@@ -11,10 +28,10 @@ from app.modules.findings.models import FindingEntity
 
 
 class EntityRepository:
-    """Repositorio de consultas para entidad."""
+    """Consultas sobre las entidades."""
 
     def __init__(self, session: AsyncSession) -> None:
-        """Gestiona la inicializacion para entidades."""
+        """Guarda la sesión de base de datos que se usará en las consultas."""
         self.session = session
 
     async def upsert(
@@ -26,7 +43,11 @@ class EntityRepository:
         website: str | None,
         description: str | None,
     ) -> uuid.UUID:
-        """Una entidad por (proyecto, tipo, nombre normalizado); completa los datos que falten."""
+        """Guarda la entidad, o la reutiliza si ya existe en el proyecto. Devuelve su id.
+
+        Una entidad es única por proyecto, tipo y nombre normalizado. Si ya existía y le falta sitio
+        web o descripción, se completan con los datos nuevos.
+        """
         stmt = insert(Entity).values(
             project_id=project_id,
             entity_type=entity_type,
@@ -35,6 +56,8 @@ class EntityRepository:
             website=website,
             description=description,
         )
+        # Si ya existe, solo se rellena lo que estaba vacío (coalesce usa el dato guardado si
+        # existe).
         stmt = stmt.on_conflict_do_update(
             index_elements=[Entity.project_id, Entity.entity_type, Entity.normalized_name],
             set_={
@@ -45,7 +68,7 @@ class EntityRepository:
         return (await self.session.execute(stmt)).scalar_one()
 
     async def get(self, project_id: uuid.UUID, entity_id: uuid.UUID) -> Entity | None:
-        """Obtiene el flujo en entidades."""
+        """Busca una entidad por id, solo si pertenece al proyecto. Si no, devuelve None."""
         return await self.session.scalar(
             select(Entity).where(Entity.id == entity_id, Entity.project_id == project_id)
         )
@@ -53,7 +76,11 @@ class EntityRepository:
     async def list_with_counts(
         self, project_id: uuid.UUID
     ) -> list[tuple[Entity, int, Competitor | None]]:
-        """Lista with counts en entidades."""
+        """Lista las entidades del proyecto con cuántos hallazgos las mencionan.
+
+        Cada fila trae también el competidor, si la entidad ya es competidora.
+        Las que más aparecen van primero.
+        """
         findings = (
             select(func.count()).where(FindingEntity.entity_id == Entity.id).scalar_subquery()
         )
@@ -66,8 +93,7 @@ class EntityRepository:
         return list(rows.tuples())
 
     async def ids_in_project(self, project_id: uuid.UUID, ids: set[uuid.UUID]) -> set[uuid.UUID]:
-        """Gestiona in project en entidades."""
-        # Rama condicional: se cumple not ids.
+        """Devuelve cuáles de esos ids de entidad existen en el proyecto. Sirve para validar."""
         if not ids:
             return set()
         found = await self.session.scalars(
@@ -77,14 +103,17 @@ class EntityRepository:
 
 
 class CompetitorRepository:
-    """Repositorio de consultas para alternativa."""
+    """Consultas sobre los competidores."""
 
     def __init__(self, session: AsyncSession) -> None:
-        """Gestiona la inicializacion para entidades."""
+        """Guarda la sesión de base de datos que se usará en las consultas."""
         self.session = session
 
     async def list_for_project(self, project_id: uuid.UUID) -> list[tuple[Competitor, Entity, int]]:
-        """Lista for project en entidades."""
+        """Lista los competidores del proyecto con su entidad y cuántos hallazgos la mencionan.
+
+        Se ordenan por tipo de competidor y luego por nombre.
+        """
         findings = (
             select(func.count())
             .where(FindingEntity.entity_id == Competitor.entity_id)
@@ -99,7 +128,7 @@ class CompetitorRepository:
         return list(rows.tuples())
 
     async def get(self, project_id: uuid.UUID, competitor_id: uuid.UUID) -> Competitor | None:
-        """Obtiene el flujo en entidades."""
+        """Busca un competidor por id, solo si pertenece al proyecto. Si no, devuelve None."""
         return await self.session.scalar(
             select(Competitor).where(
                 Competitor.id == competitor_id, Competitor.project_id == project_id
@@ -107,7 +136,7 @@ class CompetitorRepository:
         )
 
     async def get_by_entity(self, project_id: uuid.UUID, entity_id: uuid.UUID) -> Competitor | None:
-        """Obtiene by entity en entidades."""
+        """Busca si una entidad ya es competidora en el proyecto. Si no, devuelve None."""
         return await self.session.scalar(
             select(Competitor).where(
                 Competitor.project_id == project_id, Competitor.entity_id == entity_id
@@ -115,9 +144,9 @@ class CompetitorRepository:
         )
 
     def add(self, competitor: Competitor) -> None:
-        """Agrega el flujo en entidades."""
+        """Agrega un competidor a la sesión. Todavía no se guarda hasta el commit."""
         self.session.add(competitor)
 
     async def delete(self, competitor: Competitor) -> None:
-        """Elimina el flujo en entidades."""
+        """Marca el competidor para borrarlo. Se borra de verdad en el commit."""
         await self.session.delete(competitor)

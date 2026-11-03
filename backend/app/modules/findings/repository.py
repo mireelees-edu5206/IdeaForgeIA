@@ -1,4 +1,20 @@
-"""Agrupa consultas SQL del dominio. Area: resultados/evidencia."""
+"""Agrupa consultas SQL del dominio. Area: resultados/evidencia.
+
+ARCHIVO: backend/app/modules/findings/repository.py
+
+¿Qué es?
+La capa que habla con la base de datos para los hallazgos. Cada función responde una pregunta
+concreta, por ejemplo "dame los hallazgos de este proyecto filtrados por tema".
+
+¿Para qué sirve?
+Para que service.py no tenga SQL mezclado con las reglas de negocio.
+
+¿Quién lo usa?
+service.py (las pantallas de resultados) y las pruebas.
+
+Orden de los hallazgos: primero los de confianza alta, después media, baja e indeterminada.
+Dentro de cada nivel, los más recientes primero.
+"""
 
 import uuid
 
@@ -10,6 +26,7 @@ from app.modules.entities.models import Entity
 from app.modules.findings.models import Evidence, Finding, FindingEntity, FindingEvidence
 from app.modules.research.models import Source
 
+# Convierte cada nivel de confianza en un número para poder ordenarlos: 0 es el más alto.
 _CONFIDENCE_ORDER = case(
     {Level.HIGH: 0, Level.MEDIUM: 1, Level.LOW: 2, Level.UNDETERMINED: 3},
     value=Finding.confidence_level,
@@ -17,10 +34,10 @@ _CONFIDENCE_ORDER = case(
 
 
 class FindingRepository:
-    """Repositorio de consultas para hallazgo."""
+    """Consultas sobre los hallazgos y sus vínculos."""
 
     def __init__(self, session: AsyncSession) -> None:
-        """Gestiona la inicializacion para resultados."""
+        """Guarda la sesión de base de datos que se usará en las consultas."""
         self.session = session
 
     async def list_for_project(
@@ -30,16 +47,14 @@ class FindingRepository:
         finding_type: ResearchCategory | None,
         review_status: ReviewStatus | None,
     ) -> list[Finding]:
-        """Lista for project en resultados."""
+        """Lista los hallazgos de un proyecto, aplicando los filtros que se pidan."""
+        # Empieza con el proyecto, y después agrega un filtro por cada parámetro que venga.
         conditions = [Finding.project_id == project_id]
-        # Rama condicional: se cumple run_id is not None.
         if run_id is not None:
             # Los hallazgos del usuario no pertenecen a ninguna ejecución: siempre se incluyen.
             conditions.append(or_(Finding.run_id == run_id, Finding.origin == Origin.USER))
-        # Rama condicional: se cumple finding_type is not None.
         if finding_type is not None:
             conditions.append(Finding.finding_type == finding_type)
-        # Rama condicional: se cumple review_status is not None.
         if review_status is not None:
             conditions.append(Finding.review_status == review_status)
         findings = await self.session.scalars(
@@ -50,7 +65,7 @@ class FindingRepository:
         return list(findings)
 
     async def get(self, project_id: uuid.UUID, finding_id: uuid.UUID) -> Finding | None:
-        """Obtiene el flujo en resultados."""
+        """Busca un hallazgo por id, solo si pertenece al proyecto. Si no, devuelve None."""
         return await self.session.scalar(
             select(Finding).where(Finding.id == finding_id, Finding.project_id == project_id)
         )
@@ -58,8 +73,7 @@ class FindingRepository:
     async def evidence_for(
         self, finding_ids: list[uuid.UUID]
     ) -> list[tuple[FindingEvidence, Evidence, Source]]:
-        """Gestiona for en resultados."""
-        # Rama condicional: se cumple not finding_ids.
+        """Trae las evidencias de varios hallazgos, junto con su fuente. Ordenadas por fecha."""
         if not finding_ids:
             return []
         rows = await self.session.execute(
@@ -74,8 +88,7 @@ class FindingRepository:
     async def entities_for(
         self, finding_ids: list[uuid.UUID]
     ) -> list[tuple[FindingEntity, Entity]]:
-        """Gestiona for en resultados."""
-        # Rama condicional: se cumple not finding_ids.
+        """Trae las entidades (empresas) de varios hallazgos. Ordenadas por nombre."""
         if not finding_ids:
             return []
         rows = await self.session.execute(
@@ -89,8 +102,7 @@ class FindingRepository:
     async def evidence_ids_in_project(
         self, project_id: uuid.UUID, ids: set[uuid.UUID]
     ) -> set[uuid.UUID]:
-        """Gestiona ids in project en resultados."""
-        # Rama condicional: se cumple not ids.
+        """Devuelve cuáles de esos ids de evidencia existen en el proyecto. Sirve para validar."""
         if not ids:
             return set()
         found = await self.session.scalars(
@@ -99,9 +111,9 @@ class FindingRepository:
         return set(found)
 
     def add(self, finding: Finding) -> None:
-        """Agrega el flujo en resultados."""
+        """Agrega un hallazgo a la sesión. Todavía no se guarda hasta el commit."""
         self.session.add(finding)
 
     async def delete(self, finding: Finding) -> None:
-        """Elimina el flujo en resultados."""
+        """Marca un hallazgo para borrarlo. Se borra de verdad en el commit."""
         await self.session.delete(finding)

@@ -1,4 +1,32 @@
-"""Construye contexto, prompt y secciones del informe con la cadena hallazgo-evidencia-fuente."""
+"""Construye contexto, prompt y secciones del informe con la cadena hallazgo-evidencia-fuente.
+
+ARCHIVO: backend/app/modules/reports/generation.py
+
+¿Qué es?
+El corazón del informe. Reúne todo lo que el proyecto sabe (idea, preguntas, hallazgos, evidencias,
+fuentes, competidores, análisis y zonas del mapa), arma el paquete que se le
+manda a la IA, y después
+revisa lo que la IA responde para que no invente nada.
+
+¿Para qué sirve?
+Para que el informe final sea trazable: cada afirmación debe apuntar a un hallazgo [H#],
+una evidencia [E#], una fuente [S#] o un lugar del mapa [G#] que de verdad exista.
+Si la IA cita algo que no existe,
+ese código se reemplaza por "[referencia no disponible]".
+
+¿Quién lo usa?
+runner.py: llama a build_report_context, report_messages y report_sections.
+
+Partes principales:
+1. build_report_context: reúne los datos del proyecto y los numera (H1, E1, S1, G1...).
+2. _geographic_context: consulta las zonas en OpenStreetMap, si hay un proveedor de mapas.
+3. report_messages: arma las reglas y los datos que se le mandan a la IA.
+4. report_sections: revisa el borrador de la IA, quita referencias inventadas y arma las secciones.
+
+Regla de inversión: solo se estima inversión si hay costos o precios respaldados
+por hallazgos aceptados
+o aportados por la persona. Las propuestas de la IA sin revisar no bastan.
+"""
 
 import json
 import re
@@ -33,13 +61,16 @@ from app.modules.research.models import (
     Source,
 )
 
+# Versión de las instrucciones del informe. Subirla si cambia report_messages.
 REPORT_PROMPT_VERSION = "report.v6"
+# Límites del contexto: cuántos elementos de cada tipo se mandan a la IA.
 MAX_REPORT_FINDINGS = 12
 MAX_REPORT_SOURCES = 25
 MAX_REPORT_ANALYSIS_ITEMS = 6
 MAX_EVIDENCE_PER_FINDING = 1
 MAX_GEOGRAPHIC_SCOPES = 3
 MAX_PLACES_PER_SCOPE = 20
+# Busca referencias con forma [H1], [E2], [S3] o [G4] dentro de un texto.
 _REFERENCE_RE = re.compile(r"\[(?:H|E|S|G)\d+\]")
 
 
@@ -50,15 +81,21 @@ async def build_report_context(
     geo_provider: GeoProvider | None = None,
     geographic_scopes: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """Construye report context en informes."""
+    """Reúne todo lo del proyecto que la IA puede usar, con referencias estables.
+
+    Las referencias (H1, E1, S1...) se asignan aquí, antes de pedirle nada a la IA. Así la IA
+    solo puede citar lo que existe.
+    """
     attributes = await IdeaAttributeRepository(session).list_for_project(project.id)
-    # Assign stable references from persisted project data before asking a provider to summarize it.
+    # Asigna referencias estables a partir de los datos guardados, antes de pedir ayuda a un
+    # proveedor.
     geography = await _geographic_context(attributes, geo_provider, geographic_scopes)
     query_rows = await session.scalars(
         select(ResearchQuery).where(ResearchQuery.run_id == run.id).order_by(ResearchQuery.position)
     )
     queries = list(query_rows)
 
+    # Hallazgos de la investigación y los aportados por la persona, sin los rechazados.
     finding_rows = await session.scalars(
         select(Finding)
         .where(
@@ -70,8 +107,10 @@ async def build_report_context(
         .limit(MAX_REPORT_FINDINGS)
     )
     findings = list(finding_rows)
+    # Cada hallazgo recibe su referencia H1, H2...
     finding_refs = {finding.id: f"H{index}" for index, finding in enumerate(findings, start=1)}
 
+    # Fuentes de todas las preguntas de la investigación, sin repetir.
     source_rows = await session.scalars(
         select(Source)
         .join(ResearchQuerySource, ResearchQuerySource.source_id == Source.id)
@@ -82,8 +121,8 @@ async def build_report_context(
     sources = _unique_sources(list(source_rows))
 
     evidence_rows = []
-    # Rama condicional: se cumple findings.
     if findings:
+        # Evidencias vinculadas a los hallazgos, junto con su fuente.
         evidence_rows = (
             (
                 await session.execute(
@@ -100,21 +139,24 @@ async def build_report_context(
             .tuples()
             .all()
         )
+        # Las fuentes de las evidencias también cuentan, aunque no vengan de una pregunta.
         sources = _unique_sources([*sources, *(source for _, _, source in evidence_rows)])
 
+    # Cada fuente recibe su referencia S1, S2... (hasta el máximo permitido).
     source_refs = {
         source.id: f"S{index}" for index, source in enumerate(sources[:MAX_REPORT_SOURCES], start=1)
     }
     evidence_refs: dict[uuid.UUID, str] = {}
     finding_evidence: dict[uuid.UUID, list[dict[str, str]]] = {}
     evidence_truncated = False
-    # Itera (link, evidence, source) sobre evidence_rows.
     for link, evidence, source in evidence_rows:
         attached = finding_evidence.setdefault(link.finding_id, [])
-        # Rama condicional: se cumple len(attached) >= MAX_EVIDENCE_PER_FINDING.
+        # Solo se incluye una evidencia por hallazgo; si hay más, se marca que el contexto es
+        # parcial.
         if len(attached) >= MAX_EVIDENCE_PER_FINDING:
             evidence_truncated = True
             continue
+        # Cada evidencia recibe su referencia E1, E2... la primera vez que aparece.
         ref = evidence_refs.setdefault(evidence.id, f"E{len(evidence_refs) + 1}")
         attached.append(
             {
@@ -126,6 +168,7 @@ async def build_report_context(
             }
         )
 
+    # Preguntas de la investigación: categoría, pregunta y un resumen de la respuesta.
     query_data = [
         {
             "category": query.category.value,
@@ -135,6 +178,7 @@ async def build_report_context(
         }
         for query in queries
     ]
+    # Hallazgos con su referencia, su texto, su confianza, su origen y su evidencia.
     finding_data = [
         {
             "ref": finding_refs[finding.id],
@@ -148,6 +192,8 @@ async def build_report_context(
         for finding in findings
     ]
 
+    # Competidores del proyecto, de la investigación o aportados por la persona. Ordenados por
+    # nombre.
     competitors = await session.execute(
         select(Competitor, Entity)
         .join(Entity, Entity.id == Competitor.entity_id)
@@ -170,6 +216,8 @@ async def build_report_context(
         for competitor, entity in competitors.tuples()
     ]
 
+    # El análisis: oportunidades, riesgos, hipótesis e información faltante.
+    # Cada tipo lista solo los campos que el informe necesita.
     analysis = {
         "opportunities": await _analysis_items(
             session, Opportunity, project.id, run.id, ("title", "description", "potential")
@@ -196,6 +244,7 @@ async def build_report_context(
             ("question", "reason", "priority", "resolution_status"),
         ),
     }
+    # Si algún tipo llegó al máximo, puede haber más elementos que no entraron.
     analysis_truncated = any(len(items) == MAX_REPORT_ANALYSIS_ITEMS for items in analysis.values())
 
     return {
@@ -229,8 +278,10 @@ async def build_report_context(
                 "url": source.url,
             }
             for source in sources[:MAX_REPORT_SOURCES]
+            # Solo se incluyen direcciones http o https.
             if source.url.startswith(("https://", "http://"))
         ],
+        # "context_truncated" avisa a la IA (y a la persona) si el contexto quedó incompleto.
         "context_truncated": (
             len(findings) == MAX_REPORT_FINDINGS
             or len(sources) > MAX_REPORT_SOURCES
@@ -247,10 +298,14 @@ async def _geographic_context(
     provider: GeoProvider | None,
     requested_scopes: list[dict[str, Any]] | None,
 ) -> dict[str, Any]:
-    """Consulta zonas solicitadas o ubicaciones confirmadas y conserva limites del mapa."""
-    # Explicit map searches take priority; otherwise only confirmed location attributes are used.
+    """Consulta las zonas pedidas (o las confirmadas en la idea) en el mapa.
+
+    Guarda los límites del mapa en el resultado, para que el informe no presente los datos como
+    prueba de demanda o competencia.
+    """
+    # Las zonas que pidió la persona para el informe tienen prioridad. Si no, las confirmadas en la
+    # idea.
     source_scopes = requested_scopes
-    # Rama condicional: se cumple source_scopes is None.
     if source_scopes is None:
         source_scopes = [
             {"query": attribute.value}
@@ -259,29 +314,27 @@ async def _geographic_context(
         ]
     scopes: list[dict[str, Any]] = []
     seen: set[tuple[str, float | None, float | None]] = set()
-    # Itera scope sobre source_scopes.
     for scope in source_scopes:
+        # Limpia espacios del nombre y omite zonas vacías o repetidas.
         query = " ".join(str(scope.get("query", "")).split()).strip()
-        # Rama condicional: se cumple not query.
         if not query:
             continue
         key = (query, scope.get("latitude"), scope.get("longitude"))
-        # Rama condicional: se cumple key in seen.
         if key in seen:
             continue
         seen.add(key)
         scopes.append({**scope, "query": query})
-        # Rama condicional: se cumple len(scopes) >= MAX_GEOGRAPHIC_SCOPES.
+        # Como máximo se consultan 3 zonas.
         if len(scopes) >= MAX_GEOGRAPHIC_SCOPES:
             break
-    # Rama condicional: se cumple not scopes.
+    # Sin zonas, se avisa que no hay ninguna confirmada.
     if not scopes:
         return {
             "status": "not_provided",
             "note": "No se indicó una zona geográfica confirmada para el proyecto.",
             "areas": [],
         }
-    # Rama condicional: se cumple provider is None.
+    # Sin proveedor de mapas, no se puede consultar.
     if provider is None:
         return {
             "status": "unavailable",
@@ -290,28 +343,26 @@ async def _geographic_context(
         }
 
     areas: list[dict[str, Any]] = []
+    # "place_index" numera los lugares en todo el informe: G1, G2, G3...
     place_index = 1
-    # Itera scope sobre scopes.
     for scope in scopes:
         query = scope["query"]
         latitude = scope.get("latitude")
         longitude = scope.get("longitude")
         radius_m = int(scope.get("radius_m", 1000))
         keyword = scope.get("keyword")
-        # Rama condicional: se cumple latitude is None or longitude is None.
+        # Si no hay coordenadas, primero se convierte el nombre en un punto del mapa.
         if latitude is None or longitude is None:
-            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 matches = await provider.geocode(query)
-            # Maneja el error GeoProviderUnavailableError sin detener el flujo esperado.
             except GeoProviderUnavailableError:
                 areas.append({"query": query, "status": "unavailable", "places": []})
                 continue
-            # Rama condicional: se cumple not matches.
+            # Si el mapa no encontró nada, la zona se marca como no encontrada.
             if not matches:
                 areas.append({"query": query, "status": "not_found", "places": []})
                 continue
-            # Rama condicional: se cumple len(matches) > 1.
+            # Si hay varias coincidencias, no se adivina cuál es: se marca como ambigua.
             if len(matches) > 1:
                 areas.append(
                     {
@@ -322,14 +373,17 @@ async def _geographic_context(
                     }
                 )
                 continue
+            # Una sola coincidencia: se usa su punto y su nombre oficial.
             location = matches[0]
             latitude = location.latitude
             longitude = location.longitude
             resolved_area = location.display_name
         else:
+            # Con coordenadas, el nombre de la zona es el que escribió la persona.
             resolved_area = query
-        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
+            # Busca negocios alrededor del punto, en el radio indicado. "all" = todas las
+            # categorías.
             businesses = await provider.find_places(
                 latitude,
                 longitude,
@@ -337,7 +391,6 @@ async def _geographic_context(
                 "all",
                 keyword,
             )
-        # Maneja el error GeoProviderUnavailableError sin detener el flujo esperado.
         except GeoProviderUnavailableError:
             areas.append(
                 {
@@ -349,8 +402,8 @@ async def _geographic_context(
             )
             continue
 
+        # Cada negocio recibe su referencia G#. Se toman como máximo 20 por zona.
         places = []
-        # Itera place sobre businesses[:MAX_PLACES_PER_SCOPE].
         for place in businesses[:MAX_PLACES_PER_SCOPE]:
             places.append(
                 {
@@ -374,27 +427,27 @@ async def _geographic_context(
                 "radius_m": radius_m,
                 "keyword": keyword,
                 "places": places,
+                # Marca si el mapa devolvió más negocios de los que cupieron.
                 "truncated": len(businesses) > MAX_PLACES_PER_SCOPE,
             }
         )
 
+    # El estado general de la consulta de zonas, según prioridad: encontró lugares > ambigua > no
+    # disponible > no encontrada > sin lugares.
     statuses = {area["status"] for area in areas}
-    # Rama condicional: se cumple 'places_found' in statuses.
     if "places_found" in statuses:
         status = "places_found"
-    # Rama condicional: se cumple 'ambiguous' in statuses.
     elif "ambiguous" in statuses:
         status = "ambiguous"
-    # Rama condicional: se cumple statuses.intersection({'unavailable', 'places_unavailable'}).
     elif statuses.intersection({"unavailable", "places_unavailable"}):
         status = "unavailable"
-    # Rama condicional: se cumple 'not_found' in statuses.
     elif "not_found" in statuses:
         status = "not_found"
     else:
         status = "no_places"
     return {
         "status": status,
+        # Crédito obligatorio para los datos de OpenStreetMap.
         "attribution": "© OpenStreetMap contributors",
         "note": (
             "Los registros del mapa pueden estar incompletos o desactualizados. "
@@ -411,7 +464,7 @@ async def _analysis_items(
     run_id: uuid.UUID,
     fields: Sequence[str],
 ) -> list[dict[str, Any]]:
-    """Gestiona items en informes."""
+    """Trae los elementos de un tipo de análisis, solo con los campos indicados."""
     rows = await session.scalars(
         select(model)
         .where(
@@ -424,6 +477,7 @@ async def _analysis_items(
     )
     return [
         {
+            # Solo los campos pedidos, más el origen y el estado de revisión.
             **{field: getattr(item, field) for field in fields},
             "origin": item.origin.value,
             "review_status": item.review_status.value,
@@ -433,12 +487,10 @@ async def _analysis_items(
 
 
 def _unique_sources(sources: Sequence[Source]) -> list[Source]:
-    """Gestiona sources en informes."""
+    """Quita fuentes repetidas, conservando el orden en que aparecieron."""
     result: list[Source] = []
     seen: set[uuid.UUID] = set()
-    # Itera source sobre sources.
     for source in sources:
-        # Rama condicional: se cumple source.id not in seen.
         if source.id not in seen:
             seen.add(source.id)
             result.append(source)
@@ -446,7 +498,11 @@ def _unique_sources(sources: Sequence[Source]) -> list[Source]:
 
 
 def report_messages(context: dict[str, Any]) -> list[AIMessage]:
-    """Gestiona messages en informes."""
+    """Arma los mensajes para la IA: las reglas de redacción y los datos del proyecto.
+
+    Los datos van entre etiquetas <report_data>. Los caracteres que podrían cerrar la etiqueta
+    se escapan para que no se puedan inyectar instrucciones.
+    """
     system = (
         "Redacta un informe de validación de negocio en español, claro y útil para tomar "
         "decisiones. Devuelve el esquema solicitado, incluido un veredicto estructurado. "
@@ -491,6 +547,7 @@ def report_messages(context: dict[str, Any]) -> list[AIMessage]:
         "place_refs al menos un código G# existente.\n"
         "- No uses HTML."
     )
+    # Escapa &, < y > para que los datos no puedan cerrar la etiqueta <report_data>.
     encoded = json.dumps(context, ensure_ascii=False, separators=(",", ":"))
     encoded = encoded.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")
     return [
@@ -502,8 +559,12 @@ def report_messages(context: dict[str, Any]) -> list[AIMessage]:
 def report_sections(
     draft: ReportDraft, context: dict[str, Any]
 ) -> list[tuple[ReportSectionType, str, dict[str, Any] | None]]:
-    """Filtra citas del borrador y produce las secciones que se guardan en el reporte."""
-    # Whitelist references from the fetched context so generated text cannot invent source IDs.
+    """Revisa el borrador de la IA y arma las secciones que se guardan en el informe.
+
+    Quita cualquier referencia que no exista en el contexto y añade la sección de fuentes,
+    que se arma desde los registros reales (no desde lo que escribió la IA).
+    """
+    # Lista blanca: solo se aceptan referencias que existen en el contexto que se mandó.
     valid_refs = {
         row["ref"]
         for group in (context.get("findings", []), context.get("sources", []))
@@ -539,6 +600,7 @@ def report_sections(
         (
             section_type,
             _validate_references(content, valid_refs),
+            # Solo la sección del veredicto guarda el objeto estructurado.
             (
                 verdict.model_dump(mode="json")
                 if section_type == ReportSectionType.EXECUTIVE_SUMMARY
@@ -547,14 +609,19 @@ def report_sections(
         )
         for section_type, content in content_by_type.items()
     ]
+    # La sección de fuentes se inserta en la posición 8, y siempre sale de los registros reales.
     sections.insert(8, (ReportSectionType.SOURCES, _sources_content(context), None))
     return sections
 
 
 def _financial_reference_ids(context: dict[str, Any]) -> set[str]:
-    """Devuelve solo referencias aceptadas o manuales que respaldan costos/precios."""
-    # Proposed AI items are not enough to support a numeric investment estimate.
+    """Devuelve las referencias que pueden respaldar una estimación de costos o precios.
+
+    Solo cuentan hallazgos aceptados o aportados por la persona. Las propuestas sin revisar de la IA
+    no bastan para estimar dinero.
+    """
     references: set[str] = set()
+    # Palabras que sugieren que un hallazgo habla de dinero.
     financial_terms = (
         "precio",
         "costo",
@@ -564,21 +631,19 @@ def _financial_reference_ids(context: dict[str, Any]) -> set[str]:
         "renta",
         "presupuesto",
     )
-    # Itera finding sobre context.get(un valor, []).
     for finding in context.get("findings", []):
-        # Rama condicional: evalua finding.get(un valor) != Origin.USER.value and finding.get(un
-        # valor) != .
+        # Se descarta el hallazgo si no es de la persona y tampoco está aceptado.
         if (
             finding.get("origin") != Origin.USER.value
             and finding.get("review_status") != ReviewStatus.ACCEPTED.value
         ):
             continue
+        # Se busca en el texto del hallazgo y en sus evidencias.
         text = " ".join(
             [finding.get("statement", "")]
             + [evidence.get("content", "") for evidence in finding.get("evidence", [])]
         ).lower()
-        # Rama condicional: evalua finding.get(un valor) == un valor or any((term in text for term
-        # in finan.
+        # Un hallazgo de categoría "precios" o con palabras de dinero cuenta como respaldo.
         if finding.get("category") == "pricing" or any(term in text for term in financial_terms):
             references.add(finding["ref"])
             references.update(evidence["ref"] for evidence in finding.get("evidence", []))
@@ -590,10 +655,10 @@ def _validate_verdict(
     valid_refs: set[str],
     financial_refs: set[str],
 ) -> BusinessVerdict:
-    """Valida verdict en informes."""
+    """Limpia el veredicto: quita referencias inexistentes y descarta la inversión sin respaldo."""
     investment = verdict.investment
-    # Rama condicional: se cumple investment is not None.
     if investment is not None:
+        # La inversión solo se conserva si al menos una referencia es válida y respalda dinero.
         evidence_refs = [
             ref.strip("[]")
             for ref in investment.evidence_refs
@@ -612,6 +677,7 @@ def _validate_verdict(
             if evidence_refs
             else None
         )
+    # Una zona solo se conserva si al menos uno de sus lugares existe.
     zones = [
         zone.model_copy(
             update={
@@ -641,7 +707,7 @@ def _validate_verdict(
 
 
 def _validate_references(content: str, valid_refs: set[str]) -> str:
-    """Valida references en informes."""
+    """Reemplaza cada referencia inexistente por "[referencia no disponible]"."""
     return _REFERENCE_RE.sub(
         lambda match: (
             match.group(0) if match.group(0)[1:-1] in valid_refs else "[referencia no disponible]"
@@ -651,18 +717,15 @@ def _validate_references(content: str, valid_refs: set[str]) -> str:
 
 
 def _sources_content(context: dict[str, Any]) -> str:
-    """Gestiona content en informes."""
+    """Arma el texto de la sección de fuentes con los registros reales del proyecto."""
     lines: list[str] = []
-    # Itera source sobre context.get(un valor, []).
     for source in context.get("sources", []):
         lines.append(f"- [{source['ref']}] {source['title']} ({source['domain']}): {source['url']}")
-    # Itera finding sobre context.get(un valor, []).
     for finding in context.get("findings", []):
         lines.append(
             f"- [{finding['ref']}] {finding['statement']} "
             f"(confianza: {finding['confidence']}; revisión: {finding['review_status']})"
         )
-        # Itera evidence sobre finding.get(un valor, []).
         for evidence in finding.get("evidence", []):
             source_ref = evidence.get("source_ref")
             source_suffix = f" — [{source_ref}]" if source_ref else ""
@@ -671,41 +734,32 @@ def _sources_content(context: dict[str, Any]) -> str:
                 f"“{evidence['content']}”{source_suffix}"
             )
     geography = context.get("geography", {})
-    # Rama condicional: se cumple geography.get('status') != 'not_provided' and
-    # geography.get('note').
     if geography.get("status") != "not_provided" and geography.get("note"):
         lines.append(f"Consulta de zonas: {geography['note']}")
-    # Itera area sobre geography.get(un valor, []).
     for area in geography.get("areas", []):
         resolved = area.get("resolved_area")
-        # Rama condicional: se cumple resolved.
         if resolved:
             lines.append(
                 f"- Zona consultada: {resolved} "
                 f"(radio aproximado de {area.get('radius_m', 1000)} m)"
             )
-        # Itera place sobre area.get(un valor, []).
         for place in area.get("places", []):
             lines.append(
                 f"- [{place['ref']}] Lugar registrado: {place['name']} "
                 f"({place.get('subtype') or place['category']}): {place['osm_url']}"
             )
-        # Rama condicional: se cumple area.get('status') == 'ambiguous'.
         if area.get("status") == "ambiguous":
             lines.append(
                 f"- Zona ambigua «{area['query']}». Coincidencias: "
                 + "; ".join(area.get("matches", []))
             )
-        # Rama condicional: se cumple area.get('status') == 'no_places'.
         elif area.get("status") == "no_places":
             lines.append(
                 f"- No se encontraron lugares mapeados alrededor de {resolved or area['query']}; "
                 "esto no demuestra que no existan."
             )
-    # Rama condicional: se cumple geography.get('attribution').
     if geography.get("attribution"):
         lines.append(geography["attribution"])
-    # Rama condicional: se cumple not lines.
     if not lines:
         return (
             "No hay fuentes ni evidencias registradas para esta ejecución. "

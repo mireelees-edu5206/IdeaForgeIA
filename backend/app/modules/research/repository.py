@@ -1,4 +1,23 @@
-"""Agrupa consultas SQL del dominio. Area: investigacion web."""
+"""Agrupa consultas SQL del dominio. Area: investigacion web.
+
+ARCHIVO: backend/app/modules/research/repository.py
+
+¿Qué es?
+La capa que habla directamente con la base de datos para la investigación. Cada función es una
+pregunta concreta, por ejemplo "¿hay una investigación activa?" o "dame las fuentes del proyecto".
+
+¿Para qué sirve?
+Para que service.py y orchestrator.py no tengan que escribir SQL. Si una consulta cambia, solo se
+toca aquí.
+
+¿Quién lo usa?
+service.py (las pantallas), orchestrator.py (la investigación en segundo plano).
+
+Hay tres repositorios:
+- ResearchRunRepository: las investigaciones.
+- ResearchQueryRepository: las preguntas, sus fuentes y sus evidencias.
+- SourceRepository: las fuentes del proyecto.
+"""
 
 import uuid
 from datetime import datetime
@@ -21,14 +40,15 @@ from app.modules.research.urls import NormalizedUrl
 
 
 class ResearchRunRepository:
-    """Repositorio de consultas para investigacion ejecucion."""
+    """Consultas sobre las investigaciones (research_runs)."""
 
     def __init__(self, session: AsyncSession) -> None:
-        """Gestiona la inicializacion para investigacion."""
+        """Guarda la sesión de base de datos que se usará en las consultas."""
         self.session = session
 
     async def has_active(self, project_id: uuid.UUID) -> bool:
-        """Indica si activo."""
+        """Indica si el proyecto tiene una investigación pendiente o corriendo."""
+        # EXISTS pregunta "¿hay al menos una fila?" y responde solo verdadero o falso.
         return bool(
             await self.session.scalar(
                 select(
@@ -43,17 +63,19 @@ class ResearchRunRepository:
         )
 
     async def count_for_user_since(self, user_id: uuid.UUID, since: datetime) -> int:
-        """Cuenta para usuario since."""
+        """Cuenta cuántas investigaciones creó el usuario desde una fecha. Se usa para el límite
+        diario."""
         count = await self.session.scalar(
             select(func.count())
             .select_from(ResearchRun)
             .join(Project, Project.id == ResearchRun.project_id)
             .where(Project.user_id == user_id, ResearchRun.created_at >= since)
         )
+        # Si no hay ninguna fila, count viene vacío; se devuelve 0.
         return count or 0
 
     async def list_for_project(self, project_id: uuid.UUID) -> list[ResearchRun]:
-        """Lista para proyecto."""
+        """Lista las investigaciones del proyecto, de la más nueva a la más vieja."""
         runs = await self.session.scalars(
             select(ResearchRun)
             .where(ResearchRun.project_id == project_id)
@@ -62,7 +84,8 @@ class ResearchRunRepository:
         return list(runs)
 
     async def get(self, project_id: uuid.UUID, run_id: uuid.UUID) -> ResearchRun | None:
-        """Obtiene el flujo principal."""
+        """Busca una investigación por id, solo si pertenece a ese proyecto. Si no, devuelve
+        None."""
         return await self.session.scalar(
             select(ResearchRun).where(
                 ResearchRun.id == run_id, ResearchRun.project_id == project_id
@@ -70,26 +93,26 @@ class ResearchRunRepository:
         )
 
     async def list_active(self) -> list[ResearchRun]:
-        """Lista activo."""
+        """Lista todas las investigaciones pendientes o corriendo, de todos los proyectos."""
         runs = await self.session.scalars(
             select(ResearchRun).where(ResearchRun.status.in_(ACTIVE_RUN_STATUSES))
         )
         return list(runs)
 
     def add(self, run: ResearchRun) -> None:
-        """Agrega el flujo principal."""
+        """Agrega una investigación a la sesión. Todavía no se guarda hasta el commit."""
         self.session.add(run)
 
 
 class ResearchQueryRepository:
-    """Repositorio de consultas para investigacion consulta."""
+    """Consultas sobre las preguntas, sus fuentes y sus evidencias."""
 
     def __init__(self, session: AsyncSession) -> None:
-        """Gestiona la inicializacion para investigacion."""
+        """Guarda la sesión de base de datos que se usará en las consultas."""
         self.session = session
 
     async def list_for_run(self, run_id: uuid.UUID) -> list[ResearchQuery]:
-        """Lista para ejecucion."""
+        """Lista las preguntas de una investigación, en el orden en que se planearon."""
         queries = await self.session.scalars(
             select(ResearchQuery)
             .where(ResearchQuery.run_id == run_id)
@@ -100,7 +123,11 @@ class ResearchQueryRepository:
     async def sources_for_queries(
         self, query_ids: list[uuid.UUID]
     ) -> list[tuple[ResearchQuerySource, Source]]:
-        """Gestiona fuentes para consultas."""
+        """Trae las fuentes de varias preguntas a la vez.
+
+        Devuelve pares (vínculo, fuente). Se ordenan por posición en los resultados, y las que
+        no tienen posición van al final.
+        """
         rows = await self.session.execute(
             select(ResearchQuerySource, Source)
             .join(Source, Source.id == ResearchQuerySource.source_id)
@@ -110,7 +137,8 @@ class ResearchQueryRepository:
         return list(rows.tuples())
 
     async def evidence_for_queries(self, query_ids: list[uuid.UUID]) -> list[Evidence]:
-        """Gestiona evidencia para consultas."""
+        """Trae las evidencias (fragmentos citados) de varias preguntas, ordenadas por posición
+        en el texto."""
         evidence = await self.session.scalars(
             select(Evidence)
             .where(Evidence.query_id.in_(query_ids))
@@ -120,10 +148,10 @@ class ResearchQueryRepository:
 
 
 class SourceRepository:
-    """Repositorio de consultas para fuente."""
+    """Consultas sobre las fuentes (sources) del proyecto."""
 
     def __init__(self, session: AsyncSession) -> None:
-        """Gestiona la inicializacion para investigacion."""
+        """Guarda la sesión de base de datos que se usará en las consultas."""
         self.session = session
 
     async def upsert(
@@ -133,7 +161,11 @@ class SourceRepository:
         title: str | None,
         source_type: SourceType,
     ) -> uuid.UUID:
-        """Una fuente por URL canónica y proyecto; completa el título si antes no lo tenía."""
+        """Guarda una fuente, o la reutiliza si ya existe en el proyecto. Devuelve su id.
+
+        "upsert" significa: inserta si no existe, y si ya existe, actualiza. Aquí, si la fuente
+        ya estaba y no tenía título, le pone el nuevo. Si ya tenía título, lo conserva.
+        """
         stmt = insert(Source).values(
             project_id=project_id,
             url=url.url,
@@ -142,6 +174,8 @@ class SourceRepository:
             title=title,
             source_type=source_type,
         )
+        # Si ya existe (misma dirección canónica en el proyecto), solo se completa el título.
+        # "coalesce" usa el título guardado si existe; si no, el nuevo.
         stmt = stmt.on_conflict_do_update(
             index_elements=[Source.project_id, Source.canonical_url],
             set_={"title": func.coalesce(Source.title, stmt.excluded.title)},
@@ -149,7 +183,13 @@ class SourceRepository:
         return (await self.session.execute(stmt)).scalar_one()
 
     async def list_with_counts(self, project_id: uuid.UUID) -> list[tuple[Source, int, int]]:
-        """Lista con counts."""
+        """Lista las fuentes del proyecto con dos números.
+
+        Esos números son cuántas veces se citaron y cuántas evidencias tienen.
+
+        Las más citadas aparecen primero.
+        """
+        # Cuenta las preguntas que citaron esta fuente (was_cited = verdadero).
         citations = (
             select(func.count())
             .where(
@@ -158,6 +198,7 @@ class SourceRepository:
             )
             .scalar_subquery()
         )
+        # Cuenta cuántas evidencias apuntan a esta fuente.
         evidence = select(func.count()).where(Evidence.source_id == Source.id).scalar_subquery()
         rows = await self.session.execute(
             select(Source, citations, evidence)

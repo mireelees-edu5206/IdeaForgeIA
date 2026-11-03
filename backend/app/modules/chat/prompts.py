@@ -1,4 +1,22 @@
-"""Mantiene prompts versionados para IA. Area: asistente contextual."""
+"""Mantiene prompts versionados para IA. Area: asistente contextual.
+
+ARCHIVO: backend/app/modules/chat/prompts.py
+
+¿Qué es?
+Las instrucciones que se le dan a la IA para el chat: cómo debe responder, qué tono usar, qué
+no debe inventar y cómo tratar los datos del proyecto.
+
+¿Para qué sirve?
+Para que las respuestas sean completas, en español, basadas en el proyecto cuando corresponda,
+y sin inventar fuentes, cifras ni empresas.
+
+¿Quién lo usa?
+service.py (arma los mensajes antes de llamar a la IA).
+
+Regla importante: si cambias el texto de CHAT_SYSTEM_PROMPT, sube CHAT_PROMPT_VERSION
+(por ejemplo de "chat.v8" a "chat.v9"). Así se sabe qué versión generó cada
+respuesta en la bitácora.
+"""
 
 import json
 from collections.abc import Sequence
@@ -7,7 +25,9 @@ from typing import Any
 from app.modules.ai.types import AIMessage
 from app.modules.chat.schemas import ChatTurn
 
+# Versión de las instrucciones del chat. Subirla si cambia CHAT_SYSTEM_PROMPT.
 CHAT_PROMPT_VERSION = "chat.v8"
+# Las instrucciones completas que recibe la IA en cada mensaje del chat.
 CHAT_SYSTEM_PROMPT = (
     "Eres el asistente conversacional de IdeaForge AI. Recibes el contexto de un proyecto, "
     "pero puedes responder cualquier pregunta general aunque no tenga relación con él. Usa el "
@@ -59,8 +79,14 @@ CHAT_SYSTEM_PROMPT = (
 def build_chat_messages(
     context: dict[str, Any], history: Sequence[ChatTurn], message: str
 ) -> list[AIMessage]:
-    """Construye chat messages en chat."""
+    """Arma la lista de mensajes para la IA: instrucciones, historial y la pregunta nueva.
+
+    El contexto del proyecto va dentro de la instrucción de sistema, escapado para que no pueda
+    cerrar la etiqueta <project_context> ni meter HTML.
+    """
+    # Convierte el contexto en JSON compacto, conservando acentos.
     encoded_context = json.dumps(context, ensure_ascii=False, separators=(",", ":"))
+    # Escapa los signos que podrían romper la etiqueta o insertar código.
     encoded_context = (
         encoded_context.replace("&", "\\u0026").replace("<", "\\u003c").replace(">", "\\u003e")
     )
@@ -69,6 +95,7 @@ def build_chat_messages(
         f"Contexto de referencia del proyecto:\n"
         f"<project_context>{encoded_context}</project_context>"
     )
+    # Recuerda a la IA que responda completo, en la última pregunta, sin reformularla.
     user_prompt = (
         f"{message}\n\n"
         "(Instrucción: Responde de forma completa y detallada con argumentos, ventajas, "
@@ -76,6 +103,7 @@ def build_chat_messages(
     )
     return [
         AIMessage("system", system_with_context),
+        # El historial se agrega tal cual, en el mismo orden en que ocurrió la conversación.
         *(AIMessage(turn.role, turn.content) for turn in history),
         AIMessage("user", user_prompt),
     ]

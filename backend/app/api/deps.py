@@ -1,4 +1,32 @@
-"""Resuelve JWT, sesion de datos, perfil local y permisos."""
+"""Dependencias de la API: quién hace la petición, a qué base de datos, y si tiene permiso.
+
+ARCHIVO: backend/app/api/deps.py
+
+¿Qué es?
+Un conjunto de piezas que FastAPI llama antes de ejecutar un endpoint. Cada una prepara algo
+que el endpoint necesita:
+- get_db: una sesión de base de datos para esta petición.
+- get_app_settings: la configuración del backend.
+- get_current_user: el usuario que inició sesión (lee el token Bearer y lo valida).
+- require_admin: exige que ese usuario sea administrador.
+
+¿Para qué sirve?
+Para no repetir el mismo código de autenticación en cada router. Un endpoint solo declara
+"necesito un usuario" y FastAPI se encarga del resto.
+
+¿Quién lo usa?
+Casi todos los routers de la API. También main.py (para la ruta /perfil).
+
+Tipos reutilizables (Annotated):
+- DbSession, AppSettings, CurrentUser y AdminUser son atajos. Un endpoint los usa así:
+  async def mi_ruta(user: CurrentUser, db: DbSession): ...
+
+Flujo de autenticación:
+1. Si la petición no trae token Bearer, responde 401.
+2. Si la autenticación heredada está activa y el token es suyo, lo acepta.
+3. Si no, valida el token con Supabase (verifier) y busca o crea el perfil local.
+4. Si la cuenta está desactivada o el correo no coincide con otra cuenta, responde error.
+"""
 
 import secrets
 from collections.abc import AsyncIterator
@@ -33,25 +61,30 @@ from app.modules.users.repository import UserRepository
 
 
 async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
-    """Una sesión por petición. Los servicios hacen commit explícito; si hay error, rollback."""
-    # Abre y libera los recursos declarados en este bloque.
+    """Entrega una sesión de base de datos para una sola petición.
+
+    Los servicios hacen commit explícito. Si algo falla antes, la sesión se cierra sin guardar.
+    """
+    # "async with" abre la sesión y la cierra al terminar la petición, pase lo que pase.
     async with request.app.state.sessionmaker() as session:
         yield session
 
 
 def get_app_settings(request: Request) -> Settings:
-    """Obtiene aplicacion configuracion."""
+    """Entrega la configuración del backend guardada en la aplicación."""
     return request.app.state.settings
 
 
 def get_login_limiter(request: Request) -> LoginRateLimiter:
-    """Obtiene acceso limiter."""
+    """Entrega el contador de intentos de login guardado en la aplicación."""
     return request.app.state.login_limiter
 
 
+# Atajos para usar en las firmas de los endpoints (ver el encabezado del archivo).
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 AppSettings = Annotated[Settings, Depends(get_app_settings)]
 
+# "auto_error=False" evita que FastAPI responda solo cuando falta el token; lo manejamos nosotros.
 _bearer = HTTPBearer(auto_error=False)
 
 
@@ -61,8 +94,12 @@ async def get_current_user(
     settings: AppSettings,
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
 ) -> User:
-    """Resuelve un Bearer Supabase al usuario local que conserva datos y rol."""
-    # Rama condicional: se cumple credentials is None.
+    """Busca al usuario local que corresponde al token Bearer de Supabase.
+
+    Responde con error si falta el token, si no es válido, si la cuenta está desactivada,
+    o si el correo ya pertenece a otra cuenta.
+    """
+    # Sin token, no hay sesión.
     if credentials is None:
         raise UnauthorizedError()
     invalid = UnauthorizedError("El token no es válido o ha expirado.", code="invalid_token")
@@ -71,66 +108,66 @@ async def get_current_user(
         user_id = decode_access_token(
             credentials.credentials, settings.secret_key.get_secret_value()
         )
-        # Rama condicional: se cumple user_id is not None.
         if user_id is not None:
             user = await UserRepository(db).get_by_id(user_id)
-            # Rama condicional: se cumple user is None or not user.is_active.
             if user is None or not user.is_active:
                 raise invalid
             return user
 
+    # El verificador de Supabase se creó al arrancar, si SUPABASE_URL está configurada.
     verifier: SupabaseTokenVerifier | None = request.app.state.supabase_jwt_verifier
-    # Rama condicional: se cumple verifier is None.
     if verifier is None:
-        # Rama condicional: se cumple settings.legacy_auth_enabled.
+        # Con auth heredada, un token que no fue aceptado arriba es inválido.
         if settings.legacy_auth_enabled:
             raise invalid
         raise ServiceUnavailableError(
             "Configura SUPABASE_URL y las claves de autenticación en el backend.",
             code="supabase_auth_not_configured",
         )
-    # Protege la operacion y dirige sus errores a manejadores explicitos.
+    # Validar el token y consultar a Supabase pueden tardar: se hacen en otro hilo.
     try:
         claims = await run_in_threadpool(verifier.decode, credentials.credentials)
         auth_user = await run_in_threadpool(
             verifier.get_verified_user, credentials.credentials, claims
         )
-    # Maneja el error SupabaseEmailNotConfirmedError sin detener el flujo esperado.
     except SupabaseEmailNotConfirmedError as exc:
         raise ForbiddenError(str(exc), code="email_not_confirmed") from exc
-    # Maneja el error SupabaseTokenError sin detener el flujo esperado.
     except SupabaseTokenError as exc:
         raise invalid from exc
-    # Maneja el error SupabaseAuthUnavailableError sin detener el flujo esperado.
     except SupabaseAuthUnavailableError as exc:
         raise ServiceUnavailableError(
             "No se pudo verificar la cuenta con Supabase. Inténtalo de nuevo.",
             code="supabase_auth_unavailable",
         ) from exc
+    # Se agregan los metadatos que devuelve Supabase (nombre, proveedor), para crear el perfil.
     claims["user_metadata"] = auth_user.get("user_metadata")
     claims["app_metadata"] = auth_user.get("app_metadata")
     user = await _get_or_create_supabase_user(db, claims)
-    # Rama condicional: se cumple not user.is_active.
     if not user.is_active:
         raise invalid
     return user
 
 
 async def _get_or_create_supabase_user(db: AsyncSession, claims: dict) -> User:
-    """Vincula por email confirmado sin reemplazar el perfil ni el rol ya existentes."""
+    """Vincula la cuenta de Supabase con un perfil local, o crea el perfil si no existe.
+
+    Reglas:
+    - Si ya hay un perfil con ese id de Supabase, se usa tal cual.
+    - Si hay un perfil con ese correo y todavía no tiene id de Supabase, se vincula.
+    - Si el correo ya pertenece a otro id de Supabase, se rechaza (conflicto).
+    - Si no existe nada, se crea un perfil nuevo con contraseña aleatoria (no se usa).
+    """
     repository = UserRepository(db)
     supabase_user_id = UUID(claims["sub"])
     email = claims["email"].strip().lower()
+    # "with_for_update" bloquea la fila mientras la revisamos, para evitar dos cuentas iguales.
     user = await db.scalar(
         select(User).where(User.supabase_user_id == supabase_user_id).with_for_update()
     )
-    # Rama condicional: se cumple user is None.
     if user is None:
         user = await db.scalar(select(User).where(User.email == email).with_for_update())
-        # Rama condicional: se cumple user is not None.
         if user is not None:
-            # Rama condicional: evalua user.supabase_user_id is not None and user.supabase_user_id
-            # != supabase_.
+            # Si ese perfil ya está vinculado a otra identidad de Supabase, no se mezcla.
             if user.supabase_user_id is not None and user.supabase_user_id != supabase_user_id:
                 raise ConflictError(
                     "Este correo ya está vinculado a otra cuenta.",
@@ -138,10 +175,8 @@ async def _get_or_create_supabase_user(db: AsyncSession, claims: dict) -> User:
                 )
             user.supabase_user_id = supabase_user_id
             user.last_login_at = datetime.now(UTC)
-            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 await db.commit()
-            # Maneja el error IntegrityError sin detener el flujo esperado.
             except IntegrityError as exc:
                 await db.rollback()
                 raise ConflictError(
@@ -150,20 +185,17 @@ async def _get_or_create_supabase_user(db: AsyncSession, claims: dict) -> User:
                 ) from exc
     else:
         existing_email = await repository.get_by_email(email)
-        # Rama condicional: se cumple existing_email is not None and existing_email.id !=
-        # user.id.
+        # Si otro perfil ya usa este correo, no se puede cambiar el correo de este.
         if existing_email is not None and existing_email.id != user.id:
             raise ConflictError(
                 "Este correo ya está asociado a otra cuenta.",
                 code="supabase_email_conflict",
             )
-        # Rama condicional: se cumple user.email.lower() != email.
+        # El correo cambió en Supabase: se actualiza el perfil local.
         if user.email.lower() != email:
             user.email = email
-            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 await db.commit()
-            # Maneja el error IntegrityError sin detener el flujo esperado.
             except IntegrityError as exc:
                 await db.rollback()
                 raise ConflictError(
@@ -171,31 +203,30 @@ async def _get_or_create_supabase_user(db: AsyncSession, claims: dict) -> User:
                     code="supabase_email_conflict",
                 ) from exc
 
-    # Rama condicional: se cumple user is None.
     if user is None:
+        # El nombre sale de los metadatos de Supabase. Si no hay, se usa la parte antes de la @.
         metadata = claims.get("user_metadata")
         metadata = metadata if isinstance(metadata, dict) else {}
         full_name = metadata.get("full_name") or metadata.get("name")
-        # Rama condicional: se cumple not isinstance(full_name, str).
         if not isinstance(full_name, str):
             full_name = email.partition("@")[0]
+        # Se quitan espacios sobrantes y se limita a 120 caracteres.
         full_name = " ".join(full_name.split())[:120] or "Usuario"
         user = User(
             email=email,
             full_name=full_name,
+            # Contraseña aleatoria y larga: nadie la conoce, porque la cuenta entra por Supabase.
             password_hash=await hash_password(secrets.token_urlsafe(48)),
             supabase_user_id=supabase_user_id,
             last_login_at=datetime.now(UTC),
         )
         db.add(user)
-        # Protege la operacion y dirige sus errores a manejadores explicitos.
         try:
             await db.commit()
-        # Maneja el error IntegrityError sin detener el flujo esperado.
         except IntegrityError as exc:
+            # Si otra petición creó la misma cuenta al mismo tiempo, la buscamos y la usamos.
             await db.rollback()
             user = await repository.get_by_supabase_user_id(supabase_user_id)
-            # Rama condicional: se cumple user is None.
             if user is None:
                 raise ConflictError(
                     "No se pudo crear la cuenta asociada a Supabase.",
@@ -204,15 +235,16 @@ async def _get_or_create_supabase_user(db: AsyncSession, claims: dict) -> User:
     return user
 
 
+# Atajo: un endpoint que declara "user: CurrentUser" recibe el usuario que inició sesión.
 CurrentUser = Annotated[User, Depends(get_current_user)]
 
 
 async def require_admin(user: CurrentUser) -> User:
-    """Exige administrador."""
-    # Rama condicional: se cumple user.role != UserRole.ADMIN.
+    """Exige que el usuario sea administrador. Si no, responde 403."""
     if user.role != UserRole.ADMIN:
         raise ForbiddenError()
     return user
 
 
+# Atajo: un endpoint que declara "admin: AdminUser" solo funciona para administradores.
 AdminUser = Annotated[User, Depends(require_admin)]

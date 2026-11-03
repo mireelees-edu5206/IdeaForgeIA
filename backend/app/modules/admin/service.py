@@ -1,4 +1,28 @@
-"""Aplica reglas de negocio y permisos. Area: administracion."""
+"""Aplica reglas de negocio y permisos. Area: administracion.
+
+ARCHIVO: backend/app/modules/admin/service.py
+
+¿Qué es?
+La lógica del panel de administración: calcular las métricas, listar cuentas, cambiar roles y
+eliminar cuentas.
+
+¿Para qué sirve?
+Para que la administradora vea el estado de la aplicación y pueda administrar cuentas con las
+protecciones necesarias.
+
+¿Quién lo usa?
+router.py de este módulo.
+
+Protecciones principales:
+- Nadie puede desactivarse, quitarse el rol de admin ni eliminarse a sí mismo.
+- La última cuenta de administración activa no se puede eliminar ni desactivar.
+- No se elimina una cuenta mientras tenga investigaciones activas o informes generándose.
+- Al desactivar una cuenta, sus sesiones abiertas se cierran.
+- Al eliminar una cuenta con id de Supabase, también se borra en Supabase.
+
+Para evitar carreras (dos administradoras haciendo cambios a la vez), las consultas de borrado
+usan bloqueos de fila (with_for_update).
+"""
 
 import uuid
 from datetime import UTC, datetime
@@ -29,22 +53,23 @@ from app.modules.users.models import User, UserRole
 
 
 class UserNotFoundError(NotFoundError):
-    """Error que representa usuario no found."""
+    """La cuenta solicitada no existe. Responde 404."""
 
     code = "user_not_found"
     message = "El usuario solicitado no existe."
 
 
 class AdminService:
-    """Servicio de reglas de negocio para administrador."""
+    """Reglas del panel de administración para cada petición."""
 
     def __init__(self, session: AsyncSession, settings: Settings) -> None:
-        """Gestiona la inicializacion para administracion."""
+        """Guarda la sesión de base de datos y la configuración de la aplicación."""
         self.session = session
         self.settings = settings
 
     async def overview(self) -> AdminOverview:
-        """Gestiona el flujo en administracion."""
+        """Calcula todas las métricas del resumen general, con varias consultas agrupadas."""
+        # Cuenta usuarios en total, activos y administradores en una sola consulta.
         user_row = (
             await self.session.execute(
                 select(
@@ -55,12 +80,14 @@ class AdminService:
             )
         ).one()
 
+        # Cuenta proyectos por etapa. Las etapas vacías quedan en 0.
         status_rows = await self.session.execute(
             select(Project.status, func.count(Project.id)).group_by(Project.status)
         )
         projects_by_status = {status: 0 for status in ProjectStatus}
         projects_by_status.update({status: count for status, count in status_rows.tuples()})
 
+        # Cuenta investigaciones en total, terminadas y fallidas.
         run_row = (
             await self.session.execute(
                 select(
@@ -74,6 +101,8 @@ class AdminService:
         total_findings = await self.session.scalar(select(func.count(Finding.id))) or 0
         total_reports = await self.session.scalar(select(func.count(Report.id))) or 0
 
+        # Uso de IA agrupado por proveedor: llamadas, errores, tiempos, tokens y costo.
+        # coalesce convierte los totales vacíos en 0 para que no fallen las sumas.
         provider_rows = await self.session.execute(
             select(
                 AIApiLog.provider,
@@ -89,6 +118,7 @@ class AdminService:
             .group_by(AIApiLog.provider)
             .order_by(func.count(AIApiLog.id).desc())
         )
+        # Convierte cada fila en el resumen de un proveedor. El promedio se redondea a enteros.
         ai_by_provider = [
             ProviderMetrics(
                 provider=provider,
@@ -114,6 +144,8 @@ class AdminService:
             ) in provider_rows.tuples()
         ]
 
+        # Las 25 llamadas más recientes. "outerjoin" conserva la llamada aunque ya no exista el
+        # usuario o el proyecto.
         log_rows = await self.session.execute(
             select(AIApiLog, User.email, Project.title)
             .outerjoin(User, User.id == AIApiLog.user_id)
@@ -139,18 +171,21 @@ class AdminService:
             failed_research_runs=run_row[2],
             total_findings=total_findings,
             total_reports=total_reports,
+            # El total de llamadas es la suma de lo que reportó cada proveedor.
             total_ai_calls=sum(item.total_calls for item in ai_by_provider),
             ai_by_provider=ai_by_provider,
             recent_ai_logs=recent_ai_logs,
         )
 
     async def list_users(self) -> list[AdminUserRead]:
-        """Lista users en administracion."""
+        """Lista todas las cuentas con cuántos proyectos e investigaciones tiene cada una."""
+        # Subconsulta: cuántos proyectos tiene cada usuario.
         project_counts = (
             select(Project.user_id, func.count(Project.id).label("project_count"))
             .group_by(Project.user_id)
             .subquery()
         )
+        # Subconsulta: cuántas investigaciones tiene cada usuario (a través de sus proyectos).
         run_counts = (
             select(Project.user_id, func.count(ResearchRun.id).label("run_count"))
             .join(ResearchRun, ResearchRun.project_id == Project.id)
@@ -160,6 +195,7 @@ class AdminService:
         rows = await self.session.execute(
             select(
                 User,
+                # coalesce: si una cuenta no tiene proyectos, cuenta como 0 (no como vacío).
                 func.coalesce(project_counts.c.project_count, 0),
                 func.coalesce(run_counts.c.run_count, 0),
             )
@@ -185,47 +221,50 @@ class AdminService:
     async def update_user(
         self, actor: User, target_id: uuid.UUID, data: AdminUserUpdate
     ) -> AdminUserRead:
-        """Actualiza user en administracion."""
+        """Cambia el rol o el estado activo de una cuenta, con sus protecciones."""
         target = await self.session.get(User, target_id)
-        # Rama condicional: se cumple target is None.
         if target is None:
             raise UserNotFoundError()
 
+        # Solo se revisan los campos que la administradora mandó.
         changes = data.model_dump(exclude_unset=True)
-        # Rama condicional: se cumple target.id == actor.id.
+        # Protecciones para la propia cuenta de quien administra.
         if target.id == actor.id:
-            # Rama condicional: se cumple changes.get('is_active') is False.
             if changes.get("is_active") is False:
                 raise ConflictError(
                     "No puedes desactivar tu propia cuenta de administrador.",
                     code="cannot_deactivate_self",
                 )
-            # Rama condicional: se cumple changes.get('role') == UserRole.USER.
             if changes.get("role") == UserRole.USER:
                 raise ConflictError(
                     "No puedes quitarte el rol de administrador a ti mismo.",
                     code="cannot_demote_self",
                 )
 
-        # Rama condicional: se cumple 'role' in changes and changes['role'] is not None.
         if "role" in changes and changes["role"] is not None:
             target.role = changes["role"]
-        # Rama condicional: se cumple 'is_active' in changes and changes['is_active'] is not
-        # None.
         if "is_active" in changes and changes["is_active"] is not None:
             target.is_active = changes["is_active"]
-            # Rama condicional: se cumple not target.is_active.
+            # Si se desactiva la cuenta, se cierran todas sus sesiones abiertas.
             if not target.is_active:
                 await RefreshTokenRepository(self.session).revoke_all_active(
                     target.id, datetime.now(UTC)
                 )
 
         await self.session.commit()
+        # Vuelve a leer la lista y devuelve solo la cuenta modificada, ya con sus datos
+        # actualizados.
         users = await self.list_users()
         return next(item for item in users if item.id == target.id)
 
     async def delete_user(self, actor: User, target_id: uuid.UUID) -> uuid.UUID | None:
-        """Elimina user en administracion."""
+        """Elimina una cuenta de forma permanente, si las reglas lo permiten.
+
+        Devuelve el id de Supabase de la cuenta eliminada (o None) para que la ruta
+        pueda olvidar sus tokens.
+        """
+        # Bloquea las cuentas administradoras activas, para que dos borrados simultáneos no dejen
+        # cero admins.
         active_admin_ids = list(
             await self.session.scalars(
                 select(User.id)
@@ -237,25 +276,23 @@ class AdminService:
         target = await self.session.scalar(
             select(User).where(User.id == target_id).with_for_update()
         )
-        # Rama condicional: se cumple target is None.
         if target is None:
             raise UserNotFoundError()
-        # Rama condicional: se cumple target.id == actor.id.
         if target.id == actor.id:
             raise ConflictError(
                 "No puedes eliminar tu propia cuenta de administrador.",
                 code="cannot_delete_self",
             )
 
-        # Rama condicional: se cumple target.role == UserRole.ADMIN and target.is_active.
+        # Nunca se deja el panel sin ninguna administradora activa.
         if target.role == UserRole.ADMIN and target.is_active:
-            # Rama condicional: se cumple len(active_admin_ids) <= 1.
             if len(active_admin_ids) <= 1:
                 raise ConflictError(
                     "No se puede eliminar la última cuenta de administrador activa.",
                     code="last_admin_required",
                 )
 
+        # No se elimina una cuenta que tenga investigaciones corriendo.
         active_run = await self.session.scalar(
             select(ResearchRun.id)
             .join(Project, Project.id == ResearchRun.project_id)
@@ -265,6 +302,7 @@ class AdminService:
             )
             .limit(1)
         )
+        # Ni una cuenta con un informe generándose.
         generating_report = await self.session.scalar(
             select(Report.id)
             .join(Project, Project.id == Report.project_id)
@@ -274,26 +312,25 @@ class AdminService:
             )
             .limit(1)
         )
-        # Rama condicional: se cumple active_run is not None or generating_report is not None.
         if active_run is not None or generating_report is not None:
             raise ConflictError(
                 "Espera a que terminen las tareas del usuario antes de eliminar su cuenta.",
                 code="user_has_active_jobs",
             )
 
-        # Rama condicional: se cumple target.supabase_user_id is not None.
+        # Si la cuenta existe también en Supabase, primero se borra allá.
+        # La llamada es síncrona, así que se ejecuta en un hilo aparte para no bloquear el servidor.
         if target.supabase_user_id is not None:
-            # Protege la operacion y dirige sus errores a manejadores explicitos.
             try:
                 await run_in_threadpool(
                     SupabaseAdminClient(self.settings).delete_user, target.supabase_user_id
                 )
-            # Maneja el error SupabaseAuthUnavailableError sin detener el flujo esperado.
             except SupabaseAuthUnavailableError as exc:
                 raise ServiceUnavailableError(
                     str(exc), code="supabase_account_deletion_unavailable"
                 ) from exc
 
+        # Al borrar la cuenta, la base de datos borra en cascada sus proyectos y datos dependientes.
         supabase_user_id = target.supabase_user_id
         await self.session.delete(target)
         await self.session.commit()

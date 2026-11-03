@@ -23,24 +23,24 @@
   --color-brand-copper: #2563eb;
   --color-brand-chrome: #1e3a8a;
 
-  /* Color cian/azul de enlaces y acentos (nombre heredado). NOTA: aunque se llama cian, su valor #1e40af es azul oscuro. */
-  --color-accent-cyan: #1e40af;
+  /* Color cian/azul de enlaces y acentos (nombre heredado). Ahora es el verde lima #a3e635. */
+  --color-accent-cyan: #a3e635;
   /* Acento violeta (nombre heredado). NOTA: su valor #3b82f6 es azul medio, no violeta. */
   --color-accent-violet: #3b82f6;
-  /* Color principal de la app: botones principales, enlaces y elementos activos (#1e40af, azul). */
-  --color-primary: #1e40af;
-  /* Color principal cuando el mouse pasa encima: un azul un poco más oscuro (#1e3a8a). */
-  --color-primary-hover: #1e3a8a;
+  /* Color principal de la app: botones principales, enlaces y elementos activos (verde lima #a3e635). */
+  --color-primary: #a3e635;
+  /* Color principal cuando el mouse pasa encima: un lima un poco más oscuro (#84cc16). */
+  --color-primary-hover: #84cc16;
   /* Color secundario: un azul más claro (#3b82f6) para acciones de apoyo. */
   --color-secondary: #3b82f6;
-  /* Color de acción importante: ámbar (#d97706). Se usa en las acciones clave que queremos que la persona note. */
-  --color-accent: #d97706;
-  /* Color del texto que va SOBRE el ámbar: casi negro (#0f172a) para que se lea bien. */
-  --color-on-accent: #0f172a;
-  /* Color de fondo de toda la página: gris muy claro (#f8fafc). */
-  --color-background: #f8fafc;
-  /* Color del texto principal: azul-negro muy oscuro (#0f172a). */
-  --color-foreground: #0f172a;
+  /* Color de acción importante: verde lima (#a3e635). Se usa en las acciones clave que queremos que la persona note. */
+  --color-accent: #a3e635;
+  /* Color del texto que va SOBRE el lima: casi negro (#111827) para que se lea bien. */
+  --color-on-accent: #111827;
+  /* Color de fondo de toda la página: gris claro (#f3f4f6). */
+  --color-background: #f3f4f6;
+  /* Color del texto principal: casi negro (#111827). */
+  --color-foreground: #111827;
   /* Color de las tarjetas: blanco puro. */
   --color-card: #ffffff;
   /* Fondo apagado para zonas secundarias: gris azulado muy suave. */
@@ -49,8 +49,8 @@
   --color-muted-foreground: #475569;
   /* Color de los bordes: azul muy pálido, casi invisible. */
   --color-border: #dbeafe;
-  /* Color del anillo de foco: el marco azul que aparece al navegar con teclado. */
-  --color-ring: #1e40af;
+  /* Color del anillo de foco: el marco lima que aparece al navegar con teclado. */
+  --color-ring: #a3e635;
 
   /* Colores por tipo de elemento. NOTA: el comentario original dice 5 colores, pero hay 6 (el último es 'incertidumbre'). */
   /* Los 5 colores semánticos del dominio */
@@ -229,19 +229,19 @@
   /* Le dice al navegador que use controles claros (barras de desplazamiento, campos de texto) en este modo. */
   color-scheme: light;
   /* NOTA: estos colores se repiten en @theme a propósito: @theme los registra para las clases de Tailwind, y :root los deja disponibles como var(--nombre) en CSS normal. Si cambias uno, cambia también el otro. */
-  --color-primary: #1e40af;
-  --color-primary-hover: #1e3a8a;
-  --color-on-primary: #ffffff;
+  --color-primary: #a3e635;
+  --color-primary-hover: #84cc16;
+  --color-on-primary: #111827;
   --color-secondary: #3b82f6;
-  --color-accent: #d97706;
-  --color-background: #f8fafc;
-  --color-foreground: #0f172a;
+  --color-accent: #a3e635;
+  --color-background: #f3f4f6;
+  --color-foreground: #111827;
   --color-card: #ffffff;
-  --color-card-foreground: #0f172a;
+  --color-card-foreground: #111827;
   --color-muted: #e9eef6;
   --color-muted-foreground: #475569;
   --color-border: #dbeafe;
-  --color-ring: #1e40af;
+  --color-ring: #a3e635;
 
   /* Color del lienzo (fondo de la página). Toma el mismo valor que el fondo general. */
   --surface-canvas: var(--color-background);
@@ -358,37 +358,37 @@
   /* Hace que los controles del navegador (barras de desplazamiento, campos) también se vean oscuros. */
   color-scheme: dark;
   /* En modo oscuro los nombres 'night' sí son oscuros: del más oscuro (950, #0b1220) al más claro (700). */
-  --color-night-950: #0b1220;
-  --color-night-900: #111c2e;
-  --color-night-800: #172338;
-  --color-night-700: #24334a;
+  --color-night-950: #111827;
+  --color-night-900: #1f2937;
+  --color-night-800: #1f2937;
+  --color-night-700: #374151;
 
-  /* Color principal en modo oscuro: azul claro (#93c5fd), para que se vea bien sobre el fondo oscuro. */
-  --color-primary: #93c5fd;
-  --color-primary-hover: #bfdbfe;
-  --color-on-primary: #0b1220;
+  /* Color principal en modo oscuro: verde lima (#a3e635), para que se vea bien sobre el fondo oscuro. */
+  --color-primary: #a3e635;
+  --color-primary-hover: #bef264;
+  --color-on-primary: #111827;
   --color-secondary: #60a5fa;
-  /* Ámbar más brillante (#fbbf24) para que destaque sobre el fondo oscuro. */
-  --color-accent: #fbbf24;
-  --color-on-accent: #0b1220;
-  /* Fondo de la página en modo oscuro: azul casi negro (#0b1220). */
-  --color-background: #0b1220;
-  /* Texto principal en modo oscuro: casi blanco (#f1f5f9). */
-  --color-foreground: #f1f5f9;
-  /* Color de las tarjetas en modo oscuro: azul muy oscuro (#111c2e). */
-  --color-card: #111c2e;
-  --color-card-foreground: #f1f5f9;
+  /* Acento en modo oscuro: verde lima (#a3e635). */
+  --color-accent: #a3e635;
+  --color-on-accent: #111827;
+  /* Fondo de la página en modo oscuro: gris casi negro (#111827). */
+  --color-background: #111827;
+  /* Texto principal en modo oscuro: gris muy claro (#f3f4f6). */
+  --color-foreground: #f3f4f6;
+  /* Color de las tarjetas en modo oscuro: gris oscuro (#1f2937), un paso más claro que el fondo. */
+  --color-card: #1f2937;
+  --color-card-foreground: #f3f4f6;
   --color-muted: #172338;
   /* Texto secundario en modo oscuro: gris claro azulado. */
   --color-muted-foreground: #a7b4c6;
   /* Color de los bordes en modo oscuro: gris azulado oscuro. */
   --color-border: #334155;
-  --color-ring: #93c5fd;
+  --color-ring: #a3e635;
 
   /* Superficies del modo oscuro: mismos nombres que en el claro, pero con tonos oscuros y transparencias. El cristal oscuro usa blanco muy suave para simular reflejos. */
   --surface-canvas: var(--color-background);
   --surface-card: var(--color-card);
-  --surface-card-muted: #172338;
+  --surface-card-muted: #1f2937;
   --surface-elevated: rgb(23 35 56 / 0.80);
   --surface-elevated-strong: rgb(17 28 46 / 0.94);
   --surface-raised-start: rgb(42 58 82 / 0.90);
@@ -415,7 +415,7 @@
   --color-brand-ember: #fbbf24;
   --color-brand-copper: #60a5fa;
   --color-brand-chrome: #f8fafc;
-  --color-accent-cyan: #93c5fd;
+  --color-accent-cyan: #a3e635;
   --color-accent-violet: #60a5fa;
 
   /* Colores por tipo de elemento en modo oscuro: dato, hallazgo, evidencia, análisis, hipótesis e incertidumbre. */
@@ -648,10 +648,10 @@
   background: #fffbeb;
 }
 
-/* Ícono del estado 'estructurado' en modo claro: azul sobre azul muy pálido. */
+/* Ícono del estado 'estructurado' en modo claro: verde lima oscuro sobre fondo lima muy pálido. */
 .summary-tile__icon--structured {
-  color: #1e40af;
-  background: #eff6ff;
+  color: #3f6212;
+  background: #f7fee7;
 }
 
 /* Ícono del estado 'investigando' en modo claro: celeste sobre celeste muy pálido. */

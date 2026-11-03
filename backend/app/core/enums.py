@@ -1,37 +1,53 @@
 """Enumeraciones de dominio compartidas entre módulos.
 
-Los valores (en inglés) se guardan en la BD; el frontend los traduce a etiquetas en español.
+ARCHIVO: backend/app/core/enums.py
+
+¿Qué es?
+Es la lista oficial de opciones válidas del sistema: procedencia, estado de revisión, niveles,
+prioridades, categorías de investigación, tipos de dato de la idea y proveedores de IA.
+
+¿Para qué sirve?
+Evita escribir textos sueltos ("ai", "proposed") en muchos archivos. Si una opción no está aquí,
+el sistema no la acepta. Así los datos siempre tienen valores conocidos.
+
+¿Quién lo usa?
+Casi todos los módulos: modelos de la base de datos, esquemas de entrada y salida, servicios,
+la configuración (config.py) y las pruebas.
+
+Importante: los valores (los textos de la derecha del "=") se guardan en la base de datos. Si
+cambias uno, los datos que ya existen con el texto anterior dejan de coincidir. Hay que crear
+una migración de Alembic para ese cambio. Las etiquetas en español vienen del frontend.
 """
 
 from enum import StrEnum
 
 
 class Origin(StrEnum):
-    """Representa procedencia."""
+    """Quién creó un dato: la IA o la persona."""
 
     AI = "ai"
     USER = "user"
 
 
 class ReviewStatus(StrEnum):
-    """Representa review estado."""
+    """En qué estado de revisión está un dato propuesto por la IA."""
 
-    PROPOSED = "proposed"
-    ACCEPTED = "accepted"
-    REJECTED = "rejected"
+    PROPOSED = "proposed"  # Propuesto y todavía sin revisar.
+    ACCEPTED = "accepted"  # La persona lo aceptó.
+    REJECTED = "rejected"  # La persona lo descartó.
 
 
 class Level(StrEnum):
-    """Representa nivel."""
+    """Nivel de algo: confianza, potencial, riesgo, probabilidad o impacto."""
 
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
-    UNDETERMINED = "undetermined"
+    UNDETERMINED = "undetermined"  # No hay suficiente información para decidir.
 
 
 class Priority(StrEnum):
-    """Representa priority."""
+    """Qué tan urgente o importante es una tarea o pregunta."""
 
     LOW = "low"
     MEDIUM = "medium"
@@ -39,7 +55,7 @@ class Priority(StrEnum):
 
 
 class ResearchCategory(StrEnum):
-    """Representa investigacion categoria."""
+    """Tema de un resultado de la investigación."""
 
     MARKET = "market"
     CUSTOMERS = "customers"
@@ -52,7 +68,7 @@ class ResearchCategory(StrEnum):
 
 
 class AttributeType(StrEnum):
-    """Representa atributo tipo."""
+    """Partes de la idea que el usuario puede describir (problema, solución, etc.)."""
 
     PROBLEM = "problem"
     SOLUTION = "solution"
@@ -66,7 +82,11 @@ class AttributeType(StrEnum):
 
 
 class AIProviderName(StrEnum):
-    """Representa aiprovider nombre."""
+    """Proveedores de IA que el sistema conoce.
+
+    "fake" es el proveedor de pruebas (no se permite en producción). "legacy" solo marca
+    registros antiguos y nunca se puede elegir como proveedor activo.
+    """
 
     GEMINI = "gemini"
     OLLAMA = "ollama"

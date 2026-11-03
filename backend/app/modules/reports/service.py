@@ -1,4 +1,26 @@
-"""Aplica reglas de negocio y permisos. Area: informes/veredicto."""
+"""Aplica reglas de negocio y permisos. Area: informes/veredicto.
+
+ARCHIVO: backend/app/modules/reports/service.py
+
+¿Qué es?
+Las reglas del informe final cuando la persona lo pide o lo consulta. Decide cuándo se puede
+generar un informe, le asigna su número de versión, y arma las respuestas para el frontend.
+
+¿Para qué sirve?
+Para que el informe solo se genere cuando el proyecto ya tiene investigación y análisis terminados,
+y para que nunca haya dos informes generándose a la vez.
+
+¿Quién lo usa?
+router.py (cada endpoint de informes llama a un método de ReportService).
+
+Reglas principales:
+- El proyecto debe estar analizado (ANALYZED). Si no, responde conflicto.
+- Debe existir una investigación completada.
+- Solo puede haber un informe generándose por proyecto.
+- Si no se mandan zonas, se toman las zonas geográficas que la persona confirmó
+  en su idea (máximo 3).
+- Cada informe nuevo recibe la siguiente versión (1, 2, 3...).
+"""
 
 import uuid
 from datetime import UTC, datetime
@@ -25,16 +47,16 @@ from app.modules.users.models import User
 
 
 class ReportNotFoundError(NotFoundError):
-    """Error que representa informe no found."""
+    """El informe no existe en ese proyecto. Responde 404."""
 
     code = "report_not_found"
 
 
 class ReportService:
-    """Servicio de reglas de negocio para informe."""
+    """Reglas de negocio de los informes para cada petición de la API."""
 
     def __init__(self, session: AsyncSession) -> None:
-        """Gestiona la inicializacion para informes."""
+        """Guarda la sesión de base de datos de esta petición."""
         self.session = session
 
     async def start(
@@ -44,33 +66,38 @@ class ReportService:
         provider: AIProvider,
         geographic_scopes: list[GeographicScopeInput] | None = None,
     ) -> ReportRead:
-        """Inicia el flujo en informes."""
+        """Crea el informe en estado "generando". El router lo genera después en segundo plano.
+
+        Antes de crearlo bloquea el proyecto con "with_for_update", para que dos peticiones al mismo
+        tiempo no creen dos informes con la misma versión.
+        """
         project = await get_owned_project(self.session, user, project_id)
+        # Bloquea la fila del proyecto mientras se revisa y se crea el informe.
         await self.session.scalar(
             select(Project.id).where(Project.id == project.id).with_for_update()
         )
 
-        # Rama condicional: se cumple project.status != ProjectStatus.ANALYZED.
+        # El informe solo tiene sentido cuando la idea ya está analizada.
         if project.status != ProjectStatus.ANALYZED:
             raise ConflictError(
                 "Completa la investigación y el análisis antes de generar el informe.",
                 code="project_not_analyzed",
             )
 
+        # Se toma la investigación completada más reciente.
         run = await self.session.scalar(
             select(ResearchRun)
             .where(ResearchRun.project_id == project.id, ResearchRun.status == RunStatus.COMPLETED)
             .order_by(ResearchRun.created_at.desc(), ResearchRun.id.desc())
             .limit(1)
         )
-        # Rama condicional: se cumple run is None.
         if run is None:
             raise ConflictError(
                 "No hay una investigación completada para documentar.",
                 code="completed_research_required",
             )
 
-        # Rama condicional: se cumple geographic_scopes is None.
+        # Si no se mandaron zonas, se usan las zonas geográficas que la persona confirmó en su idea.
         if geographic_scopes is None:
             attributes = await IdeaAttributeRepository(self.session).list_for_project(project.id)
             geographic_scopes_data = [
@@ -84,16 +111,17 @@ class ReportService:
                 scope.model_dump(exclude_none=True) for scope in geographic_scopes
             ]
 
+        # Si ya hay un informe generándose, no se crea otro.
         pending = await self.session.scalar(
             select(Report.id).where(
                 Report.project_id == project.id,
                 Report.status == ReportStatus.GENERATING,
             )
         )
-        # Rama condicional: se cumple pending is not None.
         if pending is not None:
             raise ConflictError("Ya se está generando un informe.", code="report_in_progress")
 
+        # La nueva versión es la más alta que exista, más uno. Si no hay informes, es la 1.
         version = (
             await self.session.scalar(
                 select(func.max(Report.version)).where(Report.project_id == project.id)
@@ -112,12 +140,17 @@ class ReportService:
         )
         self.session.add(report)
         await self.session.commit()
+        # refresh vuelve a leer el informe de la base, para tener su id y sus valores finales.
         await self.session.refresh(report)
         return ReportRead.model_validate(report)
 
     async def list_for_project(self, user: User, project_id: uuid.UUID) -> list[ReportListItem]:
-        """Lista for project en informes."""
+        """Lista los informes del proyecto, del más reciente al más antiguo.
+
+        Cada uno incluye su número de secciones.
+        """
         project = await get_owned_project(self.session, user, project_id)
+        # Una sola consulta: cada informe con la cuenta de sus secciones (0 si no tiene).
         rows = await self.session.execute(
             select(Report, func.count(ReportSection.id))
             .outerjoin(ReportSection, ReportSection.report_id == Report.id)
@@ -133,12 +166,11 @@ class ReportService:
         ]
 
     async def get(self, user: User, project_id: uuid.UUID, report_id: uuid.UUID) -> ReportDetail:
-        """Obtiene el flujo en informes."""
+        """Devuelve un informe completo con sus secciones, en su orden."""
         project = await get_owned_project(self.session, user, project_id)
         report = await self.session.scalar(
             select(Report).where(Report.id == report_id, Report.project_id == project.id)
         )
-        # Rama condicional: se cumple report is None.
         if report is None:
             raise ReportNotFoundError()
         sections = await self.session.scalars(
@@ -152,10 +184,8 @@ class ReportService:
         )
 
     async def fail(self, report_id: uuid.UUID, error_code: str) -> None:
-        """Gestiona el flujo en informes."""
+        """Marca un informe como fallido, solo si todavía se estaba generando."""
         report = await self.session.get(Report, report_id)
-        # Rama condicional: se cumple report is None or report.status !=
-        # ReportStatus.GENERATING.
         if report is None or report.status != ReportStatus.GENERATING:
             return
         report.status = ReportStatus.FAILED
