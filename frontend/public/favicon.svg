@@ -1,9 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <!-- Fondo azul de marca en tamano compacto. -->
-  <rect width="64" height="64" rx="16" fill="#1e40af"/>
-  <!-- Hexagono y conexiones que conservan el simbolo de la aplicacion. -->
-  <path d="M32 8 52 20v24L32 56 12 44V20L32 8Z" fill="none" stroke="#fff" stroke-width="3"/>
-  <path d="M32 8v48M12 20l40 24M52 20 12 44" fill="none" stroke="#bfdbfe" stroke-width="2" stroke-opacity=".75"/>
-  <!-- Centro ambar que mantiene contraste al reducir el icono. -->
-  <circle cx="32" cy="32" r="5" fill="#fbbf24"/>
+  <defs>
+    <linearGradient id="oc-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#082f49"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#oc-bg)"/>
+  <circle cx="32" cy="32" r="21" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-opacity="0.45"/>
+  <polygon points="32,10 40,32 32,27 24,32" fill="#f97316"/>
+  <polygon points="32,54 40,32 32,37 24,32" fill="#2dd4bf"/>
+  <circle cx="32" cy="32" r="4" fill="#fde047"/>
 </svg>

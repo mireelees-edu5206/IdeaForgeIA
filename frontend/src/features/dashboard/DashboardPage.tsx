@@ -33,6 +33,7 @@ import { FiActivity, FiArrowRight, FiCheckCircle, FiCompass, FiEdit3, FiPlus } f
 import { Link } from "react-router";
 
 import { Alert } from "../../components/ui/Alert";
+import { HeroIllustration } from "../../components/ui/ForgeGlyphs";
 import { GlassPanel } from "../../components/ui/GlassPanel";
 import { LinkButton } from "../../components/ui/LinkButton";
 import { cn } from "../../lib/cn";
@@ -176,42 +177,44 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Banner de bienvenida. Los dos "orbes" son adornos (aria-hidden: no se leen). */}
+      {/* Banner de bienvenida con ilustración vectorial animada y acciones claras. */}
       <section aria-labelledby="dashboard-title" className="dashboard-hero relative overflow-hidden rounded-[1.75rem] p-6 sm:p-8">
         <div aria-hidden="true" className="dashboard-hero__orb dashboard-hero__orb--one" />
         <div aria-hidden="true" className="dashboard-hero__orb dashboard-hero__orb--two" />
-        {/* z-10 pone el contenido encima de los orbes. En pantallas grandes, el texto y los botones van en fila. */}
-        <div className="relative z-10 flex flex-col gap-7 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-3xl">
-            <p className="dashboard-eyebrow">
-              <FiActivity aria-hidden="true" />
-              INVESTIGACIÓN DE NEGOCIO
-            </p>
-            <h1 id="dashboard-title" className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl xl:text-[2.75rem]">
-              {isFirstProject ? (
-                <>Empieza con tu idea<span className="dashboard-hero__highlight">.</span></>
-              ) : (
-                <>
-                  {/* Solo saluda por nombre si lo sabe. El espacio final separa el saludo del titular. */}
-                  {firstName ? `Hola, ${firstName}. ` : ""}
-                  <span className="dashboard-hero__highlight">Decide con evidencia.</span>
-                </>
+        <div className="relative z-10 grid items-center gap-6 lg:grid-cols-[1.25fr_0.9fr]">
+          <div className="flex flex-col gap-5">
+            <div>
+              <p className="dashboard-eyebrow">
+                <FiActivity aria-hidden="true" />
+                INVESTIGACIÓN DE NEGOCIO
+              </p>
+              <h1 id="dashboard-title" className="font-display mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl xl:text-[2.65rem]">
+                {isFirstProject ? (
+                  <>Empieza con tu idea<span className="dashboard-hero__highlight">.</span></>
+                ) : (
+                  <>
+                    {firstName ? `Hola, ${firstName}. ` : ""}
+                    <span className="dashboard-hero__highlight">Decide con evidencia.</span>
+                  </>
+                )}
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/85 sm:text-base">
+                {isFirstProject
+                  ? "No necesitas experiencia ni una idea perfecta. Cuéntanos qué te gustaría hacer y te ayudaremos a explorarla."
+                  : "Organiza tus ideas, encuentra señales del mercado y convierte la investigación en próximos pasos claros."}
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-wrap gap-3">
+              {newProject}
+              {!isFirstProject && (
+                <LinkButton to="/proyectos" variant="secondary" className="dashboard-hero__secondary">
+                  Ver proyectos <FiArrowRight aria-hidden="true" />
+                </LinkButton>
               )}
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-white/75 sm:text-base">
-              {isFirstProject
-                ? "No necesitas experiencia ni una idea perfecta. Cuéntanos qué te gustaría hacer y te ayudaremos a explorarla."
-                : "Organiza tus ideas, encuentra señales del mercado y convierte la investigación en próximos pasos claros."}
-            </p>
+            </div>
           </div>
-          <div className="flex shrink-0 flex-wrap gap-2">
-            {newProject}
-            {/* El botón "Ver proyectos" solo aparece cuando ya hay proyectos. */}
-            {!isFirstProject && (
-              <LinkButton to="/proyectos" variant="secondary" className="dashboard-hero__secondary">
-                Ver proyectos <FiArrowRight aria-hidden="true" />
-              </LinkButton>
-            )}
+          <div className="hidden lg:block">
+            <HeroIllustration className="mx-auto h-48 w-full max-w-sm drop-shadow-xl" />
           </div>
         </div>
         <div aria-hidden="true" className="dashboard-hero__rule" />
@@ -262,7 +265,7 @@ export function DashboardPage() {
       </section>
 
       {/* "Tu siguiente paso": el proyecto más reciente con su avance. Tiene cuatro estados posibles. */}
-      <section aria-label="Tu siguiente paso" className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(18rem,0.85fr)]">
+      <section aria-label="Tu siguiente paso" className="grid gap-4">
         <GlassPanel className="flex min-h-64 flex-col justify-between gap-6 rounded-3xl p-5 sm:p-6">
           {recent.isPending ? (
             // Cargando: un indicador animado. role="status" anuncia el cambio a lectores de pantalla.
@@ -333,24 +336,6 @@ export function DashboardPage() {
         </GlassPanel>
 
         {/* Resumen del método en cuatro (dos columnas) tarjetas pequeñas. */}
-        <aside className="surface-panel rounded-3xl p-5 sm:p-6">
-          <div>
-            <p className="section-eyebrow">MÉTODO IDEAFORGE</p>
-            <h2 className="mt-2 text-lg font-semibold tracking-tight">De la intuición a una decisión</h2>
-          </div>
-          <ol className="mt-5 grid grid-cols-2 gap-3">
-            {VALIDATION_STEPS.map(({ number, title, text, icon: Icon }) => (
-              <li key={number} className="method-step rounded-xl p-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono-tech text-[11px] font-semibold text-slate-400">{number}</span>
-                  <Icon aria-hidden="true" className="size-4 text-primary" />
-                </div>
-                <p className="mt-3 text-sm font-semibold">{title}</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-400">{text}</p>
-              </li>
-            ))}
-          </ol>
-        </aside>
       </section>
 
       {/* Proyectos recientes: tarjetas de hasta seis proyectos. */}

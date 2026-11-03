@@ -374,12 +374,10 @@ export function ProjectDetailPage() {
         </div>
       </GlassPanel>
 
-      {/* Menú del proyecto a la izquierda y la pestaña elegida a la derecha. */}
-      <div className="grid min-w-0 gap-6 xl:grid-cols-[16rem_minmax(0,1fr)]">
+      {/* Barra horizontal de pasos del proyecto + lienzo de trabajo a ancho completo. */}
+      <div className="flex min-w-0 flex-col gap-5">
         <ProjectTabs projectId={data.id} />
-        {/* La clave con la dirección hace que la animación de entrada se repita en cada cambio de pestaña. */}
         <div key={pathname} className="animate-liquid-screen min-w-0">
-          {/* Entrega el proyecto a la pestaña hija. "satisfies" comprueba el tipo sin cambiarlo. */}
           <Outlet context={{ project: data } satisfies ProjectOutletContext} />
         </div>
       </div>
@@ -388,94 +386,83 @@ export function ProjectDetailPage() {
 }
 
 /**
- * El menú lateral de pestañas del proyecto.
- *
- * Muestra los pasos principales y un desplegable de herramientas. El desplegable se abre solo si la
- * dirección actual es una de sus herramientas, para que la pestaña activa siempre sea visible.
+ * Barra horizontal de pasos y herramientas del proyecto (Stepper horizontal).
+ * Deja el 100 % del ancho libre para la pestaña activa sin menús laterales que aprieten la vista.
  */
 function ProjectTabs({ projectId }: { projectId: string }) {
   const { pathname } = useLocation();
-  // ¿La dirección actual termina en una de las herramientas? Si sí, el desplegable se abre por defecto.
   const toolsOpen = TOOL_TABS.some(({ path }) => pathname.endsWith(path));
 
   return (
-    // "xl:sticky" mantiene el menú visible al hacer scroll en pantallas grandes.
     <nav
       aria-label="Secciones del proyecto"
-      className="glass relative flex min-w-0 flex-col gap-2 rounded-2xl p-2.5 xl:sticky xl:top-24 xl:self-start"
+      className="surface-panel flex min-w-0 flex-col gap-3 rounded-2xl p-3"
     >
-      <p className="px-2 pb-1 text-[10px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
-        Pasos principales
-      </p>
-      {/* En celular, dos o tres columnas; en pantallas grandes, una columna con la descripción de cada paso. */}
-      <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 xl:grid-cols-1">
-        {PRIMARY_TABS.map(({ path, label, step, hint, icon: Icon }) => (
-          <li key={label}>
-            {/* "end" hace que el enlace de Idea (path vacío) solo quede activo en la dirección exacta del proyecto. */}
-            <NavLink
-              to={`/proyectos/${projectId}${path}`}
-              end
-              className={({ isActive }) =>
-                cn(
-                  "jelly flex min-h-12 items-center gap-2 rounded-xl px-2.5 py-2 text-sm transition sm:gap-3 sm:px-3 xl:min-h-11",
-                  isActive
-                    ? "neo-raised font-semibold text-primary ring-1 ring-primary/20"
-                    : "text-slate-500 hover:bg-primary/5 hover:text-slate-100",
-                )
-              }
-            >
-              {/* Cuando el enlace está activo, el número del paso cambia de color. */}
-              {({ isActive }) => (
-                <>
-                  <span
-                    className={cn(
-                      "grid size-8 shrink-0 place-items-center rounded-lg text-[10px] font-semibold",
-                      isActive ? "bg-primary/10 text-primary" : "bg-muted text-slate-400",
-                    )}
-                  >
-                    {step}
-                  </span>
-                  <span className="flex min-w-0 flex-col leading-tight">
-                    <span className="truncate">{label}</span>
-                    {/* La descripción corta solo se ve en pantallas grandes (xl). */}
-                    <span className="hidden truncate text-[11px] font-normal text-slate-400 xl:block">{hint}</span>
-                  </span>
-                  <Icon aria-hidden="true" className="ml-auto hidden size-4 shrink-0 text-primary xl:block" />
-                </>
-              )}
-            </NavLink>
-          </li>
-        ))}
-      </ul>
-
-      {/* Desplegable nativo (details/summary): se abre y cierra sin JavaScript. "open" controla si arranca abierto. */}
-      <details open={toolsOpen} className="border-t border-border/70 pt-2">
-        <summary className="jelly flex min-h-11 cursor-pointer list-none items-center justify-between rounded-xl px-3 text-sm font-medium text-slate-400 hover:bg-primary/5 hover:text-primary [&::-webkit-details-marker]:hidden">
-          <span>Más herramientas</span>
-          {/* La flecha gira 180 grados cuando el desplegable está abierto. */}
-          <FiChevronDown aria-hidden="true" className="size-4 transition-transform open:rotate-180" />
-        </summary>
-        <ul className="mt-1 flex flex-col gap-1">
-          {TOOL_TABS.map(({ path, label, icon: Icon }) => (
-            <li key={path}>
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:flex lg:flex-1 lg:items-center lg:gap-2">
+          {PRIMARY_TABS.map(({ path, label, step, hint, icon: Icon }) => (
+            <li key={label} className="lg:flex-1">
               <NavLink
                 to={`/proyectos/${projectId}${path}`}
+                end
                 className={({ isActive }) =>
                   cn(
-                    "jelly flex min-h-10 items-center gap-2.5 rounded-lg px-3 text-sm transition",
+                    "jelly flex min-h-12 items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition",
                     isActive
-                      ? "bg-primary/8 font-medium text-primary"
+                      ? "neo-raised font-semibold text-primary ring-1 ring-primary/25"
                       : "text-slate-400 hover:bg-primary/5 hover:text-slate-100",
                   )
                 }
               >
-                <Icon aria-hidden="true" className="size-4 shrink-0" />
-                <span>{label}</span>
+                {({ isActive }) => (
+                  <>
+                    <span
+                      className={cn(
+                        "grid size-7 shrink-0 place-items-center rounded-lg text-[11px] font-bold",
+                        isActive ? "bg-primary text-white" : "bg-muted text-slate-400",
+                      )}
+                    >
+                      {step}
+                    </span>
+                    <span className="flex min-w-0 flex-col leading-tight">
+                      <span className="truncate">{label}</span>
+                      <span className="hidden truncate text-[11px] font-normal text-slate-400 2xl:block">{hint}</span>
+                    </span>
+                    <Icon aria-hidden="true" className="ml-auto hidden size-4 shrink-0 opacity-75 sm:block" />
+                  </>
+                )}
               </NavLink>
             </li>
           ))}
         </ul>
-      </details>
+
+        <details open={toolsOpen} className="border-t border-border/70 pt-2 lg:border-t-0 lg:pt-0">
+          <summary className="jelly flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 rounded-xl bg-muted/60 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-primary/10 hover:text-primary [&::-webkit-details-marker]:hidden">
+            <span>Más herramientas</span>
+            <FiChevronDown aria-hidden="true" className="size-4 transition-transform open:rotate-180" />
+          </summary>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {TOOL_TABS.map(({ path, label, icon: Icon }) => (
+              <li key={path}>
+                <NavLink
+                  to={`/proyectos/${projectId}${path}`}
+                  className={({ isActive }) =>
+                    cn(
+                      "jelly inline-flex min-h-9 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition",
+                      isActive
+                        ? "bg-primary/12 font-semibold text-primary ring-1 ring-primary/25"
+                        : "bg-card text-slate-300 hover:bg-primary/5 hover:text-slate-100",
+                    )
+                  }
+                >
+                  <Icon aria-hidden="true" className="size-3.5 shrink-0" />
+                  <span>{label}</span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </details>
+      </div>
     </nav>
   );
 }

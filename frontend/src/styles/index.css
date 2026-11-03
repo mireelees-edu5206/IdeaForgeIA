@@ -4,53 +4,53 @@
 /* Bloque @theme: aquí se definen las variables globales del diseño (fuentes, colores y animaciones). Tailwind las convierte en clases utilizables, por ejemplo bg-accent o font-display. */
 @theme {
   /* Letra para títulos. El navegador prueba cada nombre de izquierda a derecha y usa la primera que tenga instalada; sans-serif es la última opción de respaldo. */
-  --font-display: "Fira Sans", "Plus Jakarta Sans", "Segoe UI Variable", sans-serif;
+  --font-display: "Space Grotesk", "DM Sans", "Segoe UI Variable", sans-serif;
   /* Letra para el texto normal, con la misma regla de respaldo de izquierda a derecha. */
-  --font-sans: "Fira Sans", "Plus Jakarta Sans", "Segoe UI Variable", system-ui, sans-serif;
+  --font-sans: "DM Sans", "Space Grotesk", "Segoe UI Variable", system-ui, sans-serif;
   /* Letra de ancho fijo (como una máquina de escribir moderna) para números y datos técnicos. */
-  --font-mono: "Fira Code", "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Mono", Consolas, monospace;
 
   /* NOTA: el nombre 'night' (noche) no coincide con el modo claro: estos colores son claros. Van del más claro (950) al más oscuro (700). */
   /* Superficies base */
-  --color-night-950: #f8fafc;
-  --color-night-900: #eef2f7;
+  --color-night-950: #e8f3fe;
+  --color-night-900: #dbeafe;
   --color-night-800: #ffffff;
-  --color-night-700: #e2e8f0;
+  --color-night-700: #bae6fd;
 
   /* Colores de marca: ember = ámbar/naranja (#d97706), copper = azul brillante (#2563eb), chrome = azul marino oscuro (#1e3a8a). */
   /* Azul de investigación, tinta navy y ámbar para acciones importantes */
-  --color-brand-ember: #d97706;
-  --color-brand-copper: #2563eb;
-  --color-brand-chrome: #1e3a8a;
+  --color-brand-ember: #f97316;
+  --color-brand-copper: #0d9488;
+  --color-brand-chrome: #082f49;
 
   /* Color cian/azul de enlaces y acentos (nombre heredado). Ahora es el verde lima #a3e635. */
-  --color-accent-cyan: #a3e635;
+  --color-accent-cyan: #0284c7;
   /* Acento violeta (nombre heredado). NOTA: su valor #3b82f6 es azul medio, no violeta. */
-  --color-accent-violet: #3b82f6;
+  --color-accent-violet: #0d9488;
   /* Color principal de la app: botones principales, enlaces y elementos activos (verde lima #a3e635). */
-  --color-primary: #a3e635;
+  --color-primary: #0284c7;
   /* Color principal cuando el mouse pasa encima: un lima un poco más oscuro (#84cc16). */
-  --color-primary-hover: #84cc16;
+  --color-primary-hover: #0369a1;
   /* Color secundario: un azul más claro (#3b82f6) para acciones de apoyo. */
-  --color-secondary: #3b82f6;
+  --color-secondary: #0d9488;
   /* Color de acción importante: verde lima (#a3e635). Se usa en las acciones clave que queremos que la persona note. */
-  --color-accent: #a3e635;
+  --color-accent: #f97316;
   /* Color del texto que va SOBRE el lima: casi negro (#111827) para que se lea bien. */
-  --color-on-accent: #111827;
+  --color-on-accent: #082f49;
   /* Color de fondo de toda la página: gris claro (#f3f4f6). */
-  --color-background: #f3f4f6;
+  --color-background: #e8f3fe;
   /* Color del texto principal: casi negro (#111827). */
-  --color-foreground: #111827;
+  --color-foreground: #082f49;
   /* Color de las tarjetas: blanco puro. */
   --color-card: #ffffff;
   /* Fondo apagado para zonas secundarias: gris azulado muy suave. */
-  --color-muted: #e9eef6;
+  --color-muted: #dff0fc;
   /* Texto secundario, gris medio: para descripciones y textos de ayuda. */
-  --color-muted-foreground: #475569;
+  --color-muted-foreground: #334155;
   /* Color de los bordes: azul muy pálido, casi invisible. */
-  --color-border: #dbeafe;
+  --color-border: #bae6fd;
   /* Color del anillo de foco: el marco lima que aparece al navegar con teclado. */
-  --color-ring: #a3e635;
+  --color-ring: #0284c7;
 
   /* Colores por tipo de elemento. NOTA: el comentario original dice 5 colores, pero hay 6 (el último es 'incertidumbre'). */
   /* Los 5 colores semánticos del dominio */
@@ -229,40 +229,40 @@
   /* Le dice al navegador que use controles claros (barras de desplazamiento, campos de texto) en este modo. */
   color-scheme: light;
   /* NOTA: estos colores se repiten en @theme a propósito: @theme los registra para las clases de Tailwind, y :root los deja disponibles como var(--nombre) en CSS normal. Si cambias uno, cambia también el otro. */
-  --color-primary: #a3e635;
-  --color-primary-hover: #84cc16;
-  --color-on-primary: #111827;
-  --color-secondary: #3b82f6;
-  --color-accent: #a3e635;
-  --color-background: #f3f4f6;
-  --color-foreground: #111827;
+  --color-primary: #0284c7;
+  --color-primary-hover: #0369a1;
+  --color-on-primary: #ffffff;
+  --color-secondary: #0d9488;
+  --color-accent: #f97316;
+  --color-background: #e8f3fe;
+  --color-foreground: #082f49;
   --color-card: #ffffff;
-  --color-card-foreground: #111827;
-  --color-muted: #e9eef6;
-  --color-muted-foreground: #475569;
-  --color-border: #dbeafe;
-  --color-ring: #a3e635;
+  --color-card-foreground: #082f49;
+  --color-muted: #dff0fc;
+  --color-muted-foreground: #334155;
+  --color-border: #bae6fd;
+  --color-ring: #0284c7;
 
   /* Color del lienzo (fondo de la página). Toma el mismo valor que el fondo general. */
   --surface-canvas: var(--color-background);
   /* Color de las tarjetas (blanco). */
-  --surface-card: var(--color-card);
+  --surface-card: rgb(255 255 255 / 0.84);
   /* Tarjeta apagada: gris muy claro (#f1f5f9). */
-  --surface-card-muted: #f1f5f9;
+  --surface-card-muted: rgb(240 249 255 / 0.84);
   /* Superficie elevada semitransparente (56% blanco): base de los paneles de cristal. */
-  --surface-elevated: rgb(255 255 255 / 0.56);
+  --surface-elevated: rgb(255 255 255 / 0.82);
   /* Versión más opaca (94% blanco) para que el texto se lea mejor. */
   --surface-elevated-strong: rgb(255 255 255 / 0.94);
   /* Inicio del degradado de relieve: blanco casi opaco. */
-  --surface-raised-start: rgb(255 255 255 / 0.96);
+  --surface-raised-start: rgb(255 255 255 / 0.94);
   /* Final del degradado de relieve: gris claro. */
-  --surface-raised-end: rgb(241 245 249 / 0.88);
+  --surface-raised-end: rgb(224 242 254 / 0.86);
   /* Superficie hundida: da el efecto de algo presionado dentro de un hueco. */
-  --surface-inset: rgb(241 245 249 / 0.82);
+  --surface-inset: rgb(224 242 254 / 0.72);
   /* Borde suave gris azulado. */
-  --border-subtle: rgb(203 213 225 / 0.82);
+  --border-subtle: rgb(125 211 252 / 0.65);
   /* Borde fuerte azul (58% de opacidad). */
-  --border-strong: rgb(37 99 235 / 0.58);
+  --border-strong: rgb(2 132 199 / 0.62);
   /* Brillo blanco en el borde: simula la luz que pasa por la orilla del cristal. */
   --border-highlight: rgb(255 255 255 / 0.95);
   /* Reflejo blanco general del cristal. */
@@ -350,7 +350,7 @@
   --color-rose-100: #fff1f2;
   --color-rose-200: #be123c;
   --color-rose-300: #e11d48;
-  --color-violet-200: #1e40af;
+  --color-violet-200: #0d9488;
 }
 
 /* Bloque del modo OSCURO: se aplica cuando la etiqueta <html> tiene data-theme='dark' (lo pone ThemeToggle.tsx). Reemplaza las variables del modo claro por tonos oscuros. */
@@ -358,44 +358,44 @@
   /* Hace que los controles del navegador (barras de desplazamiento, campos) también se vean oscuros. */
   color-scheme: dark;
   /* En modo oscuro los nombres 'night' sí son oscuros: del más oscuro (950, #0b1220) al más claro (700). */
-  --color-night-950: #111827;
-  --color-night-900: #1f2937;
-  --color-night-800: #1f2937;
-  --color-night-700: #374151;
+  --color-night-950: #061320;
+  --color-night-900: #0a1c2e;
+  --color-night-800: #0f2740;
+  --color-night-700: #1a3a5c;
 
   /* Color principal en modo oscuro: verde lima (#a3e635), para que se vea bien sobre el fondo oscuro. */
-  --color-primary: #a3e635;
-  --color-primary-hover: #bef264;
-  --color-on-primary: #111827;
-  --color-secondary: #60a5fa;
+  --color-primary: #38bdf8;
+  --color-primary-hover: #7dd3fc;
+  --color-on-primary: #061320;
+  --color-secondary: #2dd4bf;
   /* Acento en modo oscuro: verde lima (#a3e635). */
-  --color-accent: #a3e635;
-  --color-on-accent: #111827;
+  --color-accent: #fb923c;
+  --color-on-accent: #061320;
   /* Fondo de la página en modo oscuro: gris casi negro (#111827). */
-  --color-background: #111827;
+  --color-background: #061320;
   /* Texto principal en modo oscuro: gris muy claro (#f3f4f6). */
-  --color-foreground: #f3f4f6;
+  --color-foreground: #f0f9ff;
   /* Color de las tarjetas en modo oscuro: gris oscuro (#1f2937), un paso más claro que el fondo. */
-  --color-card: #1f2937;
-  --color-card-foreground: #f3f4f6;
-  --color-muted: #172338;
+  --color-card: #0b2036;
+  --color-card-foreground: #f0f9ff;
+  --color-muted: #102a45;
   /* Texto secundario en modo oscuro: gris claro azulado. */
-  --color-muted-foreground: #a7b4c6;
+  --color-muted-foreground: #94a3b8;
   /* Color de los bordes en modo oscuro: gris azulado oscuro. */
-  --color-border: #334155;
-  --color-ring: #a3e635;
+  --color-border: #1e3f63;
+  --color-ring: #38bdf8;
 
   /* Superficies del modo oscuro: mismos nombres que en el claro, pero con tonos oscuros y transparencias. El cristal oscuro usa blanco muy suave para simular reflejos. */
   --surface-canvas: var(--color-background);
-  --surface-card: var(--color-card);
-  --surface-card-muted: #1f2937;
-  --surface-elevated: rgb(23 35 56 / 0.80);
-  --surface-elevated-strong: rgb(17 28 46 / 0.94);
-  --surface-raised-start: rgb(42 58 82 / 0.90);
-  --surface-raised-end: rgb(17 28 46 / 0.96);
-  --surface-inset: rgb(11 18 32 / 0.80);
-  --border-subtle: rgb(148 163 184 / 0.22);
-  --border-strong: rgb(96 165 250 / 0.62);
+  --surface-card: rgb(11 32 54 / 0.82);
+  --surface-card-muted: rgb(16 42 69 / 0.82);
+  --surface-elevated: rgb(11 32 54 / 0.82);
+  --surface-elevated-strong: rgb(11 32 54 / 0.94);
+  --surface-raised-start: rgb(18 46 74 / 0.9);
+  --surface-raised-end: rgb(11 32 54 / 0.94);
+  --surface-inset: rgb(6 19 32 / 0.78);
+  --border-subtle: rgb(56 189 248 / 0.25);
+  --border-strong: rgb(56 189 248 / 0.65);
   --border-highlight: rgb(255 255 255 / 0.18);
   --glass-reflection: rgb(255 255 255 / 0.18);
   --glass-sheen-mid: rgb(147 197 253 / 0.08);
@@ -412,11 +412,11 @@
   --wave-drop: rgb(255 255 255 / 0.92);
 
   /* Colores de marca y de tipos de elemento, ajustados para verse bien en fondo oscuro. */
-  --color-brand-ember: #fbbf24;
-  --color-brand-copper: #60a5fa;
+  --color-brand-ember: #fb923c;
+  --color-brand-copper: #2dd4bf;
   --color-brand-chrome: #f8fafc;
-  --color-accent-cyan: #a3e635;
-  --color-accent-violet: #60a5fa;
+  --color-accent-cyan: #38bdf8;
+  --color-accent-violet: #2dd4bf;
 
   /* Colores por tipo de elemento en modo oscuro: dato, hallazgo, evidencia, análisis, hipótesis e incertidumbre. */
   --color-kind-data: #7dd3fc;
@@ -476,7 +476,7 @@
   --color-rose-100: #ffe4e6;
   --color-rose-200: #fecdd3;
   --color-rose-300: #fda4af;
-  --color-violet-200: #e9d5ff;
+  --color-violet-200: #5eead4;
 }
 
 /* @layer base: reglas base que se aplican a toda la página (documento, texto, títulos, foco del teclado y opciones de menú). Son la base sobre la que se construyen los demás estilos. */
@@ -1233,4 +1233,115 @@
 .geo-map .leaflet-control-attribution {
   background: var(--surface-elevated-strong);
   color: var(--color-slate-400);
+}
+
+/* ─────────── Paleta Océano Cobalto + Turquesa + Mandarina Solar ─────────── */
+.brand-logo-mark {
+  background: linear-gradient(135deg, #082f49 0%, #0284c7 65%, #14b8a6 100%);
+  border: 1px solid rgb(255 255 255 / 0.28);
+  box-shadow: 0 10px 22px -8px rgb(2 132 199 / 0.55);
+}
+
+.dashboard-hero {
+  isolation: isolate;
+  color: #f0f9ff !important;
+  background:
+    radial-gradient(circle at 86% 18%, rgb(249 115 22 / 0.34), transparent 36%),
+    radial-gradient(circle at 14% 88%, rgb(20 184 166 / 0.32), transparent 42%),
+    linear-gradient(125deg, #082f49 0%, #0369a1 54%, #0f766e 100%) !important;
+  border: 1px solid rgb(125 211 252 / 0.28);
+  box-shadow: 0 22px 48px -24px rgb(2 132 199 / 0.55) !important;
+}
+
+.dashboard-hero__orb--one {
+  background: #f97316 !important;
+  opacity: 0.28 !important;
+}
+
+.dashboard-hero__orb--two {
+  background: #14b8a6 !important;
+  opacity: 0.28 !important;
+}
+
+.dashboard-eyebrow {
+  color: #fde047 !important;
+}
+
+.dashboard-hero__highlight {
+  color: #fdba74 !important;
+}
+
+.dashboard-hero__primary {
+  color: #082f49 !important;
+  border-color: rgb(255 255 255 / 0.65) !important;
+  background: linear-gradient(140deg, #fde047, #f97316) !important;
+  box-shadow: 0 12px 24px -10px rgb(249 115 22 / 0.65) !important;
+}
+
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes float-delayed {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(1.5deg); }
+}
+
+@keyframes smooth-page-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.992);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes spin-reverse-slow {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+.animate-float-slow {
+  animation: float-slow 5.2s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+  animation: float-delayed 6.4s ease-in-out 1s infinite;
+}
+
+.animate-spin-very-slow {
+  animation: spin-slow 42s linear infinite;
+}
+
+.animate-spin-reverse-slow {
+  animation: spin-reverse-slow 48s linear infinite;
+}
+
+.animate-liquid-screen {
+  animation: smooth-page-enter 0.46s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Tarjetas translúcidas para dejar lucir el fondo escénico sin perder lectura */
+.surface-panel,
+.stage-3d {
+  backdrop-filter: blur(12px) saturate(135%);
+  -webkit-backdrop-filter: blur(12px) saturate(135%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-slow,
+  .animate-float-delayed,
+  .animate-spin-very-slow,
+  .animate-spin-reverse-slow,
+  .animate-liquid-screen {
+    animation: none !important;
+  }
 }

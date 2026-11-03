@@ -2,150 +2,233 @@
  * ARCHIVO: Backdrop.tsx
  *
  * ¿Qué es?
- * Es el "fondo animado" de toda la aplicación: unas bolas de luz de colores que se mueven
- * detrás de todo, como manchas de luz en una pared cuando el sol entra por una ventana.
- * Se dibuja "por debajo" de los botones y las tarjetas para que no estorbe a la lectura.
- *
- * ¿Para qué sirve?
- * - Da una sensación de ambiente y profundidad a la aplicación.
- * - Cada vez que cambias de pantalla (de la página de inicio a un proyecto, por ejemplo),
- *   avisa a la escena 3D cuál es la nueva pantalla, para que cambie su aspecto.
- *
- * ¿Quién lo usa?
- * AppShell.tsx lo coloca en el diseño principal. Es un componente "de fondo": no tiene botones ni texto.
+ * Escena de fondo de alto impacto visual a pantalla completa:
+ * - Aurora y haces de luz intensos en movimiento continuo.
+ * - Cuadrícula de perspectiva luminosa.
+ * - Rosa de los vientos / astrolabio con anillos giratorios continuos.
+ * - Ondas y cordilleras vectoriales en capas con bordes brillantes (cian, turquesa y mandarina solar).
+ * - Nodos y destellos flotantes con brillo (glow).
  */
 
-/* Traemos "useEffect": una herramienta de React para hacer algo DESPUÉS de dibujar la pantalla. */
 import { useEffect } from "react";
-/* Traemos "useLocation" de react-router: nos dice en qué dirección (URL) está la persona, por ejemplo "/proyectos". */
 import { useLocation } from "react-router";
 
-/* Traemos del archivo forgeSceneStore: el tipo ForgeMode (lista de pantallas) y la "libreta" forgeSceneStore donde escribimos. */
 import { type ForgeMode, forgeSceneStore } from "../../lib/forgeSceneStore";
-/* Traemos la función que enciende el efecto de ondas líquidas. */
 import { initLiquidGlass } from "../../lib/liquidGlass";
 
-/**
- * routeMode traduce una dirección (por ejemplo "/proyectos/123/hallazgos") en una pantalla
- * de la escena 3D y en un número de paso.
- *
- * Recibe: pathname, que es el texto de la dirección actual (la parte después del dominio).
- * Devuelve: un objeto con dos datos:
- * - mode: el nombre de la pantalla (auth, dashboard, portfolio, composer o workspace).
- * - stageIndex: el número de paso (0 es el primero).
- *
- * Ejemplos sencillos:
- * - "/iniciar-sesion" → { mode: "auth", stageIndex: 0 }
- * - "/proyectos/nuevo" → { mode: "composer", stageIndex: 1 }
- * - "/" → { mode: "dashboard", stageIndex: 0 }
- */
-/** Gestiona route mode de interfaz compartida. */
 function routeMode(pathname: string): { mode: ForgeMode; stageIndex: number } {
-  // Si la dirección es la de entrar o la de registrarse, es la pantalla "auth".
   if (pathname === "/iniciar-sesion" || pathname === "/registro") return { mode: "auth", stageIndex: 0 };
-  // Si la dirección es "/proyectos/nuevo" (crear un proyecto), es la pantalla "composer" en el paso 1.
   if (pathname === "/proyectos/nuevo") return { mode: "composer", stageIndex: 1 };
-  // Si la dirección empieza con "/proyectos/", significa que estamos DENTRO de un proyecto concreto.
   if (pathname.startsWith("/proyectos/")) {
-    // Lista de finales de dirección que representan cada paso dentro del proyecto.
-    // El primer elemento es "" (vacío) porque la vista principal del proyecto no tiene final extra.
     const stages = ["", "/investigacion", "/hallazgos", "/competidores", "/analisis", "/asistente", "/fuentes"];
-    // "findIndex" busca en la lista el PRIMER final que coincida con la dirección actual.
-    // "suffix && pathname.endsWith(suffix)": ignora el "" vacío y revisa si la dirección termina con ese final.
     const found = stages.findIndex((suffix) => suffix && pathname.endsWith(suffix));
-    // Devolvemos el modo "workspace" (trabajo dentro de un proyecto).
-    // Si no encontramos ningún final (found es -1), usamos el paso 0. Si lo encontramos, usamos ese número.
     return { mode: "workspace", stageIndex: found === -1 ? 0 : found };
   }
-  // Si la dirección empieza con "/proyectos" (la lista de todos los proyectos), usamos "portfolio" en el paso 1.
   if (pathname.startsWith("/proyectos")) return { mode: "portfolio", stageIndex: 1 };
-  // Cualquier otra dirección (por ejemplo, la página de inicio "/") es la pantalla "dashboard" en el paso 0.
   return { mode: "dashboard", stageIndex: 0 };
 }
 
-/**
- * Backdrop dibuja las bolas de luz de fondo y avisa a la escena cuál es la pantalla actual.
- *
- * Cómo se usa: <Backdrop />  (no recibe datos)
- *
- * Qué hace:
- * 1. Enciende el efecto de ondas líquidas una vez.
- * 2. Cada vez que cambia la dirección de la página, traduce la dirección y la escribe en la libreta de la escena.
- * 3. Dibuja las bolas de luz, una capa de "onda" y una rejilla sutil.
- *
- * Nota de estilo: la clase "pointer-events-none" hace que el fondo NO reciba clics (son transparentes al mouse).
- * "fixed inset-0" lo pega a toda la pantalla, sin importar cuánto se desplace la página.
- * "z-0" lo deja en la capa de atrás.
- */
-/** Expone la funcion backdrop para el flujo de shared frontend. */
 export function Backdrop() {
-  // "useLocation" nos da el objeto con la dirección actual. Sacamos de él solo "pathname" (el texto de la dirección).
   const { pathname } = useLocation();
 
-  // Este efecto se ejecuta una sola vez al empezar (la lista vacía [] significa "solo al inicio").
   useEffect(() => {
-    // Encendemos el efecto de ondas líquidas en la página.
     initLiquidGlass();
   }, []);
 
-  // Este efecto se ejecuta cada vez que cambia la dirección ("pathname").
   useEffect(() => {
-    // Traducimos la dirección a una pantalla y un paso.
     const { mode, stageIndex } = routeMode(pathname);
-    // Escribimos esa información en la libreta de la escena 3D. La escena reacciona al nuevo modo.
     forgeSceneStore.set({ mode, stageIndex });
   }, [pathname]);
 
-  // Lo que se dibuja en pantalla: un contenedor transparente que cubre toda la ventana.
   return (
-    // "aria-hidden" esconde todo este fondo de los lectores de pantalla (no aporta información escrita).
-    // "pointer-events-none": el mouse atraviesa este fondo como si no existiera.
-    // "fixed inset-0": ocupa toda la ventana. "z-0": queda al fondo. "overflow-hidden": recorta lo que se salga.
     <div aria-hidden="true" className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-      {/* Gotas y cáusticas de luz de fondo para refracción de cristal líquido */}
-      {/* Primera bola de luz: arriba a la izquierda, grande y borrosa (blur-3xl). Su color viene de la variable --orb-primary. */}
+      {/* 1. Halos de aurora intensos y visibles */}
       <div
-        className="liquid-orb absolute -top-36 -left-20 size-[38rem] rounded-full blur-3xl"
-        style={{ background: "radial-gradient(circle, var(--orb-primary), transparent 66%)" }}
+        className="liquid-orb absolute -top-28 -left-20 size-[46rem] rounded-full blur-3xl"
+        style={{ background: "radial-gradient(circle, rgba(14, 165, 233, 0.52), transparent 68%)" }}
       />
-      {/* Segunda bola de luz: arriba a la derecha. Usa el color --orb-secondary. */}
       <div
-        className="liquid-orb liquid-orb--secondary absolute top-6 -right-24 size-[36rem] rounded-full blur-3xl"
-        style={{ background: "radial-gradient(circle, var(--orb-secondary), transparent 68%)" }}
+        className="liquid-orb liquid-orb--secondary absolute top-6 -right-20 size-[44rem] rounded-full blur-3xl"
+        style={{ background: "radial-gradient(circle, rgba(20, 184, 166, 0.48), transparent 68%)" }}
       />
-      {/* Tercera bola de luz: abajo, un poco a la izquierda. Usa el color --orb-tertiary. */}
       <div
-        className="liquid-orb liquid-orb--tertiary absolute -bottom-40 left-1/5 size-[36rem] rounded-full blur-3xl"
-        style={{ background: "radial-gradient(circle, var(--orb-tertiary), transparent 70%)" }}
+        className="liquid-orb liquid-orb--tertiary absolute -bottom-24 left-1/4 size-[46rem] rounded-full blur-3xl"
+        style={{ background: "radial-gradient(circle, rgba(249, 115, 22, 0.44), transparent 68%)" }}
       />
-      {/* Cuarta bola: en el centro de la pantalla, más pequeña, para simular un "brillo" de refracción (--glass-caustic-orb). */}
-      <div
-        className="liquid-orb liquid-orb--caustic absolute top-1/3 left-1/2 size-[28rem] -translate-x-1/2 rounded-full blur-3xl"
-        style={{ background: "radial-gradient(circle, var(--glass-caustic-orb), transparent 68%)" }}
-      />
-      {/* Onda ambiental suave al cambiar entre pantallas */}
-      {/* "key={pathname}" es un truco de React: cada vez que cambia la dirección, React crea de nuevo esta capa,
-          y la animación "liquid-route-wave" vuelve a empezar desde cero. Así se ve una onda al cambiar de pantalla. */}
+
+      {/* 2. Escena ilustrada a pantalla completa con alto contraste y movimiento */}
+      <svg
+        className="absolute inset-0 h-full w-full"
+        viewBox="0 0 1440 900"
+        fill="none"
+        preserveAspectRatio="xMidYMid slice"
+      >
+        <defs>
+          <linearGradient id="vivid-wave-1" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#0284c7" stopOpacity="0.45" />
+            <stop offset="50%" stopColor="#14b8a6" stopOpacity="0.5" />
+            <stop offset="100%" stopColor="#f97316" stopOpacity="0.42" />
+          </linearGradient>
+          <linearGradient id="vivid-wave-2" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#f97316" stopOpacity="0.48" />
+            <stop offset="55%" stopColor="#0ea5e9" stopOpacity="0.38" />
+            <stop offset="100%" stopColor="#14b8a6" stopOpacity="0.45" />
+          </linearGradient>
+          <linearGradient id="vivid-beam" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.32" />
+            <stop offset="50%" stopColor="#2dd4bf" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#fb923c" stopOpacity="0" />
+          </linearGradient>
+          <pattern id="vivid-grid" width="60" height="60" patternUnits="userSpaceOnUse">
+            <path
+              d="M 60 0 L 0 0 0 60"
+              fill="none"
+              stroke="#38bdf8"
+              strokeOpacity="0.22"
+              strokeWidth="1"
+            />
+            <circle cx="60" cy="60" r="2" fill="#2dd4bf" fillOpacity="0.42" />
+          </pattern>
+        </defs>
+
+        {/* Cuadrícula arquitectónica bien visible */}
+        <rect width="1440" height="900" fill="url(#vivid-grid)" />
+
+        {/* Haz de luz diagonal tipo proyector / aurora */}
+        <polygon points="-80,0 520,0 1180,900 340,900" fill="url(#vivid-beam)" />
+
+        {/* Grandes ondas/cordilleras inferiores con borde luminoso */}
+        <path
+          d="M-120 610 C 220 460, 560 770, 920 570 C 1180 430, 1340 640, 1560 530 L 1560 960 L -120 960 Z"
+          fill="url(#vivid-wave-1)"
+        />
+        <path
+          d="M-120 610 C 220 460, 560 770, 920 570 C 1180 430, 1340 640, 1560 530"
+          stroke="#38bdf8"
+          strokeOpacity="0.75"
+          strokeWidth="3"
+        />
+
+        <path
+          d="M-100 710 C 310 580, 670 860, 1050 670 C 1270 560, 1410 730, 1560 660 L 1560 960 L -100 960 Z"
+          fill="url(#vivid-wave-2)"
+        />
+        <path
+          d="M-100 710 C 310 580, 670 860, 1050 670 C 1270 560, 1410 730, 1560 660"
+          stroke="#fb923c"
+          strokeOpacity="0.82"
+          strokeWidth="3"
+        />
+
+        {/* Curvas de energía superiores */}
+        <path
+          d="M-120 170 C 240 20, 520 320, 880 140 C 1160 10, 1340 220, 1560 95"
+          stroke="#38bdf8"
+          strokeOpacity="0.65"
+          strokeWidth="2.8"
+        />
+        <path
+          d="M-120 225 C 260 75, 540 375, 900 195 C 1180 65, 1360 275, 1560 150"
+          stroke="#2dd4bf"
+          strokeOpacity="0.6"
+          strokeWidth="2.2"
+          strokeDasharray="12 8"
+        />
+
+        {/* Astrolabio / Brújula gigante arriba a la derecha con giro continuo */}
+        <g transform="translate(1210, 220)">
+          <circle cx="0" cy="0" r="195" fill="#0ea5e9" fillOpacity="0.16" />
+          <g className="animate-spin-very-slow">
+            <circle
+              cx="0"
+              cy="0"
+              r="185"
+              stroke="#38bdf8"
+              strokeOpacity="0.72"
+              strokeWidth="2.5"
+              strokeDasharray="14 10"
+            />
+            <circle cx="0" cy="-185" r="7" fill="#fde047" />
+            <circle cx="185" cy="0" r="6" fill="#fb923c" />
+            <circle cx="0" cy="185" r="7" fill="#2dd4bf" />
+            <circle cx="-185" cy="0" r="6" fill="#38bdf8" />
+          </g>
+          <circle cx="0" cy="0" r="132" stroke="#2dd4bf" strokeOpacity="0.7" strokeWidth="2.2" />
+          <circle
+            cx="0"
+            cy="0"
+            r="78"
+            fill="#f97316"
+            fillOpacity="0.22"
+            stroke="#fb923c"
+            strokeOpacity="0.85"
+            strokeWidth="2.5"
+          />
+          <line x1="-220" y1="0" x2="220" y2="0" stroke="#38bdf8" strokeOpacity="0.55" strokeWidth="1.8" />
+          <line x1="0" y1="-220" x2="0" y2="220" stroke="#38bdf8" strokeOpacity="0.55" strokeWidth="1.8" />
+          <g className="animate-float-slow">
+            <polygon points="0,-122 22,0 0,-22 -22,0" fill="#f97316" />
+            <polygon points="0,122 22,0 0,22 -22,0" fill="#2dd4bf" />
+            <circle cx="0" cy="0" r="11" fill="#fde047" />
+          </g>
+        </g>
+
+        {/* Planetario / Red de nodos de mercado abajo a la izquierda */}
+        <g transform="translate(200, 660)">
+          <circle cx="0" cy="0" r="170" fill="#14b8a6" fillOpacity="0.18" />
+          <g className="animate-spin-reverse-slow">
+            <circle
+              cx="0"
+              cy="0"
+              r="160"
+              stroke="#2dd4bf"
+              strokeOpacity="0.75"
+              strokeWidth="2.5"
+              strokeDasharray="18 10"
+            />
+            <circle cx="113" cy="-113" r="9" fill="#fb923c" />
+            <circle cx="-113" cy="113" r="9" fill="#fde047" />
+          </g>
+          <circle cx="0" cy="0" r="104" stroke="#38bdf8" strokeOpacity="0.68" strokeWidth="2.2" />
+          {/* Triángulo de conexión de evidencia */}
+          <polygon
+            points="0,-95 86,52 -86,52"
+            fill="#0284c7"
+            fillOpacity="0.18"
+            stroke="#fde047"
+            strokeOpacity="0.75"
+            strokeWidth="2"
+          />
+          <circle cx="0" cy="-95" r="8" fill="#fde047" />
+          <circle cx="86" cy="52" r="8" fill="#fb923c" />
+          <circle cx="-86" cy="52" r="8" fill="#2dd4bf" />
+        </g>
+
+        {/* Cristales / prismas flotantes con brillo en los costados */}
+        <g className="animate-float-slow" transform="translate(150, 185)">
+          <polygon
+            points="0,-52 46,-26 46,26 0,52 -46,26 -46,-26"
+            fill="#f97316"
+            fillOpacity="0.26"
+            stroke="#fb923c"
+            strokeWidth="2.5"
+          />
+          <circle cx="0" cy="0" r="7" fill="#fde047" />
+        </g>
+
+        <g className="animate-float-delayed" transform="translate(720, 130)">
+          <path
+            d="M0 -24 L7 -7 L24 0 L7 7 L0 24 L-7 7 L-24 0 L-7 -7 Z"
+            fill="#fde047"
+            fillOpacity="0.85"
+          />
+        </g>
+      </svg>
+
+      {/* 3. Onda luminosa al cambiar entre pantallas */}
       <div
         key={pathname}
-        className="liquid-route-wave absolute inset-x-0 -top-24 mx-auto h-80 w-[min(64rem,92vw)] rounded-full"
-      />
-      {/* Retícula sutil */}
-      {/* Una rejilla de puntos y líneas muy tenues, como papel cuadriculado de fondo. */}
-      <div
-        className="absolute inset-0"
-        style={{
-          // Tres capas de fondo: un patrón de puntos (radial-gradient) y dos rejillas de líneas (linear-gradient) en horizontal y vertical.
-          // El color de las líneas viene de la variable --grid-line.
-          backgroundImage:
-            "radial-gradient(circle, var(--grid-line) 1px, transparent 1px)," +
-            "linear-gradient(var(--grid-line) 1px, transparent 1px)," +
-            "linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)",
-          // Cada cuadro de la rejilla mide 96 píxeles por 96 píxeles.
-          backgroundSize: "96px 96px, 96px 96px, 96px 96px",
-          // La "máscara" hace que la rejilla se vea fuerte en el centro-superior y se desvanezca hacia los bordes.
-          maskImage: "radial-gradient(ellipse at 55% 32%, black 18%, transparent 74%)",
-        }}
+        className="liquid-route-wave absolute inset-x-0 -top-24 mx-auto h-72 w-[min(64rem,92vw)] rounded-full"
       />
     </div>
   );

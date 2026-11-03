@@ -2,81 +2,51 @@
  * ARCHIVO: ForgeGlyphs.tsx
  *
  * ¿Qué es?
- * Es una colección de dibujos propios de IdeaForge, hechos con SVG. Un SVG es un dibujo escrito
- * con coordenadas (puntos, líneas, círculos), no una foto; por eso se ve nítido a cualquier tamaño.
- * "Glyph" significa "símbolo" o "dibujito".
- *
- * ¿Para qué sirve?
- * Cada dibujo representa una idea de la marca:
- * - CrucibleGlyph: el logo (el crisol de la forja, con un núcleo en el centro).
- * - StageSealGlyph: un sello que cambia de forma según la etapa del proyecto.
- *   Va de piedra sin pulir (borrador) a cristal tallado (analizado).
- * - FacetTriadGlyph: tres caras de un cristal que se encienden según cuántos datos obligatorios
- *   ya están confirmados (problema, solución, segmento).
- * - FilamentBridgeGlyph: una línea con tres puntos que representa el hilo de trazabilidad
- *   (dato → evidencia → fuente).
- *
- * ¿Quién lo usa?
- * Logo.tsx, AuthLayout.tsx, las tarjetas de proyectos y la pantalla de estructura de la idea.
- *
- * ¿Cómo se cambia un color o una forma?
- * - Color: cada dibujo usa "currentColor", que significa "el mismo color que el texto a su alrededor".
- *   Para cambiarlo, cambia la clase de color en el lugar donde se usa el dibujo (por ejemplo "text-accent-cyan").
- * - Forma: cambia los valores de "points" (polígonos), "d" (trazos) o "cx, cy, r" (círculos).
+ * Colección de símbolos e ilustraciones vectoriales SVG de IdeaForge AI en paleta cálida editorial
+ * (terracota, verde salvia, arena y carbón, cero morados).
  */
 
-/* Traemos el tipo "SVGProps": la lista de propiedades que acepta una etiqueta <svg> normal (className, onClick...). */
 import type { SVGProps } from "react";
-
-/* Traemos el tipo ProjectStatus: la lista de etapas de un proyecto (draft, structured, researching, analyzed). */
 import type { ProjectStatus } from "../../features/projects/types";
 
-/**
- * GlyphProps es el tipo de propiedades que aceptan los dibujos: cualquiera de una etiqueta <svg>.
- * Así, desde afuera se les puede pasar className, width, etc.
- */
-/** Contrato de datos GlyphProps utilizado por interfaz compartida. */
 type GlyphProps = SVGProps<SVGSVGElement>;
 
 /**
- * CrucibleGlyph es el emblema de IdeaForge: un hexágono (figura de seis lados) con líneas
- * que se cruzan en el centro y un punto brillante en el medio, como el núcleo de la forja.
- *
- * Cómo se usa: <CrucibleGlyph className="size-5 text-accent-cyan" />
+ * CrucibleGlyph: Nuevo emblema de brújula de exploración y validación de ideas.
  */
-/** Emblema del Crisol de IdeaForge: núcleo octaédrico dentro de un anillo de forja. */
 export function CrucibleGlyph(props: GlyphProps) {
   return (
-    // "viewBox" define el área de dibujo en unidades de 24 x 24. "fill none" = no rellenar las figuras, solo dibujar sus bordes.
-    // "aria-hidden" esconde el dibujo de los lectores de pantalla porque es decorativo.
-    // "{...props}" permite cambiar tamaño y color desde afuera.
-    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true" {...props}>
-      {/* El contorno del hexágono. "strokeLinejoin round" redondea las esquinas. */}
-      <path
-        d="M12 2.5 19.5 8v8L12 21.5 4.5 16V8L12 2.5Z"
+    <svg viewBox="0 0 28 28" fill="none" aria-hidden="true" {...props}>
+      {/* Anillo de brújula */}
+      <circle
+        cx="14"
+        cy="14"
+        r="10.5"
         stroke="currentColor"
         strokeWidth="1.6"
-        strokeLinejoin="round"
+        strokeOpacity="0.32"
       />
-      {/* Las líneas internas: una vertical y dos diagonales que se cruzan en el centro. Son más finas y un poco transparentes. */}
+      {/* Marcas cardinales */}
       <path
-        d="M12 2.5v19M4.5 8l15 8M19.5 8l-15 8"
+        d="M14 2v2.2M14 23.8V26M2 14h2.2M23.8 14H26"
         stroke="currentColor"
-        strokeWidth="1.2"
-        strokeOpacity="0.55"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeOpacity="0.5"
       />
-      {/* El núcleo: un círculo relleno en el centro del dibujo. */}
-      <circle cx="12" cy="12" r="2.4" fill="currentColor" />
+      {/* Aguja norte (terracota / acción) */}
+      <polygon points="14,5.2 17.6,14 14,12.3 10.4,14" fill="#f97316" />
+      {/* Aguja sur (salvia / evidencia) */}
+      <polygon points="14,22.8 17.6,14 14,15.7 10.4,14" fill="#10b981" />
+      {/* Eje central */}
+      <circle cx="14" cy="14" r="1.9" fill="#fbbf24" />
     </svg>
   );
 }
 
 /**
- * StageSealGlyph dibuja un sello distinto para cada etapa del proyecto.
- * Recibe "status" (la etapa) y "className" (el tamaño y color desde afuera).
- * Cada "if" revisa una etapa y devuelve su dibujo; la última línea es el dibujo final, para "analyzed".
+ * StageSealGlyph: Sello visual por etapa del proyecto.
  */
-/** Sello material por estado del proyecto (piedra bruta → metal → incandescente → cristal tallado). */
 export function StageSealGlyph({
   status,
   className,
@@ -84,109 +54,104 @@ export function StageSealGlyph({
   status: ProjectStatus;
   className?: string;
 }) {
-  // Etapa 1, "draft" (borrador): una piedra irregular con borde punteado y relleno casi invisible. Es la materia sin trabajar.
   if (status === "draft") {
     return (
       <svg viewBox="0 0 28 28" fill="none" aria-hidden="true" className={className}>
-        {/* "strokeDasharray 3 2.5" hace que el borde sea de rayitas, como algo todavía sin terminar. */}
-        <polygon
-          points="14,3 24,9 22,21 8,24 4,12"
+        <rect
+          x="5"
+          y="4"
+          width="18"
+          height="20"
+          rx="4"
           stroke="currentColor"
-          strokeWidth="1.6"
-          strokeDasharray="3 2.5"
+          strokeWidth="1.7"
+          strokeDasharray="3 2"
           fill="currentColor"
           fillOpacity="0.08"
         />
-        {/* Un puntito en el centro, medio transparente. */}
-        <circle cx="14" cy="14" r="2.2" fill="currentColor" fillOpacity="0.5" />
+        <path d="M9.5 10h9M9.5 14h6" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+        <circle cx="18.5" cy="18.5" r="2.2" fill="currentColor" />
       </svg>
     );
   }
-  // Etapa 2, "structured" (estructurado): un hexágono sólido con tres líneas que lo dividen. Ya tiene forma.
   if (status === "structured") {
     return (
       <svg viewBox="0 0 28 28" fill="none" aria-hidden="true" className={className}>
-        <polygon
-          points="14,3 24,8.5 24,19.5 14,25 4,19.5 4,8.5"
+        <rect
+          x="4.5"
+          y="4.5"
+          width="19"
+          height="19"
+          rx="5"
           stroke="currentColor"
-          strokeWidth="1.7"
+          strokeWidth="1.8"
           fill="currentColor"
           fillOpacity="0.12"
         />
-        {/* Las tres líneas internas que muestran la estructura. */}
-        <path d="M14 3v22M4 8.5l20 11M24 8.5l-20 11" stroke="currentColor" strokeWidth="1.1" strokeOpacity="0.5" />
+        <path
+          d="m10 14.2 2.7 2.7 5.5-5.6"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
       </svg>
     );
   }
-  // Etapa 3, "researching" (investigando): un círculo punteado que gira en la imaginación, con un rombo incandescente dentro.
   if (status === "researching") {
     return (
       <svg viewBox="0 0 28 28" fill="none" aria-hidden="true" className={className}>
-        {/* El anillo punteado da idea de algo en proceso. */}
-        <circle cx="14" cy="14" r="10.5" stroke="currentColor" strokeWidth="1.4" strokeDasharray="4 2" />
-        {/* El rombo central, con un relleno más intenso: la materia ya se calienta. */}
-        <polygon
-          points="14,5.5 21.5,14 14,22.5 6.5,14"
+        <circle
+          cx="13"
+          cy="13"
+          r="7.5"
           stroke="currentColor"
-          strokeWidth="1.7"
+          strokeWidth="1.8"
           fill="currentColor"
-          fillOpacity="0.2"
+          fillOpacity="0.12"
         />
-        <circle cx="14" cy="14" r="2.6" fill="currentColor" />
+        <path d="m18.5 18.5 5 5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+        <circle cx="13" cy="13" r="2.5" fill="currentColor" />
       </svg>
     );
   }
-  // Etapa 4 (la última, "analyzed" y cualquier otro valor): un cristal tallado, con facetas. Es el resultado terminado.
   return (
     <svg viewBox="0 0 28 28" fill="none" aria-hidden="true" className={className}>
-      {/* El contorno exterior del cristal. */}
-      <polygon
-        points="14,2.5 23.5,8 23.5,20 14,25.5 4.5,20 4.5,8"
+      <circle
+        cx="14"
+        cy="14"
+        r="10.5"
         stroke="currentColor"
         strokeWidth="1.8"
         fill="currentColor"
-        fillOpacity="0.18"
+        fillOpacity="0.14"
       />
-      {/* La faceta interior: un rombo que simula la luz dentro del cristal. */}
-      <polygon points="14,7 19.5,14 14,21 8.5,14" stroke="currentColor" strokeWidth="1.3" />
-      <circle cx="14" cy="14" r="2.2" fill="currentColor" />
+      <path
+        d="M14 7.5 15.8 11.8 20.2 12.2 16.8 15.1 17.8 19.5 14 17.2 10.2 19.5 11.2 15.1 7.8 12.2 12.2 11.8 14 7.5Z"
+        fill="currentColor"
+      />
     </svg>
   );
 }
 
 /**
- * FacetTriadGlyph dibuja tres caras de un cristal. Cada cara que está "encendida" se pinta
- * con más color.
- *
- * Recibe "lit": cuántas caras están encendidas (0, 1, 2 o 3). Por ejemplo, lit = 2 enciende las dos primeras.
+ * FacetTriadGlyph: Indicador de los 3 pilares básicos (Problema, Solución, Clientes).
  */
-/** Indicador geométrico de las 3 facetas obligatorias (Problema, Solución, Segmento). */
 export function FacetTriadGlyph({ lit }: { lit: number }) {
-  // Las tres caras, cada una como un trazo (la forma de una porción del cristal).
-  const facets = [
-    "M14 3 23 9.5 14 14Z",
-    "M23 9.5 19.5 21 14 14Z",
-    "M14 14 19.5 21 8.5 21 5 9.5 14 3Z",
-  ];
+  const dots = [7, 14, 21];
   return (
-    <svg viewBox="0 0 28 24" className="size-6 shrink-0" aria-hidden="true">
-      {/* Dibujamos una cara por cada trazo de la lista. "map" repite el dibujo y "index" dice cuál es. */}
-      {facets.map((d, index) => {
-        // Una cara está encendida si su posición es menor que "lit". Con lit=2, las posiciones 0 y 1 se encienden.
+    <svg viewBox="0 0 28 14" className="h-3.5 w-7 shrink-0" aria-hidden="true">
+      {dots.map((cx, index) => {
         const active = index < lit;
         return (
-          <path
-            key={d}
-            d={d}
-            stroke="currentColor"
-            strokeWidth="1.4"
-            strokeLinejoin="round"
-            // El relleno usa el mismo color que el texto a su alrededor.
+          <circle
+            key={cx}
+            cx={cx}
+            cy={7}
+            r={active ? 4 : 3.2}
             fill="currentColor"
-            // Encendida: relleno bastante visible (0.38). Apagada: casi transparente (0.06).
-            fillOpacity={active ? 0.38 : 0.06}
-            // Encendida: color celeste de acento. Apagada: gris.
-            className={active ? "text-accent-cyan" : "text-slate-400"}
+            fillOpacity={active ? 1 : 0.25}
+            className={active ? "text-primary" : "text-slate-400"}
           />
         );
       })}
@@ -195,27 +160,153 @@ export function FacetTriadGlyph({ lit }: { lit: number }) {
 }
 
 /**
- * FilamentBridgeGlyph dibuja una línea ondulada con tres puntos: el inicio (un dato), el medio
- * (una evidencia) y el final (una fuente). Simboliza que todo está conectado y se puede rastrear.
+ * FilamentBridgeGlyph: Hilo conector de evidencia.
  */
-/** Hilo óptico de trazabilidad entre dos nodos (dato → evidencia → fuente). */
 export function FilamentBridgeGlyph(props: GlyphProps) {
   return (
     <svg viewBox="0 0 64 16" fill="none" aria-hidden="true" {...props}>
-      {/* La línea curva punteada que une los tres puntos. */}
       <path
         d="M4 8C18 1 46 15 60 8"
         stroke="currentColor"
-        strokeWidth="1.5"
+        strokeWidth="1.6"
         strokeLinecap="round"
         strokeDasharray="3 2"
       />
-      {/* Punto de inicio, el más marcado. */}
-      <circle cx="4" cy="8" r="2.5" fill="currentColor" />
-      {/* Punto del medio, un poco más transparente (es el paso intermedio). */}
-      <circle cx="32" cy="8" r="2" fill="currentColor" fillOpacity="0.65" />
-      {/* Punto final, igual de marcado que el inicio. */}
-      <circle cx="60" cy="8" r="2.5" fill="currentColor" />
+      <circle cx="4" cy="8" r="2.6" fill="currentColor" />
+      <circle cx="32" cy="8" r="2.2" fill="currentColor" fillOpacity="0.65" />
+      <circle cx="60" cy="8" r="2.6" fill="currentColor" />
+    </svg>
+  );
+}
+
+/**
+ * HeroIllustration: Escena editorial cálida (tablero de campo, brújula, notas y métrica de mercado).
+ * Sin tonos morados: usa arena, carbón, terracota (#f97316), verde salvia (#0284c7) y ocre (#d97706).
+ */
+export function HeroIllustration(props: GlyphProps) {
+  return (
+    <svg viewBox="0 0 380 230" fill="none" aria-hidden="true" {...props}>
+      {/* Fondo orgánico suave en arena/salvia */}
+      <ellipse cx="195" cy="120" rx="148" ry="88" fill="#0284c7" fillOpacity="0.08" />
+      <circle cx="290" cy="56" r="34" fill="#f97316" fillOpacity="0.12" />
+
+      {/* Cuadrícula de cuaderno de campo */}
+      <g stroke="currentColor" strokeOpacity="0.08" strokeWidth="1">
+        <line x1="55" y1="45" x2="335" y2="45" />
+        <line x1="55" y1="85" x2="335" y2="85" />
+        <line x1="55" y1="125" x2="335" y2="125" />
+        <line x1="55" y1="165" x2="335" y2="165" />
+      </g>
+
+      {/* Tarjeta central: Tablero de evidencias y mercado */}
+      <g className="animate-float-slow">
+        <rect
+          x="82"
+          y="30"
+          width="210"
+          height="144"
+          rx="18"
+          fill="#ffffff"
+          stroke="#bae6fd"
+          strokeWidth="1.5"
+        />
+        {/* Barra superior del cuaderno */}
+        <rect x="82" y="30" width="210" height="30" rx="18" fill="#e0f2fe" />
+        <circle cx="102" cy="45" r="4" fill="#f97316" />
+        <circle cx="115" cy="45" r="4" fill="#d97706" />
+        <circle cx="128" cy="45" r="4" fill="#0284c7" />
+        <rect x="146" y="41" width="84" height="8" rx="4" fill="#c7c1b2" />
+
+        {/* Gráfica de barras cálida (arena -> salvia -> terracota) */}
+        <rect x="108" y="124" width="24" height="30" rx="5" fill="#bae6fd" />
+        <rect x="142" y="106" width="24" height="48" rx="5" fill="#a7f3d0" />
+        <rect x="176" y="88" width="24" height="66" rx="5" fill="#0284c7" />
+        <rect x="210" y="72" width="24" height="82" rx="5" fill="#f97316" />
+
+        {/* Curva de validación */}
+        <path
+          d="M118 114 154 96 188 79 222 64"
+          stroke="#082f49"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+        />
+        <circle cx="222" cy="64" r="4.5" fill="#f97316" stroke="#ffffff" strokeWidth="1.5" />
+      </g>
+
+      {/* Tarjeta flotante izquierda: Brújula de exploración */}
+      <g className="animate-float-delayed">
+        <rect
+          x="22"
+          y="82"
+          width="88"
+          height="86"
+          rx="18"
+          fill="#082f49"
+          stroke="#3f3f46"
+          strokeWidth="1.5"
+        />
+        <circle cx="66" cy="118" r="20" stroke="#f0f9ff" strokeOpacity="0.25" strokeWidth="1.5" />
+        <polygon points="66,101 72,118 66,115 60,118" fill="#f97316" />
+        <polygon points="66,135 72,118 66,121 60,118" fill="#34d399" />
+        <circle cx="66" cy="118" r="2.5" fill="#fbbf24" />
+        <rect x="42" y="148" width="48" height="6" rx="3" fill="#f0f9ff" fillOpacity="0.7" />
+      </g>
+
+      {/* Tarjeta flotante derecha: Sello de fuente verificada */}
+      <g className="animate-float-slow">
+        <rect
+          x="252"
+          y="116"
+          width="106"
+          height="74"
+          rx="16"
+          fill="#0284c7"
+          stroke="#34d399"
+          strokeOpacity="0.45"
+          strokeWidth="1.5"
+        />
+        <circle cx="280" cy="153" r="14" fill="#ffffff" fillOpacity="0.16" />
+        <path
+          d="m274 153 4.2 4.2 8.5-8.5"
+          stroke="#ffffff"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <rect x="302" y="142" width="40" height="7" rx="3.5" fill="#ffffff" />
+        <rect x="302" y="156" width="28" height="6" rx="3" fill="#a7f3d0" />
+      </g>
+    </svg>
+  );
+}
+
+/**
+ * EmptyIllustration: Ilustración editorial de libreta y brújula para listas vacías.
+ */
+export function EmptyIllustration(props: GlyphProps) {
+  return (
+    <svg viewBox="0 0 180 120" fill="none" aria-hidden="true" {...props}>
+      <ellipse cx="90" cy="104" rx="56" ry="7" fill="currentColor" fillOpacity="0.07" />
+      <g className="animate-float-slow">
+        <rect
+          x="40"
+          y="20"
+          width="100"
+          height="72"
+          rx="14"
+          fill="var(--surface-card)"
+          stroke="var(--border-subtle)"
+          strokeWidth="1.6"
+        />
+        <circle cx="66" cy="48" r="12" fill="#f97316" fillOpacity="0.14" />
+        <polygon points="66,39 70,48 66,46 62,48" fill="#f97316" />
+        <polygon points="66,57 70,48 66,50 62,48" fill="#0284c7" />
+        <rect x="86" y="40" width="38" height="7" rx="3.5" fill="currentColor" fillOpacity="0.35" />
+        <rect x="86" y="53" width="26" height="6" rx="3" fill="currentColor" fillOpacity="0.2" />
+        <rect x="54" y="72" width="72" height="6" rx="3" fill="currentColor" fillOpacity="0.14" />
+      </g>
+      <circle cx="148" cy="28" r="5" fill="#d97706" fillOpacity="0.7" />
+      <circle cx="30" cy="44" r="3.5" fill="#0284c7" fillOpacity="0.5" />
     </svg>
   );
 }

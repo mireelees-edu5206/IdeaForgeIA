@@ -14,8 +14,8 @@
  * AppShell.tsx lo dibuja a la izquierda de cada pantalla privada.
  */
 
-/* Iconos: "FiActivity" (una línea de pulso), "FiPlus" (más) y "FiShield" (escudo, para admin). */
-import { FiActivity, FiPlus, FiShield } from "react-icons/fi";
+/* Iconos: "FiPlus" (más) y "FiShield" (escudo, para admin). */
+import { FiPlus, FiShield } from "react-icons/fi";
 /* "NavLink" es un enlace que sabe si es la página actual. */
 import { NavLink } from "react-router";
 
@@ -64,11 +64,6 @@ export function Sidebar() {
       <div className="px-1">
         <Logo />
       </div>
-
-      {/* Una frase pequeña debajo del logo. "uppercase" la escribe toda en mayúsculas. */}
-      <p className="mt-2 px-1 text-[10px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
-        Investigación inteligente
-      </p>
 
       {/* El botón grande para crear una idea nueva. "w-full" ocupa todo el ancho y "justify-center" lo centra. */}
       <LinkButton
@@ -137,19 +132,6 @@ export function Sidebar() {
         </nav>
       </div>
 
-      {/* La tarjeta de ayuda al final del menú. "mt-auto" la empuja hacia abajo. */}
-      {/* Tiene un borde azul muy suave y un fondo azul transparente. */}
-      <div className="mt-auto rounded-2xl border border-accent-cyan/12 bg-accent-cyan/[0.045] p-3.5">
-        {/* El título de la tarjeta, con su icono de pulso. */}
-        <div className="flex items-center gap-2 text-xs font-semibold text-slate-200">
-          <FiActivity aria-hidden="true" className="size-4 text-accent-cyan" />
-          Evidencia rastreable
-        </div>
-        {/* El texto de la tarjeta: explica que cada conclusión conserva su fuente. */}
-        <p className="mt-1.5 text-xs leading-relaxed text-slate-400">
-          Cada conclusión conserva su fuente y distingue los hechos de las interpretaciones.
-        </p>
-      </div>
     </aside>
   );
 }
