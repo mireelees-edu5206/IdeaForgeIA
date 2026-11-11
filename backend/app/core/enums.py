@@ -82,13 +82,13 @@ class AttributeType(StrEnum):
 
 
 class AIProviderName(StrEnum):
-    """Proveedores de IA que el sistema conoce.
+    """Motores de IA que el sistema conoce.
 
+    "engine" es el motor propio de IdeaForge en Python (razonamiento, predicción y búsqueda web).
     "fake" es el proveedor de pruebas (no se permite en producción). "legacy" solo marca
-    registros antiguos y nunca se puede elegir como proveedor activo.
+    registros históricos antiguos y nunca se puede elegir como proveedor activo.
     """
 
-    GEMINI = "gemini"
-    OLLAMA = "ollama"
+    ENGINE = "engine"
     FAKE = "fake"
     LEGACY = "legacy"

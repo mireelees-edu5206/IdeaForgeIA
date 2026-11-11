@@ -44,7 +44,7 @@ const REPLY: ChatReply = {
       ],
     },
   ],
-  provider: "ollama",
+  provider: "engine",
   model: "qwen3:4b",
 };
 

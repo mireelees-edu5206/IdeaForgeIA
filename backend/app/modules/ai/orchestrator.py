@@ -56,7 +56,7 @@ class AIOrchestrator(AIProvider):
         self.primary = primary
         self.fallback = fallback
         self.grounded_provider = grounded_provider or (
-            primary if primary.name in {AIProviderName.GEMINI, AIProviderName.FAKE} else None
+            primary if primary.name in {AIProviderName.ENGINE, AIProviderName.FAKE} else None
         )
         # El orquestador se presenta con el nombre y modelo del principal.
         self.name = primary.name
@@ -206,8 +206,7 @@ def _failed_attempt(
 ) -> AIProviderAttempt:
     """Arma el registro de un intento fallido.
 
-    Ollama y el proveedor de prueba corren en local, así que su costo es cero. Los demás quedan
-    sin costo conocido (None).
+    El motor propio y el proveedor de prueba corren en local, así que su costo es cero.
     """
     return AIProviderAttempt(
         provider=provider.name,
@@ -217,7 +216,7 @@ def _failed_attempt(
         usage=AIUsage(
             estimated_cost_usd=(
                 Decimal(0)
-                if provider.name in {AIProviderName.OLLAMA, AIProviderName.FAKE}
+                if provider.name in {AIProviderName.ENGINE, AIProviderName.FAKE}
                 else None
             )
         ),

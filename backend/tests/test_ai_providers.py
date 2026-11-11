@@ -1,479 +1,358 @@
-"""Pruebas de comportamiento para ai providers."""
+"""Pruebas de comportamiento para el motor propio de IA (IdeaForgeEngineProvider) y orquestador."""
 
 import asyncio
-import io
 import json
 from collections import Counter
 from collections.abc import Sequence
 from decimal import Decimal
 from unittest.mock import patch
-from urllib.error import HTTPError
 from uuid import uuid4
 
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from app.core.enums import AIProviderName
+from app.core.enums import AIProviderName, Level, ResearchCategory
 from app.modules.ai.calls import AICallContext, AICallOutcome, build_call_logs
 from app.modules.ai.errors import AIGroundingUnavailableError, AIRateLimitError
 from app.modules.ai.factory import build_ai_provider
 from app.modules.ai.models import AICallStatus, AIOperation
 from app.modules.ai.orchestrator import AIOrchestrator
 from app.modules.ai.providers.base import AIProvider
-from app.modules.ai.providers.gemini import GeminiProvider
-from app.modules.ai.providers.ollama import OllamaProvider
+from app.modules.ai.providers.engine import IdeaForgeEngineProvider, _tfidf_cosine_scores
 from app.modules.ai.providers.web_search import WebHit
 from app.modules.ai.types import AIMessage, AIUsage, GroundedResult, StructuredResult
+from app.modules.analysis.generation import AnalysisResult
 from app.modules.chat.schemas import ChatAnswer
+from app.modules.findings.extraction import ExtractionResult
 from app.modules.reports.schemas import ReportDraft
 from app.modules.research.orchestrator import _search_failure_code
+from app.modules.research.schemas import ResearchPlan
 from tests.conftest import make_settings
 
 
 class Answer(BaseModel):
-    """Representa answer."""
+    """Esquema simple de prueba."""
 
     text: str
     count: int
 
 
-class StubResponse(io.BytesIO):
-    """Representa stub respuesta."""
+def test_tfidf_cosine_similarity_ranks_matching_documents_first() -> None:
+    """Verifica que el ranking TF-IDF del motor propio ordene primero los textos más relevantes."""
+    scores = _tfidf_cosine_scores(
+        "café de especialidad en Toluca precios",
+        [
+            "Renta de maquinaria pesada industrial para construcción en Monterrey.",
+            "El mercado de café de especialidad en Toluca muestra precios de 65 a 95 pesos "
+            "por taza.",
+        ],
+    )
+    assert len(scores) == 2
+    assert scores[1] > scores[0]
 
-    pass
 
-
-def response(body: dict) -> StubResponse:
-    """Gestiona respuesta."""
-    return StubResponse(json.dumps(body).encode())
-
-
-def test_gemini_structured_output_keeps_key_off_url_and_validates_schema() -> None:
-    """Prueba el escenario: gemini structured output keeps clave off URL and validates esquema."""
-    requests = []
-
-    def send(request, timeout):
-        """Gestiona send."""
-        requests.append((request, timeout, json.loads(request.data)))
-        return response(
-            {
-                "candidates": [{"content": {"parts": [{"text": '{"text":"listo","count":2}'}]}}],
-                "usageMetadata": {"promptTokenCount": 12, "candidatesTokenCount": 5},
-            }
+def test_engine_research_plan_builds_contextual_questions() -> None:
+    """Verifica que el motor propio piense y formule preguntas contextuales para la idea."""
+    provider = IdeaForgeEngineProvider()
+    context = (
+        "<idea>\n"
+        "Título: Café Ruta Local\n"
+        "Idea original: Suscripción de café de especialidad tostado en Toluca.\n"
+        "Problema:\n- Cafeterías y oficinas no reciben grano recién tostado.\n"
+        "Solución:\n- Entrega semanal de café de especialidad.\n"
+        "Segmento de clientes:\n- Oficinas y cafeterías independientes.\n"
+        "Alcance geográfico:\n- Toluca\n"
+        "</idea>"
+    )
+    result = asyncio.run(
+        provider.generate_structured(
+            [
+                AIMessage("system", "Entre 3 y 6 preguntas concretas."),
+                AIMessage("user", context),
+            ],
+            ResearchPlan,
         )
+    )
+    assert result.provider == AIProviderName.ENGINE
+    assert result.usage.estimated_cost_usd == Decimal(0)
+    assert 3 <= len(result.data.questions) <= 6
+    assert any("Toluca" in q.question for q in result.data.questions)
 
-    provider = GeminiProvider("test-secret", "gemini-test", 20)
-    # Abre y libera los recursos declarados en este bloque.
-    with patch("app.modules.ai.providers.http.urlopen", side_effect=send):
-        result = asyncio.run(
-            provider.generate_structured(
-                [AIMessage("system", "Reglas"), AIMessage("user", "Entrada")], Answer
+
+def test_engine_synthesizes_real_search_snippets_with_source_citations() -> None:
+    """Verifica que el motor propio navegue en la web y sintetice fragmentos con citas exactas."""
+    hits = [
+        WebHit(
+            url="https://example.org/cafe-toluca",
+            title="Mercado de café en Toluca",
+            snippet=(
+                "El consumo de café de especialidad en Toluca creció 14% en cafeterías locales."
+            ),
+        ),
+        WebHit(
+            url="https://example.com/precios-grano",
+            title="Precios de grano tostado",
+            snippet="Las cafeterías pagan entre 380 y 520 pesos por kilo de café de especialidad.",
+        ),
+    ]
+    provider = IdeaForgeEngineProvider()
+    with patch(
+        "app.modules.ai.providers.web_search.search_public_web",
+        return_value=hits,
+    ):
+        actual = asyncio.run(
+            provider.generate_grounded(
+                [AIMessage("user", "¿Cómo funciona el mercado de café de especialidad en Toluca?")]
             )
         )
 
-    request, timeout, payload = requests[0]
-    assert "test-secret" not in request.full_url
-    assert request.headers["X-goog-api-key"] == "test-secret"
-    assert timeout == 20
-    assert payload["systemInstruction"]["parts"][0]["text"] == "Reglas"
-    assert payload["contents"][0]["role"] == "user"
-    assert payload["generationConfig"]["responseSchema"]["type"] == "OBJECT"
-    assert result.data == Answer(text="listo", count=2)
-    assert result.usage.input_tokens == 12
-    assert result.provider == AIProviderName.GEMINI
+    assert actual.provider == AIProviderName.ENGINE
+    assert actual.sources[0].url == hits[0].url
+    assert actual.sources[0].cited is True
+    assert len(actual.citations) >= 1
+    assert actual.usage.search_queries_count == 1
+    assert actual.usage.estimated_cost_usd == Decimal(0)
 
 
-def test_gemini_grounding_maps_search_citations_and_suggestions() -> None:
-    """Prueba el escenario: gemini grounding maps busqueda citations and suggestions."""
-    text = "Una señal del mercado."
-    body = {
-        "candidates": [
-            {
-                "content": {"parts": [{"text": text}]},
-                "groundingMetadata": {
-                    "webSearchQueries": ["demanda local"],
-                    "groundingChunks": [
-                        {"web": {"uri": "https://example.org/report", "title": "Informe"}}
-                    ],
-                    "groundingSupports": [
-                        {
-                            "segment": {"startIndex": 0, "endIndex": len(text)},
-                            "groundingChunkIndices": [0],
-                        }
-                    ],
-                    "searchEntryPoint": {"renderedContent": "<div>Search</div>"},
-                },
-            }
-        ],
-        "usageMetadata": {"promptTokenCount": 10, "candidatesTokenCount": 9},
-    }
-    provider = GeminiProvider("key", "gemini-test", 20)
-    # Abre y libera los recursos declarados en este bloque.
-    with patch("app.modules.ai.providers.http.urlopen", return_value=response(body)):
-        result = asyncio.run(provider.generate_grounded([AIMessage("user", "Investiga")]))
-
-    assert result.text == text
-    assert result.sources[0].url == "https://example.org/report"
-    assert result.sources[0].cited is True
-    assert result.citations[0].source_indexes == (0,)
-    assert result.executed_queries == ["demanda local"]
-    assert result.search_suggestions_html == "<div>Search</div>"
-    assert result.usage.search_queries_count == 1
-
-
-def test_gemini_grounding_falls_back_to_public_web_search_on_search_tool_429() -> None:
-    """Verifica que Gemini use busqueda web publica cuando grounding responde 429."""
-    calls: list[dict] = []
-
-    def send(request, timeout):
-        """Gestiona send."""
-        payload = json.loads(request.data)
-        calls.append(payload)
-        # Rama condicional: se cumple 'tools' in payload.
-        if "tools" in payload:
-            raise HTTPError(request.full_url, 429, "quota", {}, io.BytesIO())
-        return response(
-            {
-                "candidates": [
-                    {
-                        "content": {
-                            "parts": [
-                                {
-                                    "text": json.dumps(
-                                        {
-                                            "statements": [
-                                                {
-                                                    "statement": (
-                                                        "El mercado textil básico crece en México."
-                                                    ),
-                                                    "source_indexes": [0],
-                                                }
-                                            ]
-                                        }
-                                    )
-                                }
-                            ]
-                        }
-                    }
-                ],
-                "usageMetadata": {"promptTokenCount": 18, "candidatesTokenCount": 14},
-            }
+def test_engine_extracts_findings_and_entities_from_evidence() -> None:
+    """Verifica la extracción NLP de hallazgos y competidores reales desde la evidencia."""
+    provider = IdeaForgeEngineProvider()
+    prompt = (
+        "<idea>\nTítulo: Café Ruta\n</idea>\n\n"
+        "<evidencia>\n"
+        '[E1] categoría: market | fuente: economista.mx | "El crecimiento del consumo '
+        'de café aumentó 12% en oficinas."\n'
+        '[E2] categoría: competition | fuente: forbes.com.mx | "La cadena Cielito Querido '
+        'compite como marca establecida."\n'
+        "</evidencia>\n\n"
+        "<respuestas>\n"
+        "Pregunta: ¿Qué competidores existen?\n"
+        "Respuesta: La empresa Cielito Querido opera cafeterías y compite en el sector.\n"
+        "</respuestas>"
+    )
+    result = asyncio.run(
+        provider.generate_structured(
+            [AIMessage("system", "Extrae hallazgos"), AIMessage("user", prompt)],
+            ExtractionResult,
         )
+    )
+    assert len(result.data.findings) >= 2
+    assert any(f.finding_type == ResearchCategory.MARKET for f in result.data.findings)
+    assert any("Cielito" in e.name for e in result.data.entities)
 
-    from app.modules.ai.providers.web_search import WebHit
 
-    hits = [
-        WebHit(
-            url="https://inegi.org.mx/industria-textil",
-            title="INEGI - Industria textil",
-            snippet="La producción de prendas básicas registró crecimiento anual en México.",
+def test_engine_infers_business_analysis_from_findings() -> None:
+    """Verifica que el motor de inferencia encadene oportunidades, riesgos e hipótesis."""
+    provider = IdeaForgeEngineProvider()
+    prompt = (
+        "<idea>\nTítulo: Café Ruta\n</idea>\n\n"
+        "<hallazgos>\n"
+        "[H1] mercado | confianza: high | IA proposed | Crecimiento sostenido en la demanda "
+        "de café.\n"
+        "[H2] competencia | confianza: medium | IA proposed | Existe barrera por competidor "
+        "establecido.\n"
+        "</hallazgos>\n\n"
+        "<competidores>\n- Cielito (direct, amenaza: medium)\n</competidores>\n\n"
+        "<respuestas>\nPregunta: Mercado\nRespuesta: Hay demanda creciente.\n</respuestas>"
+    )
+    result = asyncio.run(
+        provider.generate_structured(
+            [AIMessage("system", "Analiza"), AIMessage("user", prompt)],
+            AnalysisResult,
         )
-    ]
-    provider = GeminiProvider("key", "gemini-test", 20)
-    # Abre y libera los recursos declarados en este bloque.
-    with (
-        patch("app.modules.ai.providers.http.urlopen", side_effect=send),
-        patch("app.modules.ai.providers.web_search.search_public_web", return_value=hits),
-    ):
-        result = asyncio.run(
-            provider.generate_grounded([AIMessage("user", "¿Cómo va el mercado textil?")])
-        )
-
-    assert len(calls) == 2
-    assert "tools" in calls[0]
-    assert "generationConfig" in calls[1]
-    assert "El mercado textil básico crece en México." in result.text
-    assert result.sources[0].url == "https://inegi.org.mx/industria-textil"
-    assert result.sources[0].cited is True
-    assert result.citations[0].source_indexes == (0,)
-    assert result.usage.search_queries_count == 1
+    )
+    assert len(result.data.opportunities) >= 1
+    assert result.data.opportunities[0].findings == ["H1"]
+    assert len(result.data.risks) >= 1
+    assert len(result.data.hypotheses) >= 2
+    assert len(result.data.missing_information) >= 1
 
 
-def test_ollama_structured_output_records_local_zero_cost() -> None:
-    """Prueba el escenario: ollama structured output registros local zero costo."""
-    seen = []
-
-    def send(request, timeout):
-        """Gestiona send."""
-        seen.append((request, json.loads(request.data)))
-        return response(
-            {
-                "message": {"content": '{"text":"local","count":1}'},
-                "prompt_eval_count": 20,
-                "eval_count": 8,
-            }
-        )
-
-    provider = OllamaProvider("http://localhost:11434", "custom-model", 20)
-    # Abre y libera los recursos declarados en este bloque.
-    with patch("app.modules.ai.providers.http.urlopen", side_effect=send):
-        result = asyncio.run(provider.generate_structured([AIMessage("user", "Entrada")], Answer))
-
-    request, payload = seen[0]
-    assert request.full_url == "http://localhost:11434/api/chat"
-    assert payload["model"] == "custom-model"
-    assert payload["stream"] is False
-    assert payload["think"] is False
-    assert payload["options"]["num_predict"] == 1400
-    assert isinstance(payload["format"], dict)
-    assert result.data.text == "local"
-    assert result.usage.input_tokens == 20
-    assert result.usage.output_tokens == 8
-    assert result.usage.estimated_cost_usd == Decimal(0)
-    assert result.provider == AIProviderName.OLLAMA
-
-
-def test_ollama_report_draft_builds_the_structured_verdict_from_project_context() -> None:
-    """Verifica que Ollama forme el veredicto estructurado desde contexto del proyecto."""
-    context = {
+def test_engine_chat_answer_calculates_investment_and_cites_findings() -> None:
+    """Verifica que el asistente propio desglose costos, fórmula de inversión y cite hallazgos."""
+    provider = IdeaForgeEngineProvider()
+    fid = uuid4()
+    ctx_payload = {
         "project": {
-            "title": "Heladería Centro",
-            "idea": "Vender helado artesanal en la zona centro.",
-            "attributes": [],
+            "title": "Marca Textil",
+            "idea": "Playeras básicas",
+            "status": "analyzed",
         },
         "findings": [
             {
-                "ref": "H1",
-                "category": "customers",
-                "statement": "Personas entrevistadas buscan opciones de postre local.",
+                "id": str(fid),
+                "type": "pricing",
+                "statement": "El costo unitario de confección es de 180 pesos.",
+                "confidence": "high",
                 "origin": "user",
                 "review_status": "accepted",
-                "confidence": "medium",
-                "evidence": [{"ref": "E1", "source_ref": "S1", "content": "Entrevista"}],
+                "entities": [],
+                "evidence": [],
             }
         ],
-        "sources": [{"ref": "S1", "domain": "example.org", "title": "Encuesta local"}],
-        "competitors": [{"name": "Helados cercanos", "type": "direct"}],
+        "competitors": [],
         "analysis": {
             "opportunities": [],
             "risks": [],
             "hypotheses": [],
-            "missing_information": [{"question": "¿Cuánto cuesta rentar un local?"}],
+            "missing_information": [],
+        },
+        "attributes": [],
+        "context_truncated": False,
+    }
+    sys_prompt = f"Reglas del chat\n<project_context>{json.dumps(ctx_payload)}</project_context>"
+    result = asyncio.run(
+        provider.generate_structured(
+            [
+                AIMessage("system", sys_prompt),
+                AIMessage("user", "¿Cuánto necesito invertir para empezar la marca?"),
+            ],
+            ChatAnswer,
+        )
+    )
+    assert (
+        "unidades × costo unitario + gastos de arranque + capital de trabajo" in result.data.answer
+    )
+    assert fid in result.data.finding_ids
+
+
+def test_engine_report_draft_builds_structured_verdict_and_predicts_investment() -> None:
+    """Verifica el modelo predictivo de viabilidad, inversión y zonas del informe final."""
+    provider = IdeaForgeEngineProvider()
+    ctx_data = {
+        "project": {
+            "title": "Taller de Bicicletas",
+            "idea": "Mantenimiento a domicilio",
+            "attributes": [
+                {
+                    "type": "problem",
+                    "value": "Talleres lentos",
+                    "origin": "user",
+                    "confirmed": True,
+                }
+            ],
+        },
+        "findings": [
+            {
+                "ref": "H1",
+                "category": "pricing",
+                "statement": "El costo promedio de servicio es de 450 pesos.",
+                "confidence": "medium",
+                "origin": "user",
+                "review_status": "accepted",
+                "evidence": [
+                    {
+                        "ref": "E1",
+                        "source_ref": "S1",
+                        "content": "Servicio en 450 pesos.",
+                    }
+                ],
+            }
+        ],
+        "sources": [
+            {
+                "ref": "S1",
+                "title": "Estudio",
+                "domain": "example.com",
+                "url": "https://example.com",
+            }
+        ],
+        "competitors": [
+            {
+                "name": "BiciExpress",
+                "type": "direct",
+                "threat": "medium",
+                "rationale": "Opera en la zona",
+                "origin": "ai",
+                "review_status": "accepted",
+            }
+        ],
+        "analysis": {
+            "opportunities": [
+                {
+                    "title": "Servicio a domicilio",
+                    "description": "Ahorra tiempo",
+                    "potential": "medium",
+                    "origin": "ai",
+                    "review_status": "accepted",
+                }
+            ],
+            "risks": [
+                {
+                    "title": "Logística",
+                    "description": "Traslados",
+                    "category": "operational",
+                    "likelihood": "medium",
+                    "impact": "medium",
+                    "mitigation": "Rutas por zona",
+                    "origin": "ai",
+                    "review_status": "accepted",
+                }
+            ],
+            "hypotheses": [
+                {
+                    "statement": "Clientes pagan extra a domicilio",
+                    "validation_method": "Entrevistas a 15 ciclistas",
+                    "success_criteria": "10 de 15 aceptan",
+                    "priority": "high",
+                    "validation_status": "pending",
+                    "origin": "ai",
+                    "review_status": "accepted",
+                }
+            ],
+            "missing_information": [
+                {
+                    "question": "¿Cuál es el costo de herramienta móvil?",
+                    "reason": "Falta cotizar",
+                    "priority": "high",
+                    "resolution_status": "open",
+                    "origin": "ai",
+                    "review_status": "accepted",
+                }
+            ],
         },
         "geography": {
             "status": "places_found",
             "areas": [
                 {
-                    "query": "Centro Toluca",
-                    "resolved_area": "Centro Toluca",
-                    "status": "places_found",
+                    "query": "Toluca",
+                    "resolved_area": "Toluca, México",
                     "places": [
                         {
                             "ref": "G1",
-                            "name": "Heladería cercana",
+                            "name": "Taller Central",
                             "category": "shop",
+                            "subtype": "bicycle",
+                            "latitude": 19.29,
+                            "longitude": -99.65,
+                            "osm_url": "https://www.openstreetmap.org/node/1",
                         }
                     ],
                 }
             ],
         },
+        "context_truncated": False,
     }
-    answer = (
-        "La propuesta merece validación con clientes antes de invertir. "
-        "La evidencia disponible es inicial.===CONCLUSIONES==="
-        "Entrevista a más clientes y calcula los costos del local antes de avanzar."
+    report_context = f"<report_data>{json.dumps(ctx_data)}</report_data>"
+    result = asyncio.run(
+        provider.generate_structured(
+            [AIMessage("system", "Informe"), AIMessage("user", report_context)],
+            ReportDraft,
+        )
     )
-
-    def send(_request, timeout):
-        """Gestiona send."""
-        return response(
-            {
-                "message": {"content": answer},
-                "prompt_eval_count": 30,
-                "eval_count": 40,
-            }
-        )
-
-    provider = OllamaProvider("http://localhost:11434", "llama3.2:3b", 20)
-    messages = [
-        AIMessage(
-            "user",
-            f"<report_data>{json.dumps(context, ensure_ascii=False)}</report_data>",
-        )
-    ]
-    # Abre y libera los recursos declarados en este bloque.
-    with patch("app.modules.ai.providers.http.urlopen", side_effect=send):
-        result = asyncio.run(provider.generate_structured(messages, ReportDraft))
-
-    assert result.data.executive_summary.recommendation == "needs_validation"
-    assert result.data.executive_summary.investment is None
-    assert result.data.executive_summary.zones[0].place_refs == ["G1"]
-    assert "¿Cuánto cuesta rentar un local?" in result.data.executive_summary.missing_information
-    assert result.data.executive_summary.next_steps
-    assert result.data.conclusions.startswith("Entrevista a más clientes")
-
-
-def test_ollama_chat_answer_has_no_short_text_cap_and_a_larger_generation_budget() -> None:
-    """Verifica que Ollama admita respuestas largas y un presupuesto amplio de generacion."""
-    captured = []
-    long_answer = "Respuesta completa. " * 300
-
-    def send(request, timeout):
-        """Gestiona send."""
-        payload = json.loads(request.data)
-        captured.append(payload)
-        return response(
-            {
-                "message": {
-                    "content": json.dumps(
-                        {"answer": long_answer, "finding_ids": []}, ensure_ascii=False
-                    )
-                },
-                "prompt_eval_count": 100,
-                "eval_count": 2000,
-            }
-        )
-
-    provider = OllamaProvider("http://localhost:11434", "custom-model", 20)
-    # Abre y libera los recursos declarados en este bloque.
-    with patch("app.modules.ai.providers.http.urlopen", side_effect=send):
-        result = asyncio.run(
-            provider.generate_structured([AIMessage("user", "Desarrolla el análisis")], ChatAnswer)
-        )
-
-    assert result.data.answer == long_answer.strip()
-    assert captured[0]["options"]["num_ctx"] == 8192
-    assert captured[0]["options"]["num_predict"] == 4096
-    assert captured[0]["options"]["repeat_penalty"] == 1.15
-    assert captured[0]["options"]["temperature"] == 0.6
-    assert "format" not in captured[0]
-    assert "maxLength" not in ChatAnswer.model_json_schema()["properties"]["answer"]
-
-
-def test_ollama_synthesizes_real_search_snippets_with_source_citations() -> None:
-    """Prueba el escenario: ollama synthesizes real busqueda snippets con fuente citations."""
-    hit = WebHit(
-        url="https://example.org/ropa-basica",
-        title="Estudio de ropa básica",
-        snippet="La demanda de prendas lisas aumentó entre compradores jóvenes.",
-    )
-
-    def send(request, timeout):
-        """Gestiona send."""
-        payload = json.loads(request.data)
-        assert payload["model"] == "custom-model"
-        assert "Estudio de ropa básica" in payload["messages"][1]["content"]
-        return response(
-            {
-                "message": {
-                    "content": json.dumps(
-                        {
-                            "statements": [
-                                {
-                                    "statement": "La demanda de prendas lisas aumentó.",
-                                    "source_indexes": [0],
-                                }
-                            ]
-                        }
-                    )
-                },
-                "prompt_eval_count": 50,
-                "eval_count": 18,
-            }
-        )
-
-    provider = OllamaProvider("http://localhost:11434", "custom-model", 20)
-    # Abre y libera los recursos declarados en este bloque.
-    with (
-        patch(
-            "app.modules.ai.providers.web_search.search_public_web",
-            return_value=[hit],
-        ),
-        patch("app.modules.ai.providers.http.urlopen", side_effect=send),
-    ):
-        actual = asyncio.run(provider.generate_grounded([AIMessage("user", "Busca actualidad")]))
-    assert actual.provider == AIProviderName.OLLAMA
-    assert actual.sources[0].url == hit.url
-    assert actual.sources[0].cited is True
-    assert actual.citations[0].source_indexes == (0,)
-    assert actual.usage.input_tokens == 50
-    assert actual.usage.output_tokens == 18
-
-
-def test_orchestrator_falls_back_from_gemini_search_429_to_ollama_web_synthesis() -> None:
-    """Verifica que el orquestador use Ollama si la busqueda Gemini responde 429."""
-
-    class GroundedStub(StubProvider):
-        """Representa fundamentada stub."""
-
-        def __init__(
-            self,
-            name: AIProviderName,
-            model: str,
-            *,
-            error: Exception | None = None,
-            result: GroundedResult | None = None,
-        ) -> None:
-            """Gestiona la inicializacion para pruebas."""
-            super().__init__(name, model, error)
-            self.result = result
-
-        async def generate_grounded(self, messages: Sequence[AIMessage]) -> GroundedResult:
-            """Gestiona generate fundamentada."""
-            # Rama condicional: se cumple self.error.
-            if self.error:
-                raise self.error
-            assert self.result is not None
-            return self.result
-
-    grounded = GroundedResult(
-        text="La oferta de ropa básica existe.",
-        sources=[],
-        citations=[],
-        provider=AIProviderName.OLLAMA,
-        model="qwen3:4b",
-        usage=AIUsage(search_queries_count=1, estimated_cost_usd=Decimal(0)),
-    )
-    gemini = GroundedStub(AIProviderName.GEMINI, "gemini-test", error=AIRateLimitError())
-    ollama = GroundedStub(AIProviderName.OLLAMA, "qwen3:4b", result=grounded)
-    provider = AIOrchestrator(gemini, fallback=ollama)
-
-    result = asyncio.run(provider.generate_grounded([AIMessage("user", "Busca actualidad")]))
-
-    assert result.provider == AIProviderName.OLLAMA
-    assert result.model == "qwen3:4b"
-    assert [(attempt.provider, attempt.status) for attempt in result.attempts] == [
-        (AIProviderName.GEMINI, "error"),
-        (AIProviderName.OLLAMA, "success"),
-    ]
-
-
-def test_orchestrator_never_uses_local_fallback_for_grounded_search() -> None:
-    """Prueba el escenario: orchestrator never uses local respaldo para fundamentada busqueda."""
-    provider = AIOrchestrator(StubProvider(AIProviderName.OLLAMA, "local-model"))
-    # Abre y libera los recursos declarados en este bloque.
-    with pytest.raises(AIGroundingUnavailableError):
-        asyncio.run(provider.generate_grounded([AIMessage("user", "Busca actualidad")]))
-
-
-def test_uniform_search_rate_limits_keep_the_provider_error_code() -> None:
-    """Prueba el escenario: uniform busqueda rate limits keep the proveedor error code."""
-    assert _search_failure_code(Counter({"ai_rate_limited": 6})) == "ai_rate_limited"
-    assert (
-        _search_failure_code(Counter({"ai_rate_limited": 3, "ai_timeout": 3}))
-        == "all_searches_failed"
-    )
-
-
-def test_provider_http_429_is_classified_as_rate_limit() -> None:
-    """Prueba el escenario: proveedor http 429 is classified as rate limite."""
-    error = HTTPError("https://provider.example", 429, "limited", {}, io.BytesIO())
-    # Abre y libera los recursos declarados en este bloque.
-    with patch("app.modules.ai.providers.http.urlopen", side_effect=error):
-        # Abre y libera los recursos declarados en este bloque.
-        with pytest.raises(AIRateLimitError):
-            asyncio.run(
-                OllamaProvider("http://localhost:11434", "model", 20).generate_structured(
-                    [AIMessage("user", "Entrada")], Answer
-                )
-            )
+    verdict = result.data.executive_summary
+    assert verdict.recommendation in {"needs_validation", "worth_testing"}
+    assert verdict.investment is not None
+    assert verdict.investment.minimum_mxn > 0
+    assert "H1" in verdict.investment.evidence_refs
+    assert verdict.zones[0].place_refs == ["G1"]
+    assert "[H1]" in result.data.market
 
 
 class StubProvider(AIProvider):
-    """Adaptador que ofrece servicios de stub."""
+    """Adaptador de prueba para verificar el orquestador."""
 
     def __init__(self, name: AIProviderName, model: str, error: Exception | None = None) -> None:
-        """Gestiona la inicializacion para pruebas."""
         self.name = name
         self.model = model
         self.error = error
@@ -481,8 +360,6 @@ class StubProvider(AIProvider):
     async def generate_structured[T: BaseModel](
         self, messages: Sequence[AIMessage], schema: type[T]
     ) -> StructuredResult[T]:
-        """Gestiona generate structured."""
-        # Rama condicional: se cumple self.error.
         if self.error:
             raise self.error
         return StructuredResult(
@@ -491,14 +368,13 @@ class StubProvider(AIProvider):
         )
 
     async def generate_grounded(self, messages: Sequence[AIMessage]) -> GroundedResult:
-        """Gestiona generate fundamentada."""
         raise AIGroundingUnavailableError()
 
 
-def test_orchestrator_fallback_logs_both_providers_and_only_then_uses_ollama() -> None:
-    """Prueba el escenario: orchestrator respaldo logs both providers and only then uses ollama."""
-    primary = StubProvider(AIProviderName.GEMINI, "gemini-test", AIRateLimitError())
-    fallback = StubProvider(AIProviderName.OLLAMA, "local-test")
+def test_orchestrator_fallback_logs_both_attempts() -> None:
+    """Verifica que el orquestador registre el intento fallido y el de respaldo con costo cero."""
+    primary = StubProvider(AIProviderName.ENGINE, "engine-v1", AIRateLimitError())
+    fallback = StubProvider(AIProviderName.ENGINE, "engine-fallback")
     provider = AIOrchestrator(primary, fallback)
     result = asyncio.run(provider.generate_structured([AIMessage("user", "Entrada")], Answer))
     logs = build_call_logs(
@@ -510,38 +386,34 @@ def test_orchestrator_fallback_logs_both_providers_and_only_then_uses_ollama() -
         result.usage,
     )
 
-    assert [log.provider for log in logs] == [AIProviderName.GEMINI, AIProviderName.OLLAMA]
+    assert [log.provider for log in logs] == [AIProviderName.ENGINE, AIProviderName.ENGINE]
     assert [log.status for log in logs] == [AICallStatus.ERROR, AICallStatus.SUCCESS]
     assert logs[0].error_code == "ai_rate_limited"
     assert logs[1].estimated_cost_usd == Decimal(0)
 
 
-@pytest.mark.parametrize(
-    "base_url",
-    ["http://user:secret@localhost:11434", "http://localhost:not-a-port"],
-)
-def test_ollama_url_rejects_credentials_and_invalid_ports(base_url: str) -> None:
-    """Prueba el escenario: ollama URL rejects credentials and invalido ports."""
-    # Abre y libera los recursos declarados en este bloque.
-    with pytest.raises(ValidationError):
-        make_settings(ai_provider="ollama", ollama_base_url=base_url)
-
-
-def test_settings_select_gemini_or_ollama_and_require_gemini_key() -> None:
-    """Prueba el escenario: configuracion select gemini or ollama and require gemini clave."""
-    # Abre y libera los recursos declarados en este bloque.
-    with pytest.raises(ValidationError):
-        make_settings(ai_provider="gemini")
-
-    gemini = build_ai_provider(make_settings(ai_provider="gemini", gemini_api_key="test-key"))
-    ollama_settings = make_settings(
-        ai_provider="ollama", ollama_model="my-local-model", gemini_api_key=""
+def test_uniform_search_rate_limits_keep_the_provider_error_code() -> None:
+    """Verifica que los códigos uniformes de error de búsqueda se conserven."""
+    assert _search_failure_code(Counter({"ai_rate_limited": 6})) == "ai_rate_limited"
+    assert (
+        _search_failure_code(Counter({"ai_rate_limited": 3, "ai_timeout": 3}))
+        == "all_searches_failed"
     )
-    ollama = build_ai_provider(ollama_settings)
 
-    assert ollama_settings.gemini_api_key is None
-    assert isinstance(gemini, AIOrchestrator)
-    assert gemini.name == AIProviderName.GEMINI
-    assert isinstance(ollama, AIOrchestrator)
-    assert ollama.name == AIProviderName.OLLAMA
-    assert ollama.model == "my-local-model"
+
+def test_settings_select_native_engine_without_external_keys() -> None:
+    """Verifica que el motor nativo de IdeaForge no requiera claves externas ni servidores "
+    "aparte."""
+    with pytest.raises(ValidationError):
+        make_settings(ai_provider="legacy")
+
+    engine_settings = make_settings(
+        ai_provider="engine",
+        ai_engine_model="ideaforge-engine-v1",
+    )
+    provider = build_ai_provider(engine_settings)
+
+    assert isinstance(provider, AIOrchestrator)
+    assert provider.name == AIProviderName.ENGINE
+    assert provider.model == "ideaforge-engine-v1"
+    assert Level.HIGH.value == "high"

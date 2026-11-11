@@ -48,11 +48,11 @@ export type QueryStatus = "pending" | "completed" | "failed";
 
 /**
  * AIProviderName es qué inteligencia artificial hizo la investigación:
- * "gemini" (servicio de Google), "ollama" (IA que corre en la computadora), "fake" (datos de demostración)
- * o "legacy" (un proveedor antiguo que ya no se usa, guardado en el historial).
+ * "engine" (motor propio de IdeaForge en Python), "fake" (datos de demostración)
+ * o "legacy" (un proveedor antiguo guardado en el historial).
  */
 /** Describe el contrato aiprovider name utilizado por research. */
-export type AIProviderName = "gemini" | "ollama" | "fake" | "legacy";
+export type AIProviderName = "engine" | "fake" | "legacy";
 
 /**
  * ResearchCategory es el tema de cada pregunta: mercado, clientes, competencia, sustitutos,

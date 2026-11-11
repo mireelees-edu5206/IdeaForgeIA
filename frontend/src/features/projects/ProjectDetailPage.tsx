@@ -398,16 +398,16 @@ function ProjectTabs({ projectId }: { projectId: string }) {
       aria-label="Secciones del proyecto"
       className="surface-panel flex min-w-0 flex-col gap-3 rounded-2xl p-3"
     >
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-        <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 lg:flex lg:flex-1 lg:items-center lg:gap-2">
-          {PRIMARY_TABS.map(({ path, label, step, hint, icon: Icon }) => (
-            <li key={label} className="lg:flex-1">
+      <div className="flex flex-col gap-3">
+        <ul className="grid grid-cols-2 gap-1.5 sm:grid-cols-5">
+          {PRIMARY_TABS.map(({ path, label, step }) => (
+            <li key={label} className="min-w-0">
               <NavLink
                 to={`/proyectos/${projectId}${path}`}
                 end
                 className={({ isActive }) =>
                   cn(
-                    "jelly flex min-h-12 items-center gap-2.5 rounded-xl px-3 py-2 text-sm transition",
+                    "jelly flex min-h-12 items-center gap-2 rounded-xl px-2.5 py-2 text-sm transition",
                     isActive
                       ? "neo-raised font-semibold text-primary ring-1 ring-primary/25"
                       : "text-slate-400 hover:bg-primary/5 hover:text-slate-100",
@@ -424,11 +424,7 @@ function ProjectTabs({ projectId }: { projectId: string }) {
                     >
                       {step}
                     </span>
-                    <span className="flex min-w-0 flex-col leading-tight">
-                      <span className="truncate">{label}</span>
-                      <span className="hidden truncate text-[11px] font-normal text-slate-400 2xl:block">{hint}</span>
-                    </span>
-                    <Icon aria-hidden="true" className="ml-auto hidden size-4 shrink-0 opacity-75 sm:block" />
+                    <span className="min-w-0 truncate">{label}</span>
                   </>
                 )}
               </NavLink>
@@ -436,8 +432,8 @@ function ProjectTabs({ projectId }: { projectId: string }) {
           ))}
         </ul>
 
-        <details open={toolsOpen} className="border-t border-border/70 pt-2 lg:border-t-0 lg:pt-0">
-          <summary className="jelly flex min-h-10 cursor-pointer list-none items-center justify-between gap-2 rounded-xl bg-muted/60 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-primary/10 hover:text-primary [&::-webkit-details-marker]:hidden">
+        <details open={toolsOpen} className="border-t border-border/70 pt-3">
+          <summary className="jelly flex min-h-10 cursor-pointer list-none items-center shrink-0 whitespace-nowrap justify-between gap-2 rounded-xl bg-muted/60 px-3.5 py-2 text-xs font-semibold text-slate-300 hover:bg-primary/10 hover:text-primary [&::-webkit-details-marker]:hidden">
             <span>Más herramientas</span>
             <FiChevronDown aria-hidden="true" className="size-4 transition-transform open:rotate-180" />
           </summary>

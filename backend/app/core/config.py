@@ -86,21 +86,13 @@ class Settings(BaseSettings):
     supabase_jwt_secret: SecretStr | None = None
     supabase_jwks_url: str | None = None
 
-    # ----- Inteligencia artificial -----
-    # Las credenciales solo se leen en backend; SecretStr evita mostrarlas en repr o logs.
-    # Proveedor principal: "gemini", "ollama" o "fake" (de prueba, prohibido en producción).
+    # ----- Inteligencia artificial (Motor propio de IdeaForge) -----
+    # Proveedor principal: "engine" (motor propio en Python) o "fake" (de prueba).
     ai_provider: AIProviderName = AIProviderName.FAKE
-    # Proveedor de respaldo, si el principal falla. Puede ser vacío.
+    # Proveedor de respaldo opcional.
     ai_fallback_provider: AIProviderName | None = None
-    gemini_api_key: SecretStr | None = None
-    gemini_model: str = Field(default="gemini-3.5-flash-lite", min_length=1, max_length=100)
-    # Si es True, Gemini busca en la web (grounding). Así sus respuestas traen fuentes reales.
-    gemini_search_grounding_enabled: bool = True
-    # Dirección del servidor local de Ollama y el modelo que usa.
-    ollama_base_url: str = "http://localhost:11434"
-    ollama_model: str = Field(default="llama3.2:3b", min_length=1, max_length=100)
-    # Si es True, Ollama "piensa" antes de responder (más lento, a veces más preciso).
-    ollama_think: bool = False
+    # Identificador de versión del motor propio de razonamiento, predicción y navegación web.
+    ai_engine_model: str = Field(default="ideaforge-engine-v1", min_length=1, max_length=100)
     # Tiempo máximo de espera de una llamada a la IA, en segundos (entre 5 y 600).
     ai_timeout_seconds: float = Field(default=360, ge=5, le=600)
     # Cuántas llamadas a la IA pueden correr al mismo tiempo (entre 1 y 10).
@@ -208,36 +200,6 @@ class Settings(BaseSettings):
             raise ValueError("SUPABASE_JWKS_URL debe ser una URL HTTPS válida.")
         return value
 
-    @field_validator("gemini_api_key", mode="before")
-    @classmethod
-    def empty_gemini_key_is_missing(cls, value: Any) -> Any:
-        """Trata la clave de Gemini vacía como si no existiera."""
-        return None if isinstance(value, str) and not value.strip() else value
-
-    @field_validator("ollama_base_url")
-    @classmethod
-    def validate_ollama_base_url(cls, value: str) -> str:
-        """Revisa que la dirección de Ollama sea solo el origen: http o https, con puerto válido."""
-        value = value.strip().rstrip("/")
-        parsed = urlsplit(value)
-        try:
-            # El puerto debe estar entre 1 y 65535. Si no, se lanza el error de abajo.
-            if parsed.port is not None and not 1 <= parsed.port <= 65535:
-                raise ValueError
-        except ValueError:
-            raise ValueError("OLLAMA_BASE_URL contiene un puerto inválido.") from None
-        invalid_url = (
-            parsed.scheme not in {"http", "https"}
-            or not parsed.hostname
-            or parsed.username
-            or parsed.password
-        )
-        if invalid_url:
-            raise ValueError("OLLAMA_BASE_URL debe ser una URL HTTP(S) sin credenciales.")
-        if parsed.query or parsed.fragment or parsed.path not in {"", "/"}:
-            raise ValueError("OLLAMA_BASE_URL solo debe contener el origen del servidor Ollama.")
-        return value
-
     @field_validator("geo_nominatim_url", "geo_overpass_url")
     @classmethod
     def validate_geo_service_url(cls, value: str) -> str:
@@ -301,18 +263,11 @@ class Settings(BaseSettings):
             raise ValueError(
                 "AI_PROVIDER=legacy solo identifica registros históricos; no es seleccionable."
             )
-        # El respaldo solo puede ser Gemini u Ollama, y debe ser distinto del principal.
+        # El respaldo solo puede ser el motor propio "engine", y debe ser distinto del principal.
         if self.ai_fallback_provider in {AIProviderName.FAKE, AIProviderName.LEGACY}:
-            raise ValueError("AI_FALLBACK_PROVIDER solo puede ser gemini u ollama.")
+            raise ValueError("AI_FALLBACK_PROVIDER solo puede ser engine.")
         if self.ai_fallback_provider == self.ai_provider:
             raise ValueError("AI_FALLBACK_PROVIDER debe ser distinto de AI_PROVIDER.")
-        # Si Gemini se usa en cualquiera de los dos lugares, debe tener su clave.
-        gemini_selected = AIProviderName.GEMINI in {
-            self.ai_provider,
-            self.ai_fallback_provider,
-        }
-        if gemini_selected and not self.gemini_api_key:
-            raise ValueError("GEMINI_API_KEY es obligatoria cuando Gemini está seleccionado.")
         return self
 
     @property

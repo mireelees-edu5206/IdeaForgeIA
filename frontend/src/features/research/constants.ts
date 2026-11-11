@@ -109,8 +109,7 @@ export const SOURCE_TYPE_LABELS: Record<SourceType, string> = {
  */
 /** Define provider labels como dato o funcion publica de research. */
 export const PROVIDER_LABELS: Record<AIProviderName, string> = {
-  gemini: "Gemini",
-  ollama: "Ollama (local)",
+  engine: "Motor IdeaForge (Python)",
   fake: "Proveedor de pruebas",
   legacy: "Proveedor histórico",
 };
