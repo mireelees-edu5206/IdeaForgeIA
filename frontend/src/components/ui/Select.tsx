@@ -10,12 +10,12 @@
  * - Usa el <select> nativo del navegador, así que funciona bien con teclado y lectores de pantalla.
  *
  * ¿Quién lo usa?
- * Los filtros de proyectos, la elección de algoritmo y de turno en el laboratorio, el tipo de
+ * Los filtros de proyectos, la elección de algoritmo en el laboratorio, el tipo de
  * competidor, etc. Cualquier lugar donde haya que escoger de una lista.
  *
  * Nota técnica: el genérico <T extends string> significa "el valor puede ser cualquier texto,
- * pero TypeScript sabe cuál exactamente". Así, si la lista solo permite "bfs" y "dfs", el
- * código no deja pasar otra palabra por error.
+ * pero TypeScript sabe cuál exactamente". Así, si la lista solo permite "exact" y
+ * "nearest_neighbor", el código no deja pasar otra palabra por error.
  */
 
 /* "SelectHTMLAttributes" es la lista de propiedades de un <select> normal. "useId" crea un identificador único. */

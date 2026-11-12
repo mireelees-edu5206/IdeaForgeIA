@@ -28,6 +28,7 @@ from __future__ import annotations
 import json
 import math
 import re
+import statistics
 import uuid
 from collections import Counter
 from collections.abc import Sequence
@@ -1221,6 +1222,22 @@ def _bound_text(text: str) -> str:
     return cleaned[:6000]
 
 
+def _drop_outliers_iqr(values: list[int]) -> list[int]:
+    """Quita cifras atípicas con la regla del rango intercuartil (IQR de Tukey).
+
+    Una cifra es atípica si queda fuera de [Q1 - 1.5·IQR, Q3 + 1.5·IQR]. Así un precio mal leído
+    (por ejemplo, con un cero de más) no mueve el promedio. Con menos de 4 cifras no hay datos
+    suficientes para medir la dispersión, así que se conservan todas.
+    """
+    if len(values) < 4:
+        return values
+    ordered = sorted(values)
+    q1, _, q3 = statistics.quantiles(ordered, n=4, method="inclusive")
+    iqr = q3 - q1
+    low, high = q1 - 1.5 * iqr, q3 + 1.5 * iqr
+    return [value for value in ordered if low <= value <= high]
+
+
 def _predict_investment_from_context(
     accepted_findings: list[dict[str, Any]],
 ) -> InvestmentEstimate | None:
@@ -1254,7 +1271,8 @@ def _predict_investment_from_context(
         return None
 
     if detected_amounts:
-        base = int(sum(detected_amounts) / len(detected_amounts))
+        kept_amounts = _drop_outliers_iqr(detected_amounts)
+        base = int(sum(kept_amounts) / len(kept_amounts))
         min_mxn = max(1_500, min(base * 10, 50_000_000))
         max_mxn = max(min_mxn + 5_000, min(min_mxn * 3, 100_000_000))
     else:

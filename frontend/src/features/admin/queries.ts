@@ -30,8 +30,6 @@ import type {
   HypothesisBudgetRequest,
   LabPlaceSearchRequest,
   LabRouteRequest,
-  TraceAlgorithm,
-  ValidationScheduleRequest,
 } from "./types";
 
 /**
@@ -140,21 +138,14 @@ export function useAdminProjectTrace(projectId: string | null) {
 }
 
 /**
- * useSearchProjectTrace busca un camino en el grafo. Recibe el proyecto, el método elegido y el
+ * useSearchProjectTrace busca el camino con menos pasos (BFS) en el grafo. Recibe el proyecto y el
  * nodo de destino. Es una acción (no guarda datos en la memoria), por eso usa useMutation.
  */
 /** Expone la funcion use search project trace para el flujo de admin. */
 export function useSearchProjectTrace() {
   return useMutation({
-    mutationFn: ({
-      projectId,
-      algorithm,
-      targetNodeId,
-    }: {
-      projectId: string;
-      algorithm: TraceAlgorithm;
-      targetNodeId: string;
-    }) => adminApi.projectTracePath(projectId, algorithm, targetNodeId),
+    mutationFn: ({ projectId, targetNodeId }: { projectId: string; targetNodeId: string }) =>
+      adminApi.projectTracePath(projectId, targetNodeId),
   });
 }
 
@@ -197,19 +188,5 @@ export function usePlanHypothesisBudget() {
       projectId: string;
       data: HypothesisBudgetRequest;
     }) => adminApi.projectBudgetPlan(projectId, data),
-  });
-}
-
-/** useScheduleProjectValidation reparte las validaciones en turnos. */
-/** Expone la funcion use schedule project validation para el flujo de admin. */
-export function useScheduleProjectValidation() {
-  return useMutation({
-    mutationFn: ({
-      projectId,
-      data,
-    }: {
-      projectId: string;
-      data: ValidationScheduleRequest;
-    }) => adminApi.projectSchedule(projectId, data),
   });
 }

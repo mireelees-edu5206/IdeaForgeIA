@@ -12,7 +12,6 @@ const hooks = vi.hoisted(() => ({
   placesMutate: vi.fn(),
   routeMutate: vi.fn(),
   budgetMutate: vi.fn(),
-  scheduleMutate: vi.fn(),
   geocodeMutateAsync: vi.fn(),
 }));
 
@@ -110,13 +109,6 @@ vi.mock("../queries", () => ({
     isError: false,
     data: undefined,
   }),
-  useScheduleProjectValidation: () => ({
-    mutate: hooks.scheduleMutate,
-    reset: vi.fn(),
-    isPending: false,
-    isError: false,
-    data: undefined,
-  }),
 }));
 
 vi.mock("../../geo/queries", () => ({
@@ -173,7 +165,6 @@ describe("Laboratorio aplicado al proyecto", () => {
 
     expect(hooks.tracePathMutate).toHaveBeenCalledWith({
       projectId: "p1",
-      algorithm: "bfs",
       targetNodeId: "hypothesis:h1",
     });
   });
@@ -198,7 +189,7 @@ describe("Laboratorio aplicado al proyecto", () => {
       projectId: "p1",
       data: {
         budget: 10000,
-        algorithm: "hill_climbing",
+        algorithm: "exact",
         items: [{ hypothesis_id: "h1", estimated_cost: 400, expected_value: 80 }],
       },
     });

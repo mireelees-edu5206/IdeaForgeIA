@@ -18,7 +18,11 @@ from app.modules.ai.factory import build_ai_provider
 from app.modules.ai.models import AICallStatus, AIOperation
 from app.modules.ai.orchestrator import AIOrchestrator
 from app.modules.ai.providers.base import AIProvider
-from app.modules.ai.providers.engine import IdeaForgeEngineProvider, _tfidf_cosine_scores
+from app.modules.ai.providers.engine import (
+    IdeaForgeEngineProvider,
+    _drop_outliers_iqr,
+    _tfidf_cosine_scores,
+)
 from app.modules.ai.providers.web_search import WebHit
 from app.modules.ai.types import AIMessage, AIUsage, GroundedResult, StructuredResult
 from app.modules.analysis.generation import AnalysisResult
@@ -347,6 +351,16 @@ def test_engine_report_draft_builds_structured_verdict_and_predicts_investment()
     assert "H1" in verdict.investment.evidence_refs
     assert verdict.zones[0].place_refs == ["G1"]
     assert "[H1]" in result.data.market
+
+
+def test_iqr_filter_removes_a_mistyped_amount_and_keeps_the_rest() -> None:
+    """Un precio mal leído (9 000 000 en vez de 9 000) sale del promedio; el resto se conserva."""
+    assert _drop_outliers_iqr([1000, 1100, 1200, 1300, 9_000_000]) == [1000, 1100, 1200, 1300]
+
+
+def test_iqr_filter_keeps_all_amounts_when_there_are_too_few_to_compare() -> None:
+    """Con menos de 4 cifras no hay dispersión que medir, así que no se quita ninguna."""
+    assert _drop_outliers_iqr([1000, 1100, 9_000_000]) == [1000, 1100, 9_000_000]
 
 
 class StubProvider(AIProvider):

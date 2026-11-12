@@ -7,30 +7,18 @@
  * fácil de leer (metros o kilómetros).
  *
  * ¿Para qué sirve?
- * Para que la pantalla no muestre códigos como "hill_climbing" o "greedy_ratio", sino nombres
+ * Para que la pantalla no muestre códigos como "exact" o "greedy_ratio", sino nombres
  * claros. Cambiar un texto de método o una explicación se hace aquí, en un solo lugar.
  *
  * ¿Quién lo usa?
  * AdminLabPage.tsx (los menús de método, la guía y las distancias) y labFormat.test.ts (sus pruebas).
  *
- * Importante: los códigos de la izquierda (bfs, greedy, exact...) deben coincidir con los del backend.
- * Si agregas o quitas un método, cámbialo en types.ts, en esta hoja y en el backend.
+ * Importante: los códigos de la izquierda (exact, nearest_neighbor, greedy_ratio) deben coincidir
+ * con los del backend. Si agregas o quitas un método, cámbialo en types.ts, en esta hoja y en el backend.
  */
 
 /* Tipos de cada familia de métodos, definidos en la carpeta de admin. */
-import type { BudgetAlgorithm, RouteAlgorithm, TraceAlgorithm } from "../types";
-
-/**
- * TRACE_ALGORITHM_LABELS da el nombre en español de cada método del recorrido de trazabilidad.
- * Se usa así: TRACE_ALGORITHM_LABELS["bfs"] devuelve "Búsqueda ciega en anchura (BFS)".
- */
-/** Nombre en español de cada búsqueda del recorrido de trazabilidad (se muestra en vez del código). */
-export const TRACE_ALGORITHM_LABELS: Record<TraceAlgorithm, string> = {
-  bfs: "Búsqueda ciega en anchura (BFS)",
-  dfs: "Búsqueda ciega en profundidad (DFS)",
-  greedy: "Búsqueda con heurística voraz",
-  astar: "Búsqueda A* (heurística + pasos recorridos)",
-};
+import type { BudgetAlgorithm, RouteAlgorithm } from "../types";
 
 /**
  * ROUTE_ALGORITHM_LABELS da el nombre en español de cada método para ordenar la ruta.
@@ -40,16 +28,12 @@ export const TRACE_ALGORITHM_LABELS: Record<TraceAlgorithm, string> = {
 export const ROUTE_ALGORITHM_LABELS: Record<RouteAlgorithm, string> = {
   exact: "Óptimo exacto (prueba todas las rutas; máx. 8 lugares)",
   nearest_neighbor: "Heurística del vecino más cercano",
-  hill_climbing: "Búsqueda local por intercambio",
-  two_opt: "Búsqueda local 2-opt",
-  genetic: "Algoritmo genético",
 };
 
 /** BUDGET_ALGORITHM_LABELS da el nombre en español de cada método para elegir hipótesis con presupuesto. */
 /** Nombre en español de cada método para elegir hipótesis con presupuesto. */
 export const BUDGET_ALGORITHM_LABELS: Record<BudgetAlgorithm, string> = {
-  exact: "Óptimo exacto (prueba todas las combinaciones)",
-  hill_climbing: "Búsqueda local (agregar o quitar hipótesis)",
+  exact: "Óptimo exacto (prueba todas las combinaciones; máx. 16 hipótesis)",
   greedy_ratio: "Heurística voraz (mayor valor por costo primero)",
 };
 
@@ -70,15 +54,9 @@ export const ALGORITHM_GUIDE: Array<{
 }> = [
   {
     family: "Búsqueda ciega",
-    name: "Anchura (BFS) y profundidad (DFS)",
-    idea: "Revisan el mapa de relaciones sin ninguna pista. BFS revisa primero lo más cercano; DFS se mete hasta el fondo de una rama antes de volver.",
-    guarantee: "BFS encuentra el camino con menos pasos. DFS encuentra un camino, pero no necesariamente el más corto.",
-  },
-  {
-    family: "Heurística",
-    name: "Voraz y A*",
-    idea: "Usan una pista (la heurística) para decidir qué revisar primero. La pista aquí es la diferencia de nivel entre un elemento y el objetivo: idea, investigación, fuente, hallazgo o competidor.",
-    guarantee: "La voraz es rápida, pero puede tomar un camino largo. A* busca el camino corto, pero solo lo asegura si la pista nunca exagera.",
+    name: "Anchura (BFS)",
+    idea: "Revisa el mapa de relaciones sin ninguna pista, capa por capa: primero lo que está a 1 paso, luego a 2 pasos, y así sucesivamente.",
+    guarantee: "Encuentra el camino con menos pasos entre la idea y el elemento buscado.",
   },
   {
     family: "Heurística",
@@ -87,22 +65,16 @@ export const ALGORITHM_GUIDE: Array<{
     guarantee: "Es rápido, pero casi nunca da la ruta más corta.",
   },
   {
-    family: "Búsqueda local",
-    name: "Intercambio y 2-opt",
-    idea: "Parten de una ruta y prueban cambios pequeños (intercambiar dos paradas o invertir un tramo). Conservan solo los cambios que acortan la distancia.",
-    guarantee: "Mejora la ruta, pero puede quedarse en una solución que solo es buena localmente.",
-  },
-  {
-    family: "Algoritmo genético",
-    name: "Genético",
-    idea: "Crea muchas rutas al azar, las combina y mantiene las mejores generación tras generación, como una selección natural.",
-    guarantee: "Con la misma semilla da siempre el mismo resultado, pero no asegura el óptimo.",
-  },
-  {
     family: "Óptimo exacto",
     name: "Fuerza bruta",
-    idea: "Prueba todas las posibilidades y se queda con la mejor. Solo es práctico con pocos elementos.",
+    idea: "Prueba todas las posibilidades y se queda con la mejor. Solo es práctico con pocos elementos (hasta 8 paradas o 16 hipótesis).",
     guarantee: "Siempre da la mejor respuesta, pero con muchos elementos tarda demasiado.",
+  },
+  {
+    family: "Heurística",
+    name: "Voraz por valor y costo",
+    idea: "Ordena las hipótesis por valor esperado entre costo y toma las que quepan en el presupuesto, en ese orden.",
+    guarantee: "Es rápida y suele acercarse al mejor resultado, pero puede dejar de lado una combinación mejor.",
   },
 ];
 

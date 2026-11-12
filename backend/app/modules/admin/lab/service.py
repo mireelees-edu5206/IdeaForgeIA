@@ -9,13 +9,12 @@ from uuid import UUID
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.enums import AttributeType, Level, ReviewStatus
+from app.core.enums import AttributeType, Level, Origin, ReviewStatus
 from app.core.errors import ConflictError
 from app.modules.admin.lab.algorithms import (
     find_trace_path,
     optimize_hypothesis_budget,
     optimize_project_place_route,
-    schedule_validation_tasks,
 )
 from app.modules.admin.lab.schemas import (
     AdminLabProjectOption,
@@ -23,6 +22,9 @@ from app.modules.admin.lab.schemas import (
     HypothesisBudgetRequest,
     HypothesisBudgetResponse,
     HypothesisBudgetSelection,
+    LabLearningModel,
+    LabLearningReadiness,
+    LabLearningResponse,
     LabMetricPoint,
     LabMetricsResponse,
     LabPlaceSearchResponse,
@@ -35,14 +37,12 @@ from app.modules.admin.lab.schemas import (
     ProjectTraceGraph,
     PropositionDefinition,
     PropositionRuleTable,
-    TraceAlgorithm,
     TraceGraphEdge,
     TraceGraphNode,
     TruthTableRow,
-    ValidationScheduleAssignment,
-    ValidationScheduleRequest,
-    ValidationScheduleResponse,
 )
+from app.modules.ai.learning.features import FEATURE_NAMES, finding_feature_row
+from app.modules.ai.learning.report import build_finding_report
 from app.modules.ai.models import AIApiLog, AICallStatus
 from app.modules.analysis.models import (
     HypothesisFinding,
@@ -660,16 +660,13 @@ class AdminLabService:
             truncated=truncated,
         )
 
-    async def trace_path(
-        self, project_id: UUID, algorithm: TraceAlgorithm, target_node_id: str
-    ) -> LabTracePathResponse:
-        """Gestiona path en laboratorio admin."""
+    async def trace_path(self, project_id: UUID, target_node_id: str) -> LabTracePathResponse:
+        """Busca el camino con menos pasos (BFS) desde la raíz del proyecto hasta el destino."""
         graph = await self.project_trace(project_id)
         nodes = {node.id: node for node in graph.nodes}
         # Rama condicional: se cumple target_node_id not in nodes.
         if target_node_id not in nodes:
             return LabTracePathResponse(
-                algorithm=algorithm,
                 root_id=graph.root_id,
                 target_node_id=target_node_id,
                 path=[],
@@ -678,21 +675,14 @@ class AdminLabService:
                 found=False,
             )
         edge_pairs = [(edge.source, edge.target) for edge in graph.edges]
-        node_kinds = {node.id: node.kind for node in graph.nodes}
-        path_ids, visited_ids = find_trace_path(
-            graph.root_id, target_node_id, edge_pairs, algorithm, node_kinds
-        )
-        # BFS siempre devuelve el camino más corto; sirve como referencia para comparar.
-        reference_ids, _ = find_trace_path(graph.root_id, target_node_id, edge_pairs, "bfs")
+        path_ids, visited_ids = find_trace_path(graph.root_id, target_node_id, edge_pairs)
         return LabTracePathResponse(
-            algorithm=algorithm,
             root_id=graph.root_id,
             target_node_id=target_node_id,
             path=[nodes[node_id] for node_id in path_ids if node_id in nodes],
             visited_node_ids=visited_ids,
             expanded_count=len(visited_ids),
             found=bool(path_ids),
-            shortest_path_steps=len(reference_ids) - 1 if reference_ids else None,
         )
 
     async def places(
@@ -745,9 +735,6 @@ class AdminLabService:
                 for place in selected
             ],
             request.algorithm,
-            request.seed,
-            request.population_size,
-            request.generations,
         )
         selected_by_id = {f"{place.osm_type}:{place.osm_id}": place for place in selected}
         stops = [
@@ -831,53 +818,50 @@ class AdminLabService:
             evaluations=result["evaluations"],
         )
 
-    async def schedule(
-        self, project_id: UUID, request: ValidationScheduleRequest
-    ) -> ValidationScheduleResponse:
-        """Gestiona el flujo en laboratorio admin."""
-        project = await self._get_project(project_id)
-        ids = [task.hypothesis_id for task in request.tasks]
-        rows = await self.session.scalars(
-            select(ValidationHypothesis).where(
-                ValidationHypothesis.project_id == project.id,
-                ValidationHypothesis.id.in_(ids),
-                ValidationHypothesis.review_status != ReviewStatus.REJECTED,
+    async def learning_report(self) -> LabLearningResponse:
+        """Reúne los hallazgos de la IA ya revisados y entrena el árbol si hay datos suficientes."""
+        findings = (
+            await self.session.scalars(
+                select(Finding).where(
+                    Finding.origin == Origin.AI,
+                    Finding.review_status.in_([ReviewStatus.ACCEPTED, ReviewStatus.REJECTED]),
+                )
             )
-        )
-        hypotheses = {hypothesis.id: hypothesis for hypothesis in rows}
-        # Rama condicional: se cumple set(hypotheses) != set(ids).
-        if set(hypotheses) != set(ids):
-            raise ConflictError(
-                "Una o más hipótesis ya no pertenecen al proyecto o fueron rechazadas.",
-                code="lab_hypotheses_changed",
+        ).all()
+        ids = [finding.id for finding in findings]
+        stances: dict[UUID, list[str]] = {}
+        domains: dict[UUID, list[str]] = {}
+        if ids:
+            links = await self.session.execute(
+                select(FindingEvidence.finding_id, FindingEvidence.stance, Source.domain)
+                .select_from(FindingEvidence)
+                .join(Evidence, Evidence.id == FindingEvidence.evidence_id)
+                .join(Source, Source.id == Evidence.source_id)
+                .where(FindingEvidence.finding_id.in_(ids))
             )
-        request_by_id = {task.hypothesis_id: task for task in request.tasks}
-        tasks = [
-            {
-                "id": str(hypothesis.id),
-                "statement": hypothesis.statement,
-                "priority": hypothesis.priority.value,
-                "preferred_shift": request_by_id[hypothesis.id].preferred_shift,
-            }
-            for hypothesis in hypotheses.values()
+            for finding_id, stance, domain in links:
+                stances.setdefault(finding_id, []).append(str(stance))
+                domains.setdefault(finding_id, []).append(domain)
+        rows = [
+            finding_feature_row(
+                finding_type=str(finding.finding_type),
+                statement=finding.statement,
+                confidence_score=(
+                    float(finding.confidence_score)
+                    if finding.confidence_score is not None
+                    else None
+                ),
+                stances=stances.get(finding.id, []),
+                domains=domains.get(finding.id, []),
+            )
+            for finding in findings
         ]
-        result = schedule_validation_tasks(tasks, request.capacity_per_shift)
-        assignments = [
-            ValidationScheduleAssignment(
-                hypothesis_id=UUID(task["id"]),
-                statement=task["statement"],
-                priority=task["priority"],
-                preferred_shift=task["preferred_shift"],
-                assigned_shift=assigned_shift,
-            )
-            for task, assigned_shift in zip(tasks, result["assignments"], strict=True)
-        ]
-        return ValidationScheduleResponse(
-            project_id=project.id,
-            assignments=assignments,
-            satisfied_preferences=result["satisfied_preferences"],
-            priority_weighted_score=result["priority_weighted_score"],
-            evaluations=result["evaluations"],
+        report = build_finding_report(rows, [str(finding.review_status) for finding in findings])
+        return LabLearningResponse(
+            target="finding_acceptance",
+            features=list(FEATURE_NAMES),
+            readiness=LabLearningReadiness(**report["readiness"]),
+            model=LabLearningModel(**report["model"]) if report["model"] else None,
         )
 
     async def _get_project(self, project_id: UUID) -> Project:

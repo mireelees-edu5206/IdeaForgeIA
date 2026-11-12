@@ -8,8 +8,8 @@
  *
  * ¿Para qué sirve?
  * Para entender y comparar métodos. Los resultados son sugerencias temporales: esta pantalla NO
- * cambia los datos guardados del proyecto (los resultados de rutas, presupuesto y calendario
- * tampoco se guardan; el servidor responde "persisted: false").
+ * cambia los datos guardados del proyecto (los resultados de rutas y presupuesto tampoco se
+ * guardan; el servidor responde "persisted: false").
  *
  * ¿Quién la usa?
  * Solo administradores (la ruta está protegida por RequireAdmin en app/router.tsx). Desde aquí se
@@ -24,7 +24,6 @@
  *    - Trazabilidad: buscar un camino en el grafo de relaciones del proyecto (TraceResult).
  *    - Entorno geográfico: buscar una zona, elegir lugares en el mapa, y ordenar la visita (ProjectRouteResult).
  *    - Priorizar validaciones con presupuesto (HypothesisBudgetPanel).
- *    - Plan de validación por turnos (ValidationSchedulePanel).
  * 6. Paletas de colores de muestra.
  *
  * Archivos que usa:
@@ -73,7 +72,6 @@ import {
   useAdminProjectTrace,
   useOptimizeProjectRoute,
   usePlanHypothesisBudget,
-  useScheduleProjectValidation,
   useSearchProjectPlaces,
   useSearchProjectTrace,
 } from "../queries";
@@ -84,10 +82,8 @@ import type {
   LabRouteResult,
   ProjectTraceGraph,
   RouteAlgorithm,
-  TraceAlgorithm,
   TraceGraphNode,
   TracePathResult,
-  ValidationShift,
   BudgetAlgorithm,
 } from "../types";
 /* Los nombres en español, la guía y el formato de distancias. */
@@ -96,7 +92,6 @@ import {
   BUDGET_ALGORITHM_LABELS,
   formatDistance,
   ROUTE_ALGORITHM_LABELS,
-  TRACE_ALGORITHM_LABELS,
 } from "./labFormat";
 
 /**
@@ -122,26 +117,11 @@ const ROUTE_ALGORITHMS = (Object.keys(ROUTE_ALGORITHM_LABELS) as RouteAlgorithm[
   label: ROUTE_ALGORITHM_LABELS[value],
 }));
 
-/** TRACE_ALGORITHMS arma la lista del menú de métodos de búsqueda en la trazabilidad (BFS, DFS, voraz, A*). */
-/** Opciones del selector de búsqueda en la trazabilidad. */
-const TRACE_ALGORITHMS = (Object.keys(TRACE_ALGORITHM_LABELS) as TraceAlgorithm[]).map((value) => ({
-  value,
-  label: TRACE_ALGORITHM_LABELS[value],
-}));
-
 /** BUDGET_ALGORITHMS arma la lista del menú de métodos para elegir hipótesis con presupuesto. */
 /** Opciones del selector de presupuesto para elegir hipótesis. */
 const BUDGET_ALGORITHMS = (Object.keys(BUDGET_ALGORITHM_LABELS) as BudgetAlgorithm[]).map(
   (value) => ({ value, label: BUDGET_ALGORITHM_LABELS[value] }),
 );
-
-/** SHIFT_OPTIONS son los tres turnos para validar: matutino, vespertino y nocturno. */
-/** Define SHIFT_OPTIONS para el bloque de administracion. */
-const SHIFT_OPTIONS: Array<{ value: ValidationShift; label: string }> = [
-  { value: "matutino", label: "Matutino" },
-  { value: "vespertino", label: "Vespertino" },
-  { value: "nocturno", label: "Nocturno" },
-];
 
 /**
  * ChartSeries describe una línea o columna de una gráfica: su nombre (label), su color (color, en
@@ -443,8 +423,7 @@ function BarChart({
  *
  * Casos:
  * - Si no encontró camino (found = false): un mensaje.
- * - Si encontró camino: el método usado, cuántos elementos revisó, la comparación con BFS
- *   (si BFS dio un camino) y la lista numerada de cada nodo del camino.
+ * - Si encontró camino: cuántos elementos revisó, cuántos pasos tiene y la lista numerada de cada nodo.
  */
 /** Componente TraceResult: renderiza la vista de administracion. */
 function TraceResult({ result }: { result: TracePathResult }) {
@@ -461,19 +440,12 @@ function TraceResult({ result }: { result: TracePathResult }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-slate-400">
-        {TRACE_ALGORITHM_LABELS[result.algorithm]} · {result.expanded_count} elementos revisados
+        Búsqueda en anchura (BFS) · {result.expanded_count} elementos revisados
       </p>
-      {/* Comparación con la referencia BFS. Solo aparece si BFS dio un camino (no es null). */}
-      {result.shortest_path_steps !== null && (
-        <p className="text-xs text-slate-400">
-          Camino más corto (referencia BFS): {result.shortest_path_steps} pasos. Este camino tiene{" "}
-          {result.path.length - 1} pasos.
-          {/* Si los pasos son iguales, "coinciden"; si no, la pista no encontró el mejor camino. */}
-          {result.path.length - 1 === result.shortest_path_steps
-            ? " Coinciden."
-            : " No coinciden: la pista no encontró el camino más corto."}
-        </p>
-      )}
+      {/* BFS revisa por capas, así que el primer camino que llega al destino tiene menos pasos posibles. */}
+      <p className="text-xs text-slate-400">
+        BFS garantiza que este es el camino con menos pasos ({result.path.length - 1} pasos).
+      </p>
       {/* La lista numerada del camino: un círculo con el número, el tipo del nodo y su texto. */}
       <ol className="flex flex-col gap-2">
         {result.path.map((node, index) => (
@@ -715,8 +687,7 @@ export function AdminLabPage() {
   // Lo que la persona elige o escribe. Cada uno tiene su valor inicial a la derecha.
   // Proyecto elegido ("" significa que todavía no hay ninguno).
   const [projectId, setProjectId] = useState("");
-  // Método y destino de la búsqueda de trazabilidad.
-  const [traceAlgorithm, setTraceAlgorithm] = useState<TraceAlgorithm>("bfs");
+  // Destino de la búsqueda de trazabilidad.
   const [traceTarget, setTraceTarget] = useState("");
   // La zona: texto escrito, último texto buscado, resultados de la búsqueda y el centro elegido.
   const [locationQuery, setLocationQuery] = useState("");
@@ -728,12 +699,8 @@ export function AdminLabPage() {
   const [radius, setRadius] = useState(1000);
   // Los lugares marcados para la ruta (máximo 8).
   const [selectedPlaceIds, setSelectedPlaceIds] = useState<string[]>([]);
-  // Método de ruta (por defecto, búsqueda local por intercambio) y los tres parámetros del genético.
-  // Los valores 42, 24 y 30 son los mismos que tiene el servidor por defecto.
-  const [routeAlgorithm, setRouteAlgorithm] = useState<RouteAlgorithm>("hill_climbing");
-  const [routeSeed, setRouteSeed] = useState(42);
-  const [routePopulation, setRoutePopulation] = useState(24);
-  const [routeGenerations, setRouteGenerations] = useState(30);
+  // Método de ruta (por defecto, óptimo exacto: con máximo 8 lugares es rápido).
+  const [routeAlgorithm, setRouteAlgorithm] = useState<RouteAlgorithm>("exact");
 
   // Los proyectos disponibles. "?? []" usa lista vacía mientras todavía carga.
   const projects = projectList.data?.projects ?? [];
@@ -898,7 +865,6 @@ export function AdminLabPage() {
 
   /**
    * submitRoute pide calcular la ruta entre los lugares marcados. Necesita al menos 2 lugares.
-   * Manda también la semilla y los dos parámetros del genético (aunque solo se usan si eligió "Algoritmo genético").
    */
   /** Gestiona submit route de administracion. */
   function submitRoute(event: FormEvent<HTMLFormElement>) {
@@ -915,21 +881,18 @@ export function AdminLabPage() {
         keyword: keyword.trim(),
         selected_place_ids: selectedPlaceIds,
         algorithm: routeAlgorithm,
-        seed: routeSeed,
-        population_size: routePopulation,
-        generations: routeGenerations,
       },
     });
   }
 
-  /** submitTracePath pide buscar el camino desde la raíz del proyecto hasta el destino elegido, con el método elegido. */
+  /** submitTracePath pide buscar el camino desde la raíz del proyecto hasta el destino elegido (BFS). */
   /** Gestiona submit trace path de administracion. */
   function submitTracePath(event: FormEvent<HTMLFormElement>) {
     // Evita que la página se recargue.
     event.preventDefault();
     /** Rama condicional: !projectId || !traceTarget. */
     if (!projectId || !traceTarget) return;
-    tracePath.mutate({ projectId, algorithm: traceAlgorithm, targetNodeId: traceTarget });
+    tracePath.mutate({ projectId, targetNodeId: traceTarget });
   }
 
   return (
@@ -1109,22 +1072,14 @@ export function AdminLabPage() {
                 <h2 className="font-display text-lg font-bold">Trazabilidad del proyecto</h2>
                 <p className="text-xs leading-relaxed text-slate-400">
                   Busca cómo llegar desde la idea hasta un elemento del proyecto siguiendo sus
-                  vínculos (atributos, fuentes, evidencias, hallazgos y análisis). Las búsquedas
-                  ciegas (BFS y DFS) no usan pistas. Las de heurística (voraz y A*) usan la
-                  diferencia de nivel entre cada elemento y el objetivo para revisar primero lo
-                  más prometedor. BFS sirve como referencia del camino más corto.
+                  vínculos (atributos, fuentes, evidencias, hallazgos y análisis). Usa búsqueda en
+                  anchura (BFS): no usa pistas y siempre encuentra el camino con menos pasos.
                 </p>
               </header>
               <form
                 onSubmit={submitTracePath}
-                className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] 2xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_auto] 2xl:items-end"
+                className="grid min-w-0 gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
               >
-                <Select
-                  label="Método de búsqueda"
-                  value={traceAlgorithm}
-                  options={TRACE_ALGORITHMS}
-                  onChange={(value) => setTraceAlgorithm(value as TraceAlgorithm)}
-                />
                 {/* El destino: cada opción muestra el tipo del nodo y su texto (cortado a 48 letras). */}
                 <Select
                   label="Buscar camino desde el proyecto hasta"
@@ -1142,7 +1097,6 @@ export function AdminLabPage() {
                   size="sm"
                   loading={tracePath.isPending}
                   disabled={!traceTarget}
-                  className="sm:col-span-2 2xl:col-span-1"
                 >
                   Buscar trazabilidad
                 </Button>
@@ -1274,7 +1228,7 @@ export function AdminLabPage() {
                   }
                 />
               )}
-              {/* El formulario de la ruta: aparece después de buscar lugares. Con "genético", muestra también semilla, población y generaciones. */}
+              {/* El formulario de la ruta: aparece después de buscar lugares. */}
               {placeSearch.data && (
                 <form
                   onSubmit={submitRoute}
@@ -1295,44 +1249,6 @@ export function AdminLabPage() {
                   >
                     Optimizar visita
                   </Button>
-                  {/* Solo para el método genético: semilla (0 a 2147483647), población (4 a 60) y generaciones (1 a 80). */}
-                  {routeAlgorithm === "genetic" && (
-                    <div className="grid grid-cols-3 gap-2 sm:col-span-2">
-                      <label className="flex flex-col gap-1.5 text-xs text-slate-400">
-                        Semilla
-                        <input
-                          type="number"
-                          min={0}
-                          max={2147483647}
-                          value={routeSeed}
-                          onChange={(event) => setRouteSeed(Number(event.target.value))}
-                          className="neo-inset h-10 rounded-xl px-3 text-sm text-slate-100"
-                        />
-                      </label>
-                      <label className="flex flex-col gap-1.5 text-xs text-slate-400">
-                        Población
-                        <input
-                          type="number"
-                          min={4}
-                          max={60}
-                          value={routePopulation}
-                          onChange={(event) => setRoutePopulation(Number(event.target.value))}
-                          className="neo-inset h-10 rounded-xl px-3 text-sm text-slate-100"
-                        />
-                      </label>
-                      <label className="flex flex-col gap-1.5 text-xs text-slate-400">
-                        Generaciones
-                        <input
-                          type="number"
-                          min={1}
-                          max={80}
-                          value={routeGenerations}
-                          onChange={(event) => setRouteGenerations(Number(event.target.value))}
-                          className="neo-inset h-10 rounded-xl px-3 text-sm text-slate-100"
-                        />
-                      </label>
-                    </div>
-                  )}
                 </form>
               )}
               {routeOptimization.isError && (
@@ -1342,16 +1258,11 @@ export function AdminLabPage() {
             </GlassPanel>
           </div>
 
-          {/* Las dos herramientas de planeación: presupuesto y turnos. */}
+          {/* La herramienta de planeación: presupuesto para elegir hipótesis. */}
           <div className="grid gap-6 2xl:grid-cols-2">
             {/* "key" con el id del proyecto: si cambia el proyecto, el panel se reinicia y no conserva lo anterior. */}
             <HypothesisBudgetPanel
               key={`budget-${projectId}`}
-              projectId={projectId}
-              hypotheses={hypothesisNodes}
-            />
-            <ValidationSchedulePanel
-              key={`schedule-${projectId}`}
               projectId={projectId}
               hypotheses={hypothesisNodes}
             />
@@ -1414,7 +1325,7 @@ function HypothesisBudgetPanel({
   const budgetPlan = usePlanHypothesisBudget();
   // Presupuesto disponible (por defecto 10,000), método (por defecto búsqueda local) y hipótesis marcadas.
   const [budget, setBudget] = useState(10000);
-  const [budgetAlgorithm, setBudgetAlgorithm] = useState<BudgetAlgorithm>("hill_climbing");
+  const [budgetAlgorithm, setBudgetAlgorithm] = useState<BudgetAlgorithm>("exact");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   // Las estimaciones de costo y valor de cada hipótesis, guardadas por su id de nodo.
   const [estimates, setEstimates] = useState<Record<string, { cost: number; value: number }>>({});
@@ -1573,154 +1484,3 @@ function HypothesisBudgetPanel({
   );
 }
 
-/**
- * ValidationSchedulePanel reparte las hipótesis elegidas en tres turnos (matutino, vespertino y nocturno).
- * Cada hipótesis tiene un turno preferido, y el servidor intenta respetarlo. La capacidad por turno
- * limita cuántas tareas caben en cada turno.
- *
- * Recibe:
- * - projectId: el proyecto.
- * - hypotheses: los nodos de tipo hipótesis del grafo.
- *
- * Regla: el total de hipótesis elegidas no puede pasar de capacidad × 3 (tres turnos).
- */
-/** Componente ValidationSchedulePanel: renderiza la vista de administracion. */
-function ValidationSchedulePanel({
-  projectId,
-  hypotheses,
-}: {
-  projectId: string;
-  hypotheses: TraceGraphNode[];
-}) {
-  // La acción de organizar el plan.
-  const validationSchedule = useScheduleProjectValidation();
-  // Capacidad por turno (por defecto 4), hipótesis marcadas y turno preferido de cada una.
-  const [capacity, setCapacity] = useState(4);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [preferences, setPreferences] = useState<Record<string, ValidationShift>>({});
-
-  /**
-   * submit arma la lista de tareas (cada hipótesis con su turno preferido) y la envía.
-   * Si una hipótesis no tiene turno elegido, se usa "matutino". Igual que en el presupuesto,
-   * "slice('hypothesis:'.length)" quita el prefijo del id.
-   */
-  /** Gestiona submit de administracion. */
-  function submit(event: FormEvent<HTMLFormElement>) {
-    // Evita que la página se recargue.
-    event.preventDefault();
-    validationSchedule.mutate({
-      projectId,
-      data: {
-        capacity_per_shift: capacity,
-        tasks: selectedIds.map((nodeId) => ({
-          hypothesis_id: nodeId.slice("hypothesis:".length),
-          preferred_shift: preferences[nodeId] ?? "matutino",
-        })),
-      },
-    });
-  }
-
-  return (
-    <GlassPanel className="flex flex-col gap-4 rounded-3xl p-5 sm:p-6">
-      <header>
-        <h2 className="font-display text-lg font-bold">Plan de validación por turnos</h2>
-        <p className="text-xs text-slate-400">
-          Distribuye las hipótesis del proyecto en horarios disponibles; no utiliza datos de
-          empleados.
-        </p>
-      </header>
-      {/* Si no hay hipótesis, un aviso. Si hay, el formulario. */}
-      {hypotheses.length === 0 ? (
-        <p className="text-sm text-slate-400">Añade hipótesis al análisis para crear un plan.</p>
-      ) : (
-        <form onSubmit={submit} className="flex flex-col gap-3">
-          <label className="flex flex-col gap-1.5 text-xs text-slate-400">
-            Capacidad máxima por turno
-            <input
-              type="number"
-              min={1}
-              max={8}
-              value={capacity}
-              onChange={(event) => setCapacity(Number(event.target.value))}
-              className="neo-inset h-10 rounded-xl px-3 text-sm text-slate-100"
-            />
-          </label>
-          {/* La lista de hipótesis. Al marcar una, aparece su menú de turno preferido. */}
-          <div className="flex max-h-72 flex-col gap-2 overflow-auto">
-            {hypotheses.map((node) => {
-              const selected = selectedIds.includes(node.id);
-              return (
-                <div key={node.id} className="neo-inset rounded-xl p-3">
-                  <label className="flex items-start gap-2 text-sm text-slate-100">
-                    <input
-                      type="checkbox"
-                      checked={selected}
-                      // Igual que en el presupuesto: agrega (hasta 16) o quita.
-                      onChange={() =>
-                        setSelectedIds((current) =>
-                          selected
-                            ? current.filter((id) => id !== node.id)
-                            : current.length < 16
-                              ? [...current, node.id]
-                              : current,
-                        )
-                      }
-                      className="mt-1 accent-violet-500"
-                    />
-                    <span>{node.label}</span>
-                  </label>
-                  {selected && (
-                    <Select
-                      className="mt-2"
-                      label="Turno preferido"
-                      value={preferences[node.id] ?? "matutino"}
-                      options={SHIFT_OPTIONS}
-                      // Al elegir turno, guarda la preferencia de esta hipótesis.
-                      onChange={(value) =>
-                        setPreferences((current) => ({
-                          ...current,
-                          [node.id]: value as ValidationShift,
-                        }))
-                      }
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {/* Se bloquea si no hay hipótesis, o si hay más que lo que caben en los tres turnos. */}
-          <Button
-            type="submit"
-            size="sm"
-            disabled={!selectedIds.length || selectedIds.length > capacity * 3}
-            loading={validationSchedule.isPending}
-          >
-            Organizar plan
-          </Button>
-        </form>
-      )}
-      {validationSchedule.isError && <Alert>{errorMessageFrom(validationSchedule.error)}</Alert>}
-      {/* El resultado: cada tarea con su turno preferido y el turno asignado, y el resumen al final. */}
-      {validationSchedule.data && (
-        <ol className="neo-inset flex flex-col gap-2 rounded-xl p-3 text-sm">
-          {validationSchedule.data.assignments.map((task) => (
-            <li
-              key={task.hypothesis_id}
-              className="flex flex-col gap-1 sm:flex-row sm:justify-between"
-            >
-              <span className="text-slate-200">{task.statement}</span>
-              <span className="text-xs text-accent-cyan">
-                Prefería {task.preferred_shift}; asignada {task.assigned_shift}
-              </span>
-            </li>
-          ))}
-          {/* El resumen: cuántas preferencias se respetaron y el puntaje. Aclara que es temporal y no se guarda. */}
-          <li className="border-t border-white/10 pt-2 text-xs text-slate-400">
-            Preferencias satisfechas: {validationSchedule.data.satisfied_preferences} · puntaje{" "}
-            {validationSchedule.data.priority_weighted_score} · temporal, no guardado
-          </li>
-        </ol>
-      )}
-    </GlassPanel>
-  );
-}

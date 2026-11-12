@@ -32,16 +32,13 @@ import type {
   HypothesisBudgetRequest,
   HypothesisBudgetResult,
   ProjectTraceGraph,
-  TraceAlgorithm,
   TracePathResult,
-  ValidationScheduleRequest,
-  ValidationScheduleResult,
 } from "./types";
 
 /**
  * adminApi agrupa todas las peticiones del área de administración. Se divide en dos partes:
  * - Cuentas y resumen general (overview, users).
- * - Laboratorio de algoritmos (lab/...), que incluye la trazabilidad, las rutas, el presupuesto y el calendario.
+ * - Laboratorio de algoritmos (lab/...), que incluye la trazabilidad, las rutas y el presupuesto.
  */
 /** Define admin api como dato o funcion publica de admin. */
 export const adminApi = {
@@ -65,11 +62,11 @@ export const adminApi = {
   // El grafo de relaciones de un proyecto: nodos y conexiones (GET).
   projectTrace: (projectId: string) =>
     apiRequest<ProjectTraceGraph>(`/admin/lab/projects/${projectId}/trace`),
-  // Busca un camino desde la raíz del proyecto hasta un nodo, con el método elegido (POST).
-  projectTracePath: (projectId: string, algorithm: TraceAlgorithm, target_node_id: string) =>
+  // Busca el camino con menos pasos (BFS) desde la raíz del proyecto hasta un nodo (POST).
+  projectTracePath: (projectId: string, target_node_id: string) =>
     apiRequest<TracePathResult>(`/admin/lab/projects/${projectId}/trace/path`, {
       method: "POST",
-      body: { algorithm, target_node_id },
+      body: { target_node_id },
     }),
   // Busca lugares reales (negocios) cerca de una zona con una palabra clave (POST).
   projectPlaces: (projectId: string, data: LabPlaceSearchRequest) =>
@@ -86,12 +83,6 @@ export const adminApi = {
   // Elige qué hipótesis validar con un presupuesto (POST). No guarda nada.
   projectBudgetPlan: (projectId: string, data: HypothesisBudgetRequest) =>
     apiRequest<HypothesisBudgetResult>(`/admin/lab/projects/${projectId}/budget-plan`, {
-      method: "POST",
-      body: data,
-    }),
-  // Reparte las validaciones en turnos (POST). No guarda nada.
-  projectSchedule: (projectId: string, data: ValidationScheduleRequest) =>
-    apiRequest<ValidationScheduleResult>(`/admin/lab/projects/${projectId}/schedule`, {
       method: "POST",
       body: data,
     }),

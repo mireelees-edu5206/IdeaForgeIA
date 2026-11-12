@@ -10,10 +10,8 @@ from app.core.enums import Priority
 from app.modules.geo.schemas import GeoBusiness
 from app.modules.projects.models import ProjectStatus
 
-TraceAlgorithm = Literal["bfs", "dfs", "greedy", "astar"]
-RouteAlgorithm = Literal["exact", "nearest_neighbor", "hill_climbing", "two_opt", "genetic"]
-BudgetAlgorithm = Literal["hill_climbing", "exact", "greedy_ratio"]
-ShiftName = Literal["matutino", "vespertino", "nocturno"]
+RouteAlgorithm = Literal["exact", "nearest_neighbor"]
+BudgetAlgorithm = Literal["exact", "greedy_ratio"]
 
 
 class AdminLabProjectOption(BaseModel):
@@ -81,22 +79,18 @@ class LabTracePathRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    algorithm: TraceAlgorithm
     target_node_id: str = Field(min_length=1, max_length=120)
 
 
 class LabTracePathResponse(BaseModel):
     """Representa lab trace path respuesta."""
 
-    algorithm: TraceAlgorithm
     root_id: str
     target_node_id: str
     path: list[TraceGraphNode]
     visited_node_ids: list[str]
     expanded_count: int
     found: bool
-    # Pasos del camino más corto según BFS (referencia exacta). Sirve para comparar con A*/voraz.
-    shortest_path_steps: int | None = None
 
 
 class LabPlaceSearchRequest(BaseModel):
@@ -136,10 +130,7 @@ class LabRouteRequest(BaseModel):
     radius_m: int = Field(ge=100, le=5000)
     keyword: str = Field(min_length=2, max_length=80)
     selected_place_ids: list[str] = Field(min_length=2, max_length=8)
-    algorithm: RouteAlgorithm = "hill_climbing"
-    seed: int = Field(default=42, ge=0, le=2_147_483_647)
-    population_size: int = Field(default=24, ge=4, le=60)
-    generations: int = Field(default=30, ge=1, le=80)
+    algorithm: RouteAlgorithm = "exact"
 
     @model_validator(mode="after")
     def validate_unique_places(self) -> "LabRouteRequest":
@@ -199,7 +190,7 @@ class HypothesisBudgetRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     budget: int = Field(ge=0, le=10_000_000)
-    algorithm: BudgetAlgorithm = "hill_climbing"
+    algorithm: BudgetAlgorithm = "exact"
     items: list[HypothesisBudgetItemInput] = Field(min_length=1, max_length=16)
 
     @model_validator(mode="after")
@@ -232,57 +223,6 @@ class HypothesisBudgetResponse(BaseModel):
     total_cost: int
     total_value: int
     exact_reference_value: int
-    evaluations: int
-    persisted: Literal[False] = False
-
-
-class ValidationScheduleTaskInput(BaseModel):
-    """Contrato de datos para validacion schedule task entrada."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    hypothesis_id: UUID
-    preferred_shift: ShiftName
-
-
-class ValidationScheduleRequest(BaseModel):
-    """Representa validacion schedule solicitud."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    capacity_per_shift: int = Field(default=4, ge=1, le=8)
-    tasks: list[ValidationScheduleTaskInput] = Field(min_length=1, max_length=16)
-
-    @model_validator(mode="after")
-    def validate_tasks(self) -> "ValidationScheduleRequest":
-        """Valida tasks en laboratorio admin."""
-        ids = [task.hypothesis_id for task in self.tasks]
-        # Rama condicional: se cumple len(set(ids)) != len(ids).
-        if len(set(ids)) != len(ids):
-            raise ValueError("No repitas hipótesis en el calendario.")
-        # Rama condicional: se cumple len(self.tasks) > self.capacity_per_shift * 3.
-        if len(self.tasks) > self.capacity_per_shift * 3:
-            raise ValueError("La capacidad total por turnos no alcanza para todas las hipótesis.")
-        return self
-
-
-class ValidationScheduleAssignment(BaseModel):
-    """Representa validacion schedule assignment."""
-
-    hypothesis_id: UUID
-    statement: str
-    priority: Priority
-    preferred_shift: ShiftName
-    assigned_shift: ShiftName
-
-
-class ValidationScheduleResponse(BaseModel):
-    """Representa validacion schedule respuesta."""
-
-    project_id: UUID
-    assignments: list[ValidationScheduleAssignment]
-    satisfied_preferences: int
-    priority_weighted_score: int
     evaluations: int
     persisted: Literal[False] = False
 
@@ -348,3 +288,36 @@ class LabPropositionsResponse(BaseModel):
 
     rules: list[PropositionRuleTable]
     peas: list[PeasDimension]
+
+
+class LabLearningReadiness(BaseModel):
+    """Cuántos hallazgos de la IA ya revisó una persona y si alcanzan para entrenar el árbol."""
+
+    positive_examples: int
+    negative_examples: int
+    min_per_class: int
+    trainable: bool
+    message: str
+
+
+class LabLearningModel(BaseModel):
+    """Árbol entrenado y su evaluación en validación y en prueba."""
+
+    max_depth: int
+    train_size: int
+    validation_metrics: dict[str, Any]
+    test_metrics: dict[str, Any]
+    rules: list[str]
+
+
+class LabLearningResponse(BaseModel):
+    """Estado del aprendizaje del motor. El árbol todavía no cambia lo que ve la persona."""
+
+    target: Literal["finding_acceptance"]
+    features: list[str]
+    readiness: LabLearningReadiness
+    model: LabLearningModel | None
+    note: str = (
+        "El árbol aprende solo de hallazgos generados por la IA y revisados por una persona. "
+        "Mientras no haya suficientes ejemplos de ambas clases, no se entrena ni se usa."
+    )

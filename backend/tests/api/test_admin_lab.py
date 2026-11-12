@@ -69,6 +69,7 @@ def test_admin_lab_endpoints_reject_standard_user(db_client: TestClient) -> None
 
     assert db_client.get("/api/v1/admin/lab/metrics", headers=headers).status_code == 403
     assert db_client.get("/api/v1/admin/lab/propositions", headers=headers).status_code == 403
+    assert db_client.get("/api/v1/admin/lab/learning", headers=headers).status_code == 403
     assert db_client.get("/api/v1/admin/lab/projects", headers=headers).status_code == 403
     assert (
         db_client.get(f"/api/v1/admin/lab/projects/{project_id}/trace", headers=headers).status_code
@@ -78,7 +79,7 @@ def test_admin_lab_endpoints_reject_standard_user(db_client: TestClient) -> None
         db_client.post(
             f"/api/v1/admin/lab/projects/{project_id}/trace/path",
             headers=headers,
-            json={"algorithm": "bfs", "target_node_id": "x"},
+            json={"target_node_id": "x"},
         ).status_code
         == 403
     )
@@ -109,14 +110,6 @@ def test_admin_lab_endpoints_reject_standard_user(db_client: TestClient) -> None
             f"/api/v1/admin/lab/projects/{project_id}/budget-plan",
             headers=headers,
             json={"budget": 100, "items": []},
-        ).status_code
-        == 403
-    )
-    assert (
-        db_client.post(
-            f"/api/v1/admin/lab/projects/{project_id}/schedule",
-            headers=headers,
-            json={"tasks": []},
         ).status_code
         == 403
     )
@@ -157,6 +150,23 @@ def test_admin_lab_metrics_and_propositions(db_client: TestClient, migrated_db: 
     assert metrics.json()["days"] == 7
     assert len(metrics.json()["points"]) == 7
     assert db_client.get("/api/v1/admin/lab/metrics?days=3", headers=headers).status_code == 422
+
+
+def test_admin_lab_learning_reports_it_has_no_reviewed_examples_yet(
+    db_client: TestClient, migrated_db: str
+) -> None:
+    """Sin hallazgos de la IA revisados, el árbol no se entrena y el informe lo dice."""
+    headers = admin_headers(db_client, migrated_db, email="lab-learning@ideaforge.dev")
+
+    response = db_client.get("/api/v1/admin/lab/learning", headers=headers)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["target"] == "finding_acceptance"
+    assert body["model"] is None
+    assert body["readiness"]["trainable"] is False
+    assert body["readiness"]["positive_examples"] == 0
+    assert body["readiness"]["negative_examples"] == 0
 
 
 def test_admin_lab_lists_projects_and_traces_real_graph(
@@ -204,7 +214,7 @@ def test_admin_lab_lists_projects_and_traces_real_graph(
     path = db_client.post(
         f"/api/v1/admin/lab/projects/{project['id']}/trace/path",
         headers=headers,
-        json={"algorithm": "bfs", "target_node_id": attribute_nodes[0]["id"]},
+        json={"target_node_id": attribute_nodes[0]["id"]},
     )
     assert path.status_code == 200
     result = path.json()
@@ -215,7 +225,7 @@ def test_admin_lab_lists_projects_and_traces_real_graph(
     missing = db_client.post(
         f"/api/v1/admin/lab/projects/{project['id']}/trace/path",
         headers=headers,
-        json={"algorithm": "dfs", "target_node_id": "finding:no-existe"},
+        json={"target_node_id": "finding:no-existe"},
     )
     assert missing.status_code == 200
     assert missing.json()["found"] is False
@@ -274,10 +284,8 @@ def test_admin_lab_places_and_route_use_real_geo_provider(migrated_db: str) -> N
     run_sql(migrated_db, "TRUNCATE users CASCADE")
 
 
-def test_admin_lab_budget_and_schedule_use_real_hypotheses(
-    db_client: TestClient, migrated_db: str
-) -> None:
-    """Prueba el escenario: administrador lab presupuesto and schedule use real hipotesis."""
+def test_admin_lab_budget_uses_real_hypotheses(db_client: TestClient, migrated_db: str) -> None:
+    """El presupuesto usa hipótesis reales del proyecto y no guarda nada."""
     owner = user_headers(db_client, email="analista@ideaforge.dev")
     project = create_project(db_client, owner, "Validación de mercado")
     first = fetch_scalar(
@@ -311,27 +319,6 @@ def test_admin_lab_budget_and_schedule_use_real_hypotheses(
     assert plan["persisted"] is False
     assert plan["total_cost"] <= 500
     assert [item["hypothesis_id"] for item in plan["selected"]] == [first]
-
-    schedule = db_client.post(
-        f"/api/v1/admin/lab/projects/{project['id']}/schedule",
-        headers=headers,
-        json={
-            "capacity_per_shift": 1,
-            "tasks": [
-                {"hypothesis_id": first, "preferred_shift": "matutino"},
-                {"hypothesis_id": second, "preferred_shift": "matutino"},
-            ],
-        },
-    )
-    assert schedule.status_code == 200
-    assignments = schedule.json()
-    assert assignments["persisted"] is False
-    assert len(assignments["assignments"]) == 2
-    assert {a["assigned_shift"] for a in assignments["assignments"]} <= {
-        "matutino",
-        "vespertino",
-        "nocturno",
-    }
 
     foreign = db_client.post(
         f"/api/v1/admin/lab/projects/{project['id']}/budget-plan",

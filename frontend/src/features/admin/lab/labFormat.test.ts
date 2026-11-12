@@ -1,7 +1,7 @@
 /** Pruebas de los textos y formatos del Laboratorio: distancias legibles y nombres en español. */
 import { describe, expect, it } from "vitest";
 
-import { formatDistance, ROUTE_ALGORITHM_LABELS, TRACE_ALGORITHM_LABELS } from "./labFormat";
+import { BUDGET_ALGORITHM_LABELS, formatDistance, ROUTE_ALGORITHM_LABELS } from "./labFormat";
 
 describe("formatDistance", () => {
   it("muestra distancias menores a un kilómetro en metros", () => {
@@ -20,13 +20,13 @@ describe("formatDistance", () => {
 });
 
 describe("nombres de algoritmos", () => {
-  it("describe la búsqueda con heurística en lenguaje sencillo", () => {
-    expect(TRACE_ALGORITHM_LABELS.greedy).toBe("Búsqueda con heurística voraz");
-    expect(TRACE_ALGORITHM_LABELS.astar).toContain("A*");
+  it("muestra solo los métodos que existen en el servidor", () => {
+    expect(Object.keys(ROUTE_ALGORITHM_LABELS).sort()).toEqual(["exact", "nearest_neighbor"]);
+    expect(Object.keys(BUDGET_ALGORITHM_LABELS).sort()).toEqual(["exact", "greedy_ratio"]);
   });
 
-  it("no usa códigos técnicos como nombres de ruta", () => {
-    expect(ROUTE_ALGORITHM_LABELS.hill_climbing).not.toContain("_");
-    expect(ROUTE_ALGORITHM_LABELS.two_opt).toContain("2-opt");
+  it("no usa códigos técnicos como nombres de método", () => {
+    expect(ROUTE_ALGORITHM_LABELS.nearest_neighbor).not.toContain("_");
+    expect(BUDGET_ALGORITHM_LABELS.greedy_ratio).not.toContain("_");
   });
 });

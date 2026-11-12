@@ -13,7 +13,7 @@
  * ¿Quién lo usa?
  * api.ts, queries.ts, AdminPage.tsx y las pantallas del laboratorio.
  *
- * Nota: los nombres de algoritmos (TraceAlgorithm, RouteAlgorithm, BudgetAlgorithm) deben coincidir
+ * Nota: los nombres de algoritmos (RouteAlgorithm, BudgetAlgorithm) deben coincidir
  * con los del backend (backend/app/modules/admin/lab/schemas.py). Si cambias uno, cambia el otro.
  */
 
@@ -142,27 +142,17 @@ export interface AdminUserUpdate {
 }
 
 /**
- * TraceAlgorithm son los métodos de búsqueda del camino en el grafo:
- * "bfs" (anchura), "dfs" (profundidad), "greedy" (voraz) y "astar" (A*).
- */
-/** Describe el contrato trace algorithm utilizado por admin. */
-export type TraceAlgorithm = "bfs" | "dfs" | "greedy" | "astar";
-/**
- * RouteAlgorithm son los métodos para ordenar la ruta de visita: "exact" (óptimo exacto, máximo 8 lugares),
- * "nearest_neighbor" (vecino más cercano), "hill_climbing" (búsqueda local por intercambio),
- * "two_opt" (búsqueda local 2-opt) y "genetic" (algoritmo genético).
+ * RouteAlgorithm son los métodos para ordenar la ruta de visita: "exact" (óptimo exacto, máximo 8 lugares)
+ * y "nearest_neighbor" (vecino más cercano).
  */
 /** Describe el contrato route algorithm utilizado por admin. */
-export type RouteAlgorithm = "exact" | "nearest_neighbor" | "hill_climbing" | "two_opt" | "genetic";
+export type RouteAlgorithm = "exact" | "nearest_neighbor";
 /**
- * BudgetAlgorithm son los métodos para elegir hipótesis con presupuesto: "exact" (óptimo exacto),
- * "hill_climbing" (búsqueda local) y "greedy_ratio" (heurística voraz por valor y costo).
+ * BudgetAlgorithm son los métodos para elegir hipótesis con presupuesto: "exact" (óptimo exacto)
+ * y "greedy_ratio" (heurística voraz por valor y costo).
  */
 /** Describe el contrato budget algorithm utilizado por admin. */
-export type BudgetAlgorithm = "hill_climbing" | "exact" | "greedy_ratio";
-/** ValidationShift es un turno para validar: "matutino" (mañana), "vespertino" (tarde) o "nocturno" (noche). */
-/** Describe el contrato validation shift utilizado por admin. */
-export type ValidationShift = "matutino" | "vespertino" | "nocturno";
+export type BudgetAlgorithm = "exact" | "greedy_ratio";
 
 /**
  * AdminLabProject es un proyecto que aparece en el selector del laboratorio: su id, título, estado,
@@ -239,23 +229,19 @@ export interface ProjectTraceGraph {
 
 /**
  * TracePathResult es el resultado de buscar un camino:
- * - path: los nodos del camino encontrado (en orden).
- * - visited_node_ids: los nodos que revisó el método, en orden de revisión.
+ * - path: los nodos del camino encontrado (en orden). Con BFS es el camino con menos pasos.
+ * - visited_node_ids: los nodos que revisó BFS, en orden de revisión.
  * - expanded_count: cuántos nodos "abrió" para revisar sus vecinos.
  * - found: si encontró un camino o no.
- * - shortest_path_steps: los pasos del camino más corto según BFS, que sirven de referencia (puede ser null).
  */
 /** Describe el contrato trace path result utilizado por admin. */
 export interface TracePathResult {
-  algorithm: TraceAlgorithm;
   root_id: string;
   target_node_id: string;
   path: TraceGraphNode[];
   visited_node_ids: string[];
   expanded_count: number;
   found: boolean;
-  /** Pasos del camino más corto según BFS; sirve como referencia para comparar. */
-  shortest_path_steps: number | null;
 }
 
 /**
@@ -288,17 +274,13 @@ export interface LabPlaceSearchResult {
 
 /**
  * LabRouteRequest son los datos para calcular una ruta: la búsqueda de lugares (lo que hereda de
- * LabPlaceSearchRequest), los lugares elegidos (selected_place_ids, entre 2 y 8), el método,
- * y los parámetros del algoritmo genético: seed (semilla), population_size y generations.
+ * LabPlaceSearchRequest), los lugares elegidos (selected_place_ids, entre 2 y 8) y el método.
  * La "extends" significa que incluye todos los campos de LabPlaceSearchRequest además de estos.
  */
 /** Describe el contrato lab route request utilizado por admin. */
 export interface LabRouteRequest extends LabPlaceSearchRequest {
   selected_place_ids: string[];
   algorithm: RouteAlgorithm;
-  seed: number;
-  population_size: number;
-  generations: number;
 }
 
 /**
@@ -381,39 +363,6 @@ export interface HypothesisBudgetResult {
   total_cost: number;
   total_value: number;
   exact_reference_value: number;
-  evaluations: number;
-  persisted: false;
-}
-
-/**
- * ValidationScheduleRequest son los datos para repartir validaciones en turnos: cuántas tareas caben
- * por turno (capacity_per_shift) y la lista de tareas con su turno preferido.
- */
-/** Describe el contrato validation schedule request utilizado por admin. */
-export interface ValidationScheduleRequest {
-  capacity_per_shift: number;
-  tasks: Array<{ hypothesis_id: string; preferred_shift: ValidationShift }>;
-}
-
-/**
- * ValidationScheduleResult es el reparto de tareas en turnos:
- * - assignments: cada tarea con su turno preferido y el turno que se le asignó.
- * - satisfied_preferences: cuántas tareas quedaron en su turno preferido.
- * - priority_weighted_score: calificación que pondera la prioridad de cada tarea.
- * - evaluations y persisted: cuántas opciones se revisaron, y que no se guarda nada.
- */
-/** Describe el contrato validation schedule result utilizado por admin. */
-export interface ValidationScheduleResult {
-  project_id: string;
-  assignments: Array<{
-    hypothesis_id: string;
-    statement: string;
-    priority: "low" | "medium" | "high";
-    preferred_shift: ValidationShift;
-    assigned_shift: ValidationShift;
-  }>;
-  satisfied_preferences: number;
-  priority_weighted_score: number;
   evaluations: number;
   persisted: false;
 }
