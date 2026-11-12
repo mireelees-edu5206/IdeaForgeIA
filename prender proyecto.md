@@ -2,6 +2,8 @@
 
 Esta guía explica paso a paso cómo instalar y levantar **IdeaForge AI** en cualquier computadora del equipo (Windows / PowerShell).
 
+La inteligencia artificial del proyecto es el **motor propio de IdeaForge en Python**. No necesita Ollama, Gemini ni ninguna otra cuenta de IA. Sí necesita conexión a internet, porque busca información pública en DuckDuckGo y Wikipedia.
+
 ---
 
 ## 1. Requisitos que debes tener instalados
@@ -13,62 +15,76 @@ Antes de prender el proyecto por primera vez, asegúrate de tener instalados:
    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
 2. **Node.js (v22 o superior)** y **npm**: [https://nodejs.org](https://nodejs.org)
-3. **PostgreSQL 18** corriendo en el puerto `5432`: [https://www.postgresql.org/download/](https://www.postgresql.org/download/)
-4. **Ollama** (para usar el modelo local gratis en CPU): [https://ollama.com/download](https://ollama.com/download)
-   - Una vez instalado Ollama, descarga el modelo Llama 3 ejecutando en una terminal:
-     ```powershell
-     ollama pull llama3.2:3b
-     ```
+3. **PostgreSQL 18** corriendo en el puerto `5432`, con `psql` incluido: [https://www.postgresql.org/download/](https://www.postgresql.org/download/)
+   - Por defecto `psql` queda en `C:\Program Files\PostgreSQL\18\bin`. Si el comando `psql` no se reconoce, usa la ruta completa.
 
 ---
 
 ## 2. Configuración de primera vez (Solo se hace una vez)
 
-### Paso 2.1 — Crear las bases de datos en PostgreSQL
-Abre **pgAdmin** o **`psql`** y crea la base de datos principal (`ideaforge`) y la de pruebas (`ideaforge_test`):
+### Paso 2.1 — Crear el usuario, las bases y la estructura (un solo script)
 
-```sql
-CREATE DATABASE ideaforge;
-CREATE DATABASE ideaforge_test;
+El archivo **`ideaforge_setup.sql`** está en la raíz del proyecto. En un solo paso crea:
+
+- El usuario `ideaforge` de la aplicación (no es superusuario).
+- Las bases `ideaforge_dev` (desarrollo) e `ideaforge_test` (pruebas), propiedad de `ideaforge`.
+- Toda la estructura de tablas, índices y triggers, **sin datos**.
+
+**Antes de ejecutarlo:** abre `ideaforge_setup.sql` y cambia `CAMBIAR_ESTA_CONTRASENA` por una contraseña propia (aparece una sola vez, en la línea `CREATE ROLE`).
+
+Luego abre PowerShell en la carpeta donde está el archivo y ejecuta:
+
+```powershell
+psql -U postgres -f ideaforge_setup.sql
 ```
 
+- `psql` te pedirá la contraseña del superusuario `postgres` (la que definiste al instalar PostgreSQL).
+- Si ves `ERROR`, detente y avisa al responsable del proyecto. Las bases no se borran solas.
+- Si el script ya se ejecutó antes, fallará en `CREATE DATABASE` porque las bases existen. No lo repitas sin revisar primero.
+
 ### Paso 2.2 — Configurar el archivo `backend/.env`
-Dentro de la carpeta `backend/`, asegúrate de que exista el archivo `.env` (puedes copiar `backend/.env.example` a `backend/.env`) y ajusta tu usuario/contraseña de PostgreSQL:
+
+Dentro de la carpeta `backend/`, copia `backend/.env.example` a `backend/.env` y ajusta los valores:
 
 ```env
 APP_ENV=development
-DATABASE_URL=postgresql+asyncpg://postgres:TU_PASSWORD@localhost:5432/ideaforge
-TEST_DATABASE_URL=postgresql+asyncpg://postgres:TU_PASSWORD@localhost:5432/ideaforge_test
-SECRET_KEY=clave-secreta-local-de-al-menos-32-caracteres-seguros
+LOG_LEVEL=INFO
+CORS_ORIGINS=http://localhost:5173
+LEGACY_AUTH_ENABLED=false
 
-# Proveedor de IA (ollama corre gratis en tu PC; gemini usa la nube)
-AI_PROVIDER=ollama
-AI_FALLBACK_PROVIDER=gemini
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.2:3b
-OLLAMA_THINK=false
-AI_TIMEOUT_SECONDS=240
+DATABASE_URL=postgresql+asyncpg://ideaforge:CAMBIAR_ESTA_CONTRASENA@localhost:5432/ideaforge_dev
+TEST_DATABASE_URL=postgresql+asyncpg://ideaforge:CAMBIAR_ESTA_CONTRASENA@localhost:5432/ideaforge_test
 
-# Opcional si tienes API Key de Google AI Studio:
-GEMINI_API_KEY=TU_API_KEY_DE_GEMINI
-GEMINI_MODEL=gemini-3.5-flash-lite
-GEMINI_SEARCH_GROUNDING_ENABLED=true
+# Autenticación con Supabase: pide estos valores al responsable del proyecto
+SUPABASE_URL=https://TU-PROYECTO.supabase.co
+SUPABASE_PUBLISHABLE_KEY=TU_PUBLISHABLE_KEY
+SUPABASE_JWT_SECRET=
+
+# Motor propio de IA (no requiere API keys ni servidores externos)
+AI_PROVIDER=engine
+AI_ENGINE_MODEL=ideaforge-engine-v1
 
 GEO_PROVIDER=openstreetmap
 ```
 
-### Paso 2.3 — Instalar dependencias del Backend y crear las tablas
+- Reemplaza `CAMBIAR_ESTA_CONTRASENA` por la misma contraseña que pusiste en `ideaforge_setup.sql`.
+- **Nunca subas `backend/.env` a GitHub.** Ya está ignorado por Git.
+
+### Paso 2.3 — Instalar dependencias del Backend
+
 Abre una terminal **PowerShell** en la raíz del proyecto y ejecuta:
 
 ```powershell
 cd backend
 $env:UV_PROJECT_ENVIRONMENT = "$env:USERPROFILE\.venvs\ideaforge-backend"
 uv sync
-uv run alembic upgrade head
 ```
-*(Nota: `$env:UV_PROJECT_ENVIRONMENT` guarda el entorno virtual fuera de OneDrive para que no se trabe ni sea lento).*
+
+- *(Nota: `$env:UV_PROJECT_ENVIRONMENT` guarda el entorno virtual fuera de OneDrive para que no se trabe ni sea lento).*
+- El script ya dejó registrada la versión de Alembic. No hace falta correr migraciones.
 
 ### Paso 2.4 — Instalar dependencias del Frontend
+
 En otra terminal **PowerShell** desde la raíz del proyecto:
 
 ```powershell
@@ -121,13 +137,15 @@ npm run dev
      ```
      antes de cualquier comando `uv ...` en una terminal nueva.
 
-2. **«La investigación con Ollama tarda o dice que el proveedor no está disponible»**
-   - Verifica que la app de **Ollama** esté abierta junto al reloj de Windows y que hayas descargado el modelo con:
-     ```powershell
-     ollama pull llama3.2:3b
-     ```
+2. **«La investigación tarda, no encuentra fuentes o el veredicto sale vacío»**
+   - El motor busca en internet. Revisa tu conexión y que puedas abrir `https://duckduckgo.com` y `https://es.wikipedia.org` desde el navegador.
+   - Si el problema continúa, revisa la terminal del backend: los errores aparecen ahí.
 
-3. **«Quiero crear o promover mi usuario a Administrador para ver el panel `/admin`»**
+3. **«Dice que faltan tablas o columnas»**
+   - La base no se cargó bien. Borra `ideaforge_dev` y `ideaforge_test` (con `DROP DATABASE ideaforge_dev;` y `DROP DATABASE ideaforge_test;` en `psql`) y vuelve a ejecutar el **Paso 2.1**.
+   - Borrar una base elimina todos sus datos. Hazlo solo en tu computadora y solo si no tienes datos que conservar.
+
+4. **«Quiero crear o promover mi usuario a Administrador para ver el panel `/admin`»**
    - Regístrate normalmente desde `http://localhost:5173/registro` y luego ejecuta en PostgreSQL:
      ```sql
      UPDATE users SET role = 'admin' WHERE email = 'tu_correo@ejemplo.com';
