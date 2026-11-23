@@ -1,0 +1,50 @@
+﻿================================================================================
+REGISTRO DE EJECUCION — SECCION 2 (BASE DE DATOS EN LA NUBE)
+Proyecto : IdeaForge AI (PostgreSQL 18.0 local + FastAPI + Alembic)
+Fecha    : 2026-11-12 16:01:03
+Nota     : Todas las contrasenas y claves de .env fueron enmascaradas (********).
+================================================================================
+[2026-11-12 16:00:50] SECCION: 2.2 Paso 2 (pg_dump) | ESTADO: EJECUTADO | CAPTURA: 2.2_paso2_pg_dump.png
+  COMANDO: pg_dump -Fc --no-owner --no-privileges -f capturas_bd/ideaforge_dev.dump "postgresql://ideaforge:********@localhost:5432/ideaforge_dev"
+  DETALLE: Respaldo binario custom generado (150169 bytes).
+
+[2026-11-12 16:00:50] SECCION: 2.2 Paso 2 (pg_restore) | ESTADO: ERROR (SIN PERMISO CREATEDB) | CAPTURA: 2.2_paso2_pg_restore.png
+  COMANDO: psql "postgresql://ideaforge:********@localhost:5432/ideaforge_dev" -c "CREATE DATABASE ideaforge_restore_test;"
+  DETALLE: ERROR: se ha denegado el permiso para crear la base de datos (rol ideaforge tiene rolcreatedb=f).
+
+[2026-11-12 16:00:58] SECCION: 2.2 Paso 4 (alembic current) | ESTADO: EJECUTADO (current) / PENDIENTE CONFIRMACION (downgrade -1) | CAPTURA: 2.2_paso4_alembic_current.png
+  COMANDO: cd backend; uv run alembic current -v; uv run alembic history
+  DETALLE: Revision actual verificada en head (d8a24b6e91c0).
+
+[2026-11-12 16:00:59] SECCION: 2.2 Paso 5 (Conteos) | ESTADO: EJECUTADO | CAPTURA: 2.2_paso5_conteos_tablas.png
+  COMANDO: SELECT count(*) de cada una de las tablas del proyecto
+  DETALLE: Conteos obtenidos para las 26 tablas del esquema public.
+
+[2026-11-12 16:00:59] SECCION: 2.2 Paso 5 (Llaves foraneas) | ESTADO: EJECUTADO | CAPTURA: 2.2_paso5_llaves_foraneas.png
+  COMANDO: SELECT conname, conrelid::regclass, confrelid::regclass, confdeltype FROM pg_constraint WHERE contype = 'f' ORDER BY conrelid::regclass::text, conname;
+  DETALLE: 33 restricciones de llave foranea verificadas.
+
+[2026-11-12 16:01:00] SECCION: 2.3 (Triggers set_updated_at) | ESTADO: EJECUTADO | CAPTURA: 2.3_triggers_set_updated_at.png
+  COMANDO: SELECT tgname, tgrelid::regclass FROM pg_trigger WHERE NOT tgisinternal ORDER BY tgrelid::regclass::text;
+  DETALLE: 11 triggers trg_*_updated_at activos.
+
+[2026-11-12 16:01:00] SECCION: 2.3 (Recuperacion de investigaciones) | ESTADO: ERROR EN NOMBRE CONCEPTUAL / EJECUTADO EN research_runs | CAPTURA: 2.3_recuperacion_investigaciones.png
+  COMANDO: SELECT status, count(*) FROM investigaciones GROUP BY status; / SELECT status, count(*) FROM research_runs GROUP BY status ORDER BY status;
+  DETALLE: ERROR: no existe la relacion «investigaciones»; en la tabla fisica research_runs hay 5 completed.
+
+[2026-11-12 16:01:01] SECCION: 2.5 (Seguridad) | ESTADO: EJECUTADO | CAPTURA: 2.5_seguridad_ssl_roles.png
+  COMANDO: SHOW ssl; ; SELECT rolname, rolsuper FROM pg_roles ORDER BY rolsuper DESC, rolname;
+  DETALLE: ssl = off (PROPUESTA en entorno local); ideaforge tiene rolsuper = f.
+
+[2026-11-12 16:01:01] SECCION: 2.6 (Monitoreo de conexiones) | ESTADO: EJECUTADO | CAPTURA: 2.6_monitoreo_conexiones.png
+  COMANDO: SELECT count(*) FROM pg_stat_activity; ; SHOW max_connections;
+  DETALLE: Conexiones activas y max_connections consultados.
+
+[2026-11-12 16:01:02] SECCION: 2.6 (Monitoreo de tamano de tablas) | ESTADO: EJECUTADO | CAPTURA: 2.6_monitoreo_tamano_tablas.png
+  COMANDO: SELECT relname, pg_size_pretty(pg_total_relation_size(relid)) FROM pg_stat_user_tables ORDER BY pg_total_relation_size(relid) DESC;
+  DETALLE: Tamanos de las 25 tablas de usuario consultados.
+
+[2026-11-12 16:01:03] SECCION: 2.2 y 2.3 (PROPUESTAS) | ESTADO: NO IMPLEMENTADO (PROPUESTA) | CAPTURA: 2.3_tareas_propuestas_estado.png
+  COMANDO: SHOW archive_mode; verificacion de cron refresh_tokens y respaldos
+  DETALLE: archive_mode=off; sin cron de limpieza de tokens ni tarea programada de respaldos.
+
