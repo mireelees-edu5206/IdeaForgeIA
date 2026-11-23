@@ -4,9 +4,32 @@
 !.env.example
 **/backend/.env
 **/frontend/.env
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Material de trabajo y datos locales que no se publican
+/README.md
+/ideaforge_database.sql
+/ideaforge_insercion_datos.sql
 /Consultas_de_ideaforge.sql
+/ideaforge_queries.sql
+/ideaforge_tablas_estructura.sql
+/capturas_manual/
+/documentacion/
+
+# Respaldos y volcados de base de datos (contienen datos reales)
+*.dump
+*.backup
+*.sql.gz
+backup*.sql
+
+# Logs y archivos temporales
+*.log
+*.tmp
+*.temp
+nul
 
 # Python
 __pycache__/
@@ -16,13 +39,20 @@ venv/
 env/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 .coverage
 htmlcov/
+coverage/
+*.egg-info/
 
 # Node / frontend
 node_modules/
 dist/
 build/
+*.tsbuildinfo
+.vite/
+playwright-report/
+test-results/
 
 # Editores / agentes / archivos del sistema
 .vscode/
