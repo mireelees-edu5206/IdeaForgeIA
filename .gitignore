@@ -6,13 +6,7 @@
 **/frontend/.env
 
 # Material de trabajo y datos locales que no se publican
-
-/README.md
-/ideaforge_database.sql
-/ideaforge_insercion_datos.sql
 /Consultas_de_ideaforge.sql
-/ideaforge_queries.sql
-/ideaforge_tablas_estructura.sql
 
 # Python
 __pycache__/
@@ -30,11 +24,9 @@ node_modules/
 dist/
 build/
 
-# Editores / agentes / capturas pesadas locales
+# Editores / agentes / archivos del sistema
 .vscode/
 .idea/
 .devin/
-capturas_manual/
-documentacion/
 Thumbs.db
 .DS_Store
