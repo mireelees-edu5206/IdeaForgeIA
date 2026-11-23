@@ -11,6 +11,10 @@
 
 # Material de trabajo y datos locales que no se publican
 /README.md
+/AGENTS.md
+/HECTOR.md
+/PROMPT_MAESTRO.md
+/prender proyecto.md
 /ideaforge_database.sql
 /ideaforge_insercion_datos.sql
 /Consultas_de_ideaforge.sql
