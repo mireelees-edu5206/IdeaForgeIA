@@ -16,6 +16,12 @@
 /Consultas_de_ideaforge.sql
 /ideaforge_queries.sql
 /ideaforge_tablas_estructura.sql
+/ideaforge_schema.sql
+/ideaforge_setup.sql
+/prompt_ideaforge_bd.txt
+/registro_ejecucion.txt
+/capturas_bd/
+/caps_nelly/
 /capturas_manual/
 /documentacion/
 
