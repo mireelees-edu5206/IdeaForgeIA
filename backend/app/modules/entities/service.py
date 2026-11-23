@@ -1,4 +1,4 @@
-"""Aplica reglas de negocio y permisos. Area: entidades.
+"""Lista y clasifica entidades y competidores, con sus reglas de pertenencia. Area: entidades.
 
 ARCHIVO: backend/app/modules/entities/service.py
 

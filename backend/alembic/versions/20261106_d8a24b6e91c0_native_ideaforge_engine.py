@@ -1,5 +1,16 @@
 """Reemplaza proveedores externos (Gemini y Ollama) por el motor nativo de IdeaForge.
 
+ARCHIVO: backend/alembic/versions/20261106_d8a24b6e91c0_native_ideaforge_engine.py
+
+¿Qué es?
+La cabeza actual del historial. Convierte los registros `gemini` y `ollama` a `legacy` en
+`research_runs`, `reports` y `ai_api_logs`, y acepta `engine`, `fake` y `legacy` como proveedores.
+La reversión deja `engine` como `legacy`.
+
+¿Quién la usa?
+`alembic upgrade head`. Después de esta migración, `alembic current` debe mostrar `d8a24b6e91c0`.
+
+
 Revision ID: d8a24b6e91c0
 Revises: c2149f7d8a31
 Create Date: 2026-11-06 12:00:00.000000

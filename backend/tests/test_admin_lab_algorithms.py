@@ -1,4 +1,15 @@
-"""Pruebas de comportamiento para admin lab algorithms."""
+"""Pruebas unitarias de los algoritmos del laboratorio, sin base de datos ni HTTP. Area: pruebas.
+
+ARCHIVO: backend/tests/test_admin_lab_algorithms.py
+
+¿Qué prueba?
+- BFS encuentra el camino con menos pasos y devuelve vacío si el destino es inalcanzable.
+- Haversine: cero para el mismo punto y distancias razonables entre puntos reales.
+- Rutas: el vecino más cercano nunca es mejor que el exacto; el exacto coincide con su referencia.
+- Límites de rutas (2 a 8 lugares) y rechazo de algoritmos retirados.
+- Presupuesto: el exacto elige la mejor combinación; el voraz respeta el presupuesto; la escalada
+  retirada se rechaza.
+"""
 
 import pytest
 

@@ -1,4 +1,12 @@
-"""Pruebas de comportamiento para research urls."""
+"""Pruebas de la normalización de URLs y de la clasificación de fuentes. Area: pruebas.
+
+ARCHIVO: backend/tests/test_research_urls.py
+
+¿Qué prueba?
+- `normalize_url` produce la URL canónica: sin rastreo, sin `www.`.
+- Las URLs inválidas se rechazan.
+- `guess_source_type` clasifica el dominio (noticias, gobierno, académico, etc.).
+"""
 
 import pytest
 

@@ -1,4 +1,4 @@
-"""Valida contratos de entrada/salida. Area: investigacion web.
+"""Define los contratos de investigaciones, preguntas y fuentes. Area: investigacion web.
 
 ARCHIVO: backend/app/modules/research/schemas.py
 

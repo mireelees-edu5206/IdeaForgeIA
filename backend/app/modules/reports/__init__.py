@@ -1,4 +1,4 @@
-"""Marca el paquete y su limite de imports. Area: informes/veredicto.
+"""Agrupa los informes versionados y su veredicto. Area: informes/veredicto.
 
 ARCHIVO: backend/app/modules/reports/__init__.py
 

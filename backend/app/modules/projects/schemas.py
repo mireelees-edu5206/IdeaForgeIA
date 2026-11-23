@@ -1,4 +1,4 @@
-"""Valida contratos de entrada/salida. Area: proyectos.
+"""Define los contratos de proyectos, atributos de la idea y resumen. Area: proyectos.
 
 ARCHIVO: backend/app/modules/projects/schemas.py
 

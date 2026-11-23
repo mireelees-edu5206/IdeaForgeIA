@@ -1,4 +1,4 @@
-"""Aplica reglas de negocio y permisos. Area: analisis.
+"""Genera el análisis desde los hallazgos aceptados y gestiona sus elementos. Area: analisis.
 
 ARCHIVO: backend/app/modules/analysis/service.py
 

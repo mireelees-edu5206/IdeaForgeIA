@@ -1,4 +1,16 @@
-"""Pruebas de comportamiento para analysis."""
+"""Pruebas del análisis: oportunidades, riesgos, hipótesis e información faltante. Area: pruebas.
+
+ARCHIVO: backend/tests/api/test_analysis.py
+
+¿Qué prueba?
+- Que el análisis genere elementos respetando las reglas de soporte.
+- Que los hallazgos rechazados no entren al análisis.
+- Que volver a analizar reemplace solo las propuestas sin revisar.
+- Las condiciones previas y que un análisis activo bloquee cambios.
+- Que un fallo o una interrupción no borre la investigación.
+- Revisar, editar y dar seguimiento a cada elemento; crear elementos manuales.
+- Que el análisis sea privado de cada usuario.
+"""
 
 from collections.abc import Sequence
 
@@ -23,24 +35,24 @@ from tests.conftest import fetch_scalar, run_sql
 
 @pytest.fixture
 def headers(db_client: TestClient) -> dict[str, str]:
-    """Gestiona encabezados."""
+    """Cabeceras de autenticación de una cuenta de prueba para el análisis."""
     return user_headers(db_client)
 
 
 def analyze(client: TestClient, headers: dict, project_id: str, run_id: str):
-    """Gestiona analyze."""
+    """Pide el análisis de una investigación y devuelve la respuesta HTTP."""
     return client.post(f"{BASE}/{project_id}/research-runs/{run_id}/analysis", headers=headers)
 
 
 def analysis(client: TestClient, headers: dict, project_id: str, **params) -> dict:
-    """Gestiona analisis."""
+    """Consulta el análisis de un proyecto, con los filtros indicados en `params`."""
     response = client.get(f"{BASE}/{project_id}/analysis", params=params, headers=headers)
     assert response.status_code == 200
     return response.json()
 
 
 def researched(client: TestClient, headers: dict) -> tuple[str, str]:
-    """Gestiona researched."""
+    """Crea un proyecto estructurado y lanza una investigación completa."""
     project = structured_project(client, headers)
     assert start(client, headers, project["id"]).status_code == 202
     return project["id"], latest_run(client, headers, project["id"])["id"]
@@ -48,7 +60,7 @@ def researched(client: TestClient, headers: dict) -> tuple[str, str]:
 
 @pytest.fixture
 def analyzed(db_client: TestClient, headers: dict) -> tuple[str, str]:
-    """Gestiona analyzed."""
+    """Investiga y analiza un proyecto; devuelve el id del proyecto y el de la investigación."""
     pid, run_id = researched(db_client, headers)
     assert analyze(db_client, headers, pid, run_id).status_code == 202
     return pid, run_id
@@ -98,12 +110,12 @@ class RecordingProvider(FakeProvider):
     """Adaptador que ofrece servicios de recording."""
 
     def __init__(self) -> None:
-        """Gestiona la inicializacion para pruebas."""
+        """Prepara el registro de llamadas del proveedor de prueba."""
         super().__init__()
         self.analysis_prompt = ""
 
     async def generate_structured(self, messages: Sequence[AIMessage], schema):
-        """Gestiona generate structured."""
+        """Responde una llamada estructurada del análisis."""
         # Rama condicional: se cumple schema is AnalysisResult.
         if schema is AnalysisResult:
             self.analysis_prompt = messages[-1].content
@@ -217,10 +229,10 @@ def test_active_analysis_blocks_edits(
 
 
 class AnalysisFails(FakeProvider):
-    """Representa analisis fails."""
+    """Proveedor de prueba que falla durante el análisis."""
 
     async def generate_structured(self, messages: Sequence[AIMessage], schema):
-        """Gestiona generate structured."""
+        """Responde una llamada estructurada del análisis."""
         # Rama condicional: se cumple schema is AnalysisResult.
         if schema is AnalysisResult:
             raise AIUnavailableError()

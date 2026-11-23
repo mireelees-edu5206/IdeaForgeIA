@@ -1,5 +1,7 @@
 """Separación de datos, métricas y compuerta de datos suficientes. Área: aprendizaje de IA.
 
+ARCHIVO: backend/app/modules/ai/learning/evaluation.py
+
 Este archivo responde tres preguntas antes de confiar en un modelo:
 1. ¿Cómo separo los datos para no hacer trampa? (split_indices)
 2. ¿Qué tan bien acierta el modelo? (binary_metrics)

@@ -1,4 +1,20 @@
-"""Registro de todos los modelos para que Alembic vea el metadata completo."""
+"""Importa todos los modelos ORM para que Alembic vea el esquema completo. Area: aplicacion.
+
+ARCHIVO: backend/app/db/models.py
+
+¿Qué es?
+Un archivo de registro: importa cada clase de modelo de los módulos de dominio y las expone en
+`__all__`. No define tablas nuevas.
+
+¿Para qué sirve?
+SQLAlchemy solo conoce las tablas que se han importado. Si un modelo no aparece aquí, Alembic no lo
+incluye en `autogenerate`, y `tests/db/test_schema.py` no lo compararía con las migraciones.
+
+¿Quién lo usa?
+`alembic/env.py` (para `target_metadata`) y las pruebas de esquema.
+
+Importante: al agregar un modelo nuevo, debe importarse aquí y agregarse a `__all__`.
+"""
 
 from app.modules.ai.models import AIApiLog
 from app.modules.analysis.models import (

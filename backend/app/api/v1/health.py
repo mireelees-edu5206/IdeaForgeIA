@@ -1,4 +1,21 @@
-"""Utilidad de soporte. Area: aplicacion."""
+"""Expone los endpoints de salud del servidor y de la base de datos. Area: aplicacion.
+
+ARCHIVO: backend/app/api/v1/health.py
+
+¿Qué es?
+Dos endpoints públicos: `/health` indica que el proceso responde, y `/health/db` además comprueba
+que PostgreSQL acepta una consulta sencilla.
+
+¿Para qué sirve?
+Para que un humano o una herramienta de monitoreo vean si el backend y su base de datos están vivos.
+
+¿Quién lo usa?
+Quien revise el estado del servidor (por ejemplo, desde el navegador o un monitor). Se monta en
+`api/v1/router.py`.
+
+Importante: el detalle del error de base de datos solo va al log. No se devuelve al cliente porque
+puede contener el host o el usuario de la conexión.
+"""
 
 import logging
 from typing import Literal
@@ -16,7 +33,7 @@ router = APIRouter(tags=["health"])
 
 
 class HealthResponse(BaseModel):
-    """Representa health respuesta."""
+    """Respuesta de los endpoints de salud: siempre `{"status": "ok"}`."""
 
     status: Literal["ok"]
 

@@ -1,4 +1,24 @@
-"""Define el contrato comun de adaptadores. Area: aplicacion."""
+"""Define la base declarativa de SQLAlchemy y los mixins comunes de los modelos. Area: aplicacion.
+
+ARCHIVO: backend/app/db/base.py
+
+¿Qué es?
+La base de la que heredan todos los modelos ORM, con sus convenciones de nombres de restricciones
+(`NAMING_CONVENTION`), la función `str_enum` y cuatro mixins: llave primaria UUID, `created_at`,
+`updated_at` y la revisión de elementos generados por la IA.
+
+¿Para qué sirve?
+Para que todas las tablas tengan la misma forma: UUID como llave primaria, fechas con zona horaria y
+enumeraciones como VARCHAR con CHECK.
+
+¿Quién lo usa?
+Todos los `models.py` de `app/modules/*`.
+
+Importante:
+- Las enumeraciones usan VARCHAR + CHECK, nunca ENUM nativo de PostgreSQL. Así agregar un valor es
+  una migración sencilla.
+- `updated_at` lo mantiene el trigger `set_updated_at()` de la base, no el código de la aplicación.
+"""
 
 import uuid
 from datetime import datetime
@@ -19,7 +39,7 @@ NAMING_CONVENTION = {
 
 
 class Base(DeclarativeBase):
-    """Representa base."""
+    """Clase base declarativa: todos los modelos heredan de ella y comparten un solo `metadata`."""
 
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
     type_annotation_map = {datetime: DateTime(timezone=True), str: Text}
@@ -42,7 +62,7 @@ def str_enum(enum_cls: type[StrEnum], name: str, length: int = 20) -> Enum:
 
 
 class UUIDPrimaryKeyMixin:
-    """Representa uuidprimary clave mixin."""
+    """Agrega la llave primaria `id` (UUID) generada por la base con `uuidv7()`."""
 
     id: Mapped[uuid.UUID] = mapped_column(
         primary_key=True, server_default=text("uuidv7()"), sort_order=-100
@@ -50,7 +70,7 @@ class UUIDPrimaryKeyMixin:
 
 
 class CreatedAtMixin:
-    """Representa created at mixin."""
+    """Agrega `created_at`, que la base llena al insertar la fila."""
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.now(), sort_order=100)
 

@@ -1,4 +1,4 @@
-"""Marca el paquete y su limite de imports. Area: acceso local heredado.
+"""Agrupa la autenticación local heredada: registro, sesión y tokens. Area: acceso local heredado.
 
 ARCHIVO: backend/app/modules/auth/__init__.py
 

@@ -1,5 +1,7 @@
 """Entrena el árbol con hallazgos revisados y reporta qué tan confiable es. Área: aprendizaje.
 
+ARCHIVO: backend/app/modules/ai/learning/report.py
+
 Es el "director de orquesta" del módulo de aprendizaje. Une los pasos en orden:
 1. Revisa si hay datos suficientes (compuerta).
 2. Separa los ejemplos en entrenamiento, validación y prueba.

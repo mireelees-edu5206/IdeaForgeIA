@@ -1,4 +1,4 @@
-"""Valida contratos de entrada/salida. Area: perfiles.
+"""Define los contratos del perfil y del cambio de contraseña. Area: perfiles.
 
 ARCHIVO: backend/app/modules/users/schemas.py
 

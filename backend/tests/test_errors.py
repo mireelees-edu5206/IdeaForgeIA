@@ -1,4 +1,14 @@
-"""Pruebas de comportamiento para errors."""
+"""Pruebas del formato uniforme de errores de la API. Area: pruebas.
+
+ARCHIVO: backend/tests/test_errors.py
+
+¿Qué prueba?
+- Una ruta inexistente y un método no permitido responden con el formato
+  `{"error": {"code", "message"}}`.
+- Un error de validación no repite el dato que el cliente envió.
+- Un `AppError` se traduce a su código HTTP.
+- Un error no controlado no revela su detalle interno.
+"""
 
 import pytest
 from fastapi import FastAPI
@@ -9,7 +19,7 @@ from app.core.errors import NotFoundError
 
 
 class _Payload(BaseModel):
-    """Representa payload."""
+    """Modelo de prueba para comprobar los errores de validación."""
 
     name: str = Field(min_length=3)
 
@@ -20,17 +30,17 @@ def client(app: FastAPI) -> TestClient:
 
     @app.post("/_test/validation")
     async def validation_route(payload: _Payload) -> dict[str, str]:
-        """Gestiona validacion ruta."""
+        """Ruta de prueba que recibe un cuerpo validado con `_Payload`."""
         return {"name": payload.name}
 
     @app.get("/_test/app-error")
     async def app_error_route() -> None:
-        """Gestiona aplicacion error ruta."""
+        """Ruta de prueba que lanza un AppError."""
         raise NotFoundError()
 
     @app.get("/_test/crash")
     async def crash_route() -> None:
-        """Gestiona crash ruta."""
+        """Ruta de prueba que lanza un error no controlado."""
         raise RuntimeError("secreto interno: postgres://user:pass@host")
 
     return TestClient(app, raise_server_exceptions=False)

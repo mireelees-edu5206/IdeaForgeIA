@@ -1,4 +1,4 @@
-"""Aplica reglas de negocio y permisos. Area: proyectos.
+"""Aplica las reglas del proyecto: permisos, confirmación de estructura y estados. Area: proyectos.
 
 ARCHIVO: backend/app/modules/projects/service.py
 

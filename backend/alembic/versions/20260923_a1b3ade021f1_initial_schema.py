@@ -1,5 +1,18 @@
 """Esquema inicial de IdeaForge AI (Fase 2).
 
+ARCHIVO: backend/alembic/versions/20260923_a1b3ade021f1_initial_schema.py
+
+¿Qué es?
+La primera migración: crea las extensiones `citext` y `pg_trgm`, la función `set_updated_at()` y las
+25 tablas de dominio con sus índices, restricciones y triggers `trg_*_updated_at`.
+
+¿Para qué sirve?
+Para que una base vacía quede con el esquema completo del diseño de la fase 2.
+
+¿Quién la usa?
+`alembic upgrade head` en una base nueva, y `tests/conftest.py` para las bases de prueba.
+
+
 Revision ID: a1b3ade021f1
 Revises:
 Create Date: 2026-09-23
@@ -1541,7 +1554,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Gestiona el flujo en migracion."""
+    """Revierte el esquema inicial: elimina las tablas creadas en upgrade y la función set_updated_at()."""
     op.drop_index(op.f("ix_finding_evidence_evidence_id"), table_name="finding_evidence")
     op.drop_table("finding_evidence")
     op.drop_index(op.f("ix_risk_findings_finding_id"), table_name="risk_findings")

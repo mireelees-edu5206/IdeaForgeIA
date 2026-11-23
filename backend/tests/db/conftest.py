@@ -1,4 +1,14 @@
-"""Pruebas de comportamiento para conftest."""
+"""Fixtures asíncronas para las pruebas de esquema. Area: pruebas.
+
+ARCHIVO: backend/tests/db/conftest.py
+
+¿Qué es?
+- `engine`: motor asíncrono conectado a la base de prueba ya migrada.
+- `conn`: una conexión por prueba, para escribir y consultar SQL directo.
+
+¿Quién lo usa?
+`tests/db/test_schema.py`.
+"""
 
 from collections.abc import AsyncIterator
 
@@ -9,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_en
 
 @pytest.fixture
 async def engine(migrated_db: str) -> AsyncIterator[AsyncEngine]:
-    """Gestiona engine."""
+    """Crea el motor asíncrono de la base de prueba ya migrada."""
     engine = create_async_engine(migrated_db, poolclass=pool.NullPool)
     yield engine
     await engine.dispose()

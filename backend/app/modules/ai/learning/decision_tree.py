@@ -1,5 +1,7 @@
 """Árbol de decisión CART en Python puro. Área: aprendizaje del motor de IA.
 
+ARCHIVO: backend/app/modules/ai/learning/decision_tree.py
+
 Qué es un árbol de decisión:
 Es una serie de preguntas de tipo "¿el valor de esta variable es menor o igual a X?". Cada pregunta
 separa los ejemplos en dos grupos (ramas). Al final de cada rama hay una hoja con una clase, por

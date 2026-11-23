@@ -1,4 +1,16 @@
-"""Pruebas de comportamiento para supabase auth."""
+"""Pruebas de la autenticación con Supabase: tokens, perfiles y correos confirmados. Area: pruebas.
+
+ARCHIVO: backend/tests/api/test_supabase_auth.py
+
+¿Qué prueba?
+- La ruta pública y el perfil protegido.
+- El primer inicio de sesión con Supabase crea el perfil local.
+- Un administrador existente enlazado a Supabase conserva su rol.
+- Un correo no confirmado se rechaza, pero una identidad de Google se acepta.
+- Una firma incorrecta del token se rechaza.
+
+Supabase se simula con `mock_supabase_user`; no se llama a la red.
+"""
 
 import json
 import uuid
@@ -17,7 +29,7 @@ SUPABASE_SECRET = "supabase-test-secret-" + "x" * 32
 
 
 def make_token(email: str, subject: uuid.UUID | None = None, **claims: object) -> str:
-    """Construye token."""
+    """Crea un token JWT firmado de prueba para el correo indicado."""
     now = datetime.now(UTC)
     payload = {
         "iss": f"{SUPABASE_URL}/auth/v1",
@@ -34,18 +46,18 @@ def make_token(email: str, subject: uuid.UUID | None = None, **claims: object) -
 
 
 class FakeAuthResponse:
-    """Representa fake autenticacion respuesta."""
+    """Respuesta falsa del cliente de Supabase."""
 
     def __init__(self, user: dict) -> None:
-        """Gestiona la inicializacion para pruebas."""
+        """Guarda el usuario que devolverá la respuesta falsa."""
         self.user = user
 
     def __enter__(self) -> "FakeAuthResponse":
-        """Gestiona la entrada al contexto para pruebas."""
+        """Permite usar la respuesta falsa dentro de un bloque `with`."""
         return self
 
     def __exit__(self, *_args: object) -> None:
-        """Gestiona la salida del contexto para pruebas."""
+        """Cierra el bloque `with` sin efectos."""
         return None
 
     def read(self) -> bytes:
@@ -54,7 +66,7 @@ class FakeAuthResponse:
 
 
 def mock_supabase_user(app, auth_user: dict, monkeypatch: pytest.MonkeyPatch):
-    """Gestiona mock supabase usuario."""
+    """Reemplaza la llamada a Supabase por una respuesta fija de prueba."""
     settings = make_settings(
         supabase_url=SUPABASE_URL,
         supabase_publishable_key="test-publishable-key",

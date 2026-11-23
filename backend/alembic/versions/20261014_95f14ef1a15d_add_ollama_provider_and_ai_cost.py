@@ -1,4 +1,14 @@
-"""add Ollama provider and AI cost
+"""Agrega el proveedor Ollama y el costo estimado de la IA.
+
+ARCHIVO: backend/alembic/versions/20261014_95f14ef1a15d_add_ollama_provider_and_ai_cost.py
+
+¿Qué es?
+Convierte los registros con proveedor `grok` a `legacy`, cambia las restricciones de proveedor para
+aceptar `gemini`, `ollama`, `fake` y `legacy`, y agrega `ai_api_logs.estimated_cost_usd`.
+
+Importante: esta etapa fue retirada después. La migración `d8a24b6e91c0` convierte `gemini` y
+`ollama` a `legacy`. Esta migración se conserva para que el historial de Alembic sea continuo.
+
 
 Revision ID: 95f14ef1a15d
 Revises: a1b3ade021f1
@@ -20,7 +30,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    """Gestiona el flujo en migracion."""
+    """Quita las restricciones de proveedor, pasa `grok` a `legacy` y agrega el costo estimado."""
     # Itera (table, column) sobre ((un valor, un valor), (un valor, un valor), (un valor, un
     # valor)).
     for table, column in (
@@ -62,7 +72,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Gestiona el flujo en migracion."""
+    """Revierte solo si no hay registros de Ollama ni costos estimados; si los hay, se detiene
+    para no perder datos."""
     bind = op.get_bind()
     has_ollama_data = bind.execute(
         sa.text(

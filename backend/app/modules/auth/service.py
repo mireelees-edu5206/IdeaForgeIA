@@ -1,4 +1,4 @@
-"""Aplica reglas de negocio y permisos. Area: acceso local heredado.
+"""Registra cuentas, inicia sesión y renueva o revoca tokens. Area: acceso local heredado.
 
 ARCHIVO: backend/app/modules/auth/service.py
 

@@ -1,4 +1,17 @@
-"""Pruebas de comportamiento para findings."""
+"""Pruebas de hallazgos, entidades y competidores: extracción, revisión y ownership. Area: pruebas.
+
+ARCHIVO: backend/tests/api/test_findings.py
+
+¿Qué prueba?
+- La extracción crea hallazgos respaldados por evidencia, deduplica entidades y descarta las
+  inventadas.
+- Volver a investigar respeta los competidores ya revisados.
+- Un fallo de extracción conserva los resultados de búsqueda.
+- Revisar y editar un hallazgo de IA; un hallazgo de IA no se puede borrar.
+- Crear hallazgos manuales con evidencia propia; rechazar evidencia de otro proyecto.
+- Competidores manuales y desde entidades existentes; no vincular entidades de otro proyecto.
+- Privacidad: cada usuario ve solo sus hallazgos.
+"""
 
 from collections.abc import Sequence
 
@@ -17,25 +30,25 @@ from tests.conftest import fetch_scalar, run_sql
 
 @pytest.fixture
 def headers(db_client: TestClient) -> dict[str, str]:
-    """Gestiona encabezados."""
+    """Cabeceras de autenticación de una cuenta de prueba para hallazgos."""
     return user_headers(db_client)
 
 
 @pytest.fixture
 def researched(db_client: TestClient, headers: dict) -> dict:
-    """Gestiona researched."""
+    """Crea un proyecto con investigación completa y devuelve sus ids."""
     project = structured_project(db_client, headers)
     assert start(db_client, headers, project["id"]).status_code == 202
     return project
 
 
 def findings_url(project_id: str) -> str:
-    """Gestiona hallazgos URL."""
+    """Devuelve la ruta de hallazgos de un proyecto."""
     return f"{BASE}/{project_id}/findings"
 
 
 def competitors_url(project_id: str) -> str:
-    """Gestiona alternativas URL."""
+    """Devuelve la ruta de competidores de un proyecto."""
     return f"{BASE}/{project_id}/competitors"
 
 
@@ -124,10 +137,10 @@ def test_rerun_respects_reviewed_competitors(
 
 
 class ExtractionFails(FakeProvider):
-    """Representa extraction fails."""
+    """Proveedor de prueba que falla durante la extracción."""
 
     async def generate_structured(self, messages: Sequence[AIMessage], schema):
-        """Gestiona generate structured."""
+        """Simula que la extracción no responde."""
         # Rama condicional: se cumple schema is ExtractionResult.
         if schema is ExtractionResult:
             raise AIInvalidResponseError()

@@ -1,4 +1,4 @@
-"""Valida contratos de entrada/salida. Area: informes/veredicto.
+"""Define los contratos de informes, secciones y veredicto. Area: informes/veredicto.
 
 ARCHIVO: backend/app/modules/reports/schemas.py
 

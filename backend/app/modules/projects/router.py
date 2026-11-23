@@ -1,4 +1,4 @@
-"""Expone endpoints HTTP del dominio. Area: proyectos.
+"""Expone los endpoints de proyectos y de las partes de la idea. Area: proyectos.
 
 ARCHIVO: backend/app/modules/projects/router.py
 

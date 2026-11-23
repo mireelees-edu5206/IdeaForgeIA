@@ -1,4 +1,27 @@
-"""Aplica reglas de negocio y permisos. Area: laboratorio administrativo."""
+"""Calcula los datos del laboratorio: métricas, trazas, rutas, presupuesto y aprendizaje.
+
+Area: laboratorio administrativo.
+
+ARCHIVO: backend/app/modules/admin/lab/service.py
+
+¿Qué es?
+La lógica del laboratorio. Lee la base de datos, arma los grafos de trazabilidad y llama a los
+algoritmos puros de `algorithms.py` para calcular caminos, rutas y presupuestos.
+
+¿Para qué sirve?
+Para que el router solo reciba la petición y devuelva el resultado, sin mezclar consultas SQL con
+respuestas HTTP.
+
+¿Quién lo usa?
+`router.py`: cada endpoint de /api/v1/admin/lab llama a un método de `AdminLabService`.
+
+Reglas principales:
+- Los grafos tienen topes (MAX_TRACE_*) para que un proyecto grande no sature la respuesta. Si se
+  alcanza un tope, la respuesta marca `truncated`.
+- Rutas y presupuestos no guardan nada: `persisted` siempre es falso.
+- Lugares e hipótesis se validan contra el estado actual antes de calcular. Si cambiaron, la
+  respuesta es 409.
+"""
 
 import asyncio
 from collections.abc import Callable
@@ -83,12 +106,12 @@ class AdminLabService:
     """Servicio de reglas de negocio para administrador lab."""
 
     def __init__(self, session: AsyncSession, geo_provider: GeoProvider) -> None:
-        """Gestiona la inicializacion para laboratorio admin."""
+        """Guarda la sesión de base de datos y el proveedor de mapas que usan los métodos."""
         self.session = session
         self.geo_provider = geo_provider
 
     async def list_projects(self) -> AdminLabProjectsResponse:
-        """Lista projects en laboratorio admin."""
+        """Lista hasta MAX_LAB_PROJECTS proyectos con su dueño y su zona geográfica confirmada."""
         rows = await self.session.execute(
             select(Project, User.full_name)
             .join(User, User.id == Project.user_id)
@@ -126,7 +149,8 @@ class AdminLabService:
         )
 
     async def metrics(self, days: int) -> LabMetricsResponse:
-        """Gestiona el flujo en laboratorio admin."""
+        """Agrupa las llamadas a la IA por día en los últimos `days` días.
+        Los días sin llamadas quedan en cero."""
         today = datetime.now(UTC).date()
         start = today - timedelta(days=days - 1)
         rows = await self.session.execute(
@@ -168,10 +192,11 @@ class AdminLabService:
 
     @staticmethod
     def propositions() -> LabPropositionsResponse:
-        """Gestiona el flujo en laboratorio admin."""
+        """Arma las reglas como tablas de verdad y el marco PEAS.
+        Son textos fijos: no consulta la base de datos."""
 
         def prop(symbol: str, name: str, meaning: str) -> PropositionDefinition:
-            """Gestiona el flujo en laboratorio admin."""
+            """Crea una proposición con su símbolo, su nombre y su significado."""
             return PropositionDefinition(symbol=symbol, name=name, meaning=meaning)
 
         def build_table(
@@ -185,7 +210,8 @@ class AdminLabService:
             evaluate: Callable[[dict[str, bool]], bool],
             note: str,
         ) -> PropositionRuleTable:
-            """Construye table en laboratorio admin."""
+            """Genera todas las combinaciones de entradas con el resultado de `evaluate`
+            en cada una."""
             symbols = [item.symbol for item in inputs]
             rows = []
             # Itera combination sobre product((False, True), repeat=len(symbols)).
@@ -275,7 +301,7 @@ class AdminLabService:
         confidence_input = [c1, c2, c3]
 
         def confidence_allows_high(values: dict[str, bool]) -> bool:
-            """Gestiona allows high en laboratorio admin."""
+            """Indica si la regla de confianza deja pasar una propuesta alta con estos valores."""
             domains = {"dominio-a", "dominio-b"} if values["C2"] else {"dominio-a"}
             stances = {EvidenceStance.CONTRADICTS} if values["C3"] else set()
             proposed = Level.HIGH if values["C1"] else Level.MEDIUM
@@ -394,7 +420,10 @@ class AdminLabService:
         )
 
     async def project_trace(self, project_id: UUID) -> ProjectTraceGraph:
-        """Gestiona trace en laboratorio admin."""
+        """Arma el grafo de trazabilidad del proyecto: idea, investigaciones, fuentes,
+        evidencias, hallazgos, competidores, análisis e informes.
+
+        Respeta los topes MAX_TRACE_* para no saturar la respuesta."""
         project = await self.session.get(Project, project_id)
         # Rama condicional: se cumple project is None.
         if project is None:
@@ -406,7 +435,8 @@ class AdminLabService:
         root_id = f"project:{project.id}"
 
         def add_node(node_id: str, label: str, kind: str, **details: object) -> bool:
-            """Agrega node en laboratorio admin."""
+            """Agrega un nodo si no existe y hay cupo. Si se llega a MAX_TRACE_NODES,
+            devuelve False y marca `truncated`."""
             nonlocal truncated
             # Rama condicional: se cumple node_id in nodes.
             if node_id in nodes:
@@ -424,7 +454,7 @@ class AdminLabService:
             return True
 
         def add_edge(source: str, target: str, relation: str) -> None:
-            """Agrega edge en laboratorio admin."""
+            """Agrega una conexión solo si ambos extremos ya son nodos y hay cupo."""
             # Rama condicional: evalua source in nodes and target in nodes and (len(edges) <
             # MAX_TRACE_NODES * .
             if source in nodes and target in nodes and len(edges) < MAX_TRACE_NODES * 3:
@@ -688,7 +718,8 @@ class AdminLabService:
     async def places(
         self, project_id: UUID, latitude: float, longitude: float, radius_m: int, keyword: str
     ) -> LabPlaceSearchResponse:
-        """Gestiona el flujo en laboratorio admin."""
+        """Busca lugares de OpenStreetMap por palabra clave dentro del radio.
+        No guarda nada en la base de datos."""
         project = await self._get_project(project_id)
         results = await self.geo_provider.find_places(latitude, longitude, radius_m, "all", keyword)
         return LabPlaceSearchResponse(
@@ -701,7 +732,8 @@ class AdminLabService:
         )
 
     async def route(self, project_id: UUID, request: LabRouteRequest) -> LabRouteResponse:
-        """Gestiona el flujo en laboratorio admin."""
+        """Calcula la ruta entre los lugares elegidos. Si alguno ya no aparece en la
+        búsqueda actual, responde 409 `geo_places_changed`."""
         project = await self._get_project(project_id)
         current_places = await self.geo_provider.find_places(
             request.latitude,
@@ -766,7 +798,8 @@ class AdminLabService:
     async def budget_plan(
         self, project_id: UUID, request: HypothesisBudgetRequest
     ) -> HypothesisBudgetResponse:
-        """Gestiona plan en laboratorio admin."""
+        """Elige hipótesis dentro del presupuesto. Si alguna ya no pertenece al proyecto
+        o fue rechazada, responde 409 `lab_hypotheses_changed`."""
         project = await self._get_project(project_id)
         ids = [item.hypothesis_id for item in request.items]
         rows = await self.session.scalars(
@@ -865,7 +898,7 @@ class AdminLabService:
         )
 
     async def _get_project(self, project_id: UUID) -> Project:
-        """Obtiene project en laboratorio admin."""
+        """Devuelve el proyecto o lanza ProjectNotFoundError si no existe."""
         project = await self.session.get(Project, project_id)
         # Rama condicional: se cumple project is None.
         if project is None:
@@ -875,7 +908,8 @@ class AdminLabService:
     async def _add_analysis_nodes(
         self, project_id, root_id, finding_ids, nodes, edges, add_node, add_edge
     ) -> None:
-        """Agrega analysis nodes en laboratorio admin."""
+        """Agrega al grafo las oportunidades, riesgos, hipótesis e información faltante,
+        con sus vínculos a hallazgos."""
         definitions = (
             (Opportunity, OpportunityFinding, "opportunity_id", "opportunity", "title"),
             (Risk, RiskFinding, "risk_id", "risk", "title"),
@@ -932,7 +966,7 @@ class AdminLabService:
     async def _add_report_nodes(
         self, project_id, root_id, nodes, edges, add_node, add_edge
     ) -> None:
-        """Agrega report nodes en laboratorio admin."""
+        """Agrega al grafo los informes del proyecto y sus secciones."""
         reports = list(
             await self.session.scalars(
                 select(Report)

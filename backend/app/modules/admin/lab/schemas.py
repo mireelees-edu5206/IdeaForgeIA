@@ -1,4 +1,20 @@
-"""Valida contratos de entrada/salida. Area: laboratorio administrativo."""
+"""Define los contratos de entrada y salida del laboratorio. Area: laboratorio administrativo.
+
+ARCHIVO: backend/app/modules/admin/lab/schemas.py
+
+¿Qué es?
+Los modelos Pydantic que describen cada petición y respuesta del laboratorio: proyectos disponibles,
+grafo de trazabilidad, lugares, rutas, presupuesto, métricas, proposiciones y aprendizaje.
+
+¿Para qué sirve?
+Para validar lo que llega del navegador (coordenadas, radios, listas sin repetir) y para dar
+forma fija a lo que sale, de modo que la documentación automática (/docs) sea exacta.
+
+¿Quién lo usa?
+`router.py` (entrada y salida de cada endpoint) y `service.py` (construye las respuestas).
+
+Importante: los modelos de entrada usan `extra="forbid"`: un campo desconocido responde 422.
+"""
 
 from datetime import date
 from typing import Any, Literal
@@ -15,7 +31,7 @@ BudgetAlgorithm = Literal["exact", "greedy_ratio"]
 
 
 class AdminLabProjectOption(BaseModel):
-    """Representa administrador lab proyecto option."""
+    """Proyecto del laboratorio: id, título, etapa, dueño y zona geográfica confirmada."""
 
     id: UUID
     title: str
@@ -25,13 +41,13 @@ class AdminLabProjectOption(BaseModel):
 
 
 class AdminLabProjectsResponse(BaseModel):
-    """Representa administrador lab proyectos respuesta."""
+    """Lista de proyectos que el laboratorio puede usar."""
 
     projects: list[AdminLabProjectOption]
 
 
 class TraceGraphNode(BaseModel):
-    """Representa trace graph node."""
+    """Nodo del grafo de trazabilidad: id, etiqueta, tipo (`kind`) y detalles opcionales."""
 
     id: str
     label: str
@@ -56,7 +72,7 @@ class TraceGraphNode(BaseModel):
 
 
 class TraceGraphEdge(BaseModel):
-    """Representa trace graph edge."""
+    """Conexión dirigida entre dos nodos del grafo, con su relación en texto."""
 
     source: str
     target: str
@@ -64,7 +80,7 @@ class TraceGraphEdge(BaseModel):
 
 
 class ProjectTraceGraph(BaseModel):
-    """Representa proyecto trace graph."""
+    """Grafo completo de trazabilidad de un proyecto. `truncated` indica que se alcanzó un tope."""
 
     project_id: UUID
     project_title: str
@@ -75,7 +91,7 @@ class ProjectTraceGraph(BaseModel):
 
 
 class LabTracePathRequest(BaseModel):
-    """Representa lab trace path solicitud."""
+    """Solicitud para buscar el camino desde la raíz del grafo hasta un nodo destino."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -83,7 +99,7 @@ class LabTracePathRequest(BaseModel):
 
 
 class LabTracePathResponse(BaseModel):
-    """Representa lab trace path respuesta."""
+    """Resultado del BFS: camino, nodos revisados y si se encontró el destino (`found`)."""
 
     root_id: str
     target_node_id: str
@@ -94,7 +110,7 @@ class LabTracePathResponse(BaseModel):
 
 
 class LabPlaceSearchRequest(BaseModel):
-    """Representa lab lugar busqueda solicitud."""
+    """Búsqueda de lugares: coordenadas, radio (100 a 5000 m, por defecto 1000) y palabra clave."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -105,7 +121,7 @@ class LabPlaceSearchRequest(BaseModel):
 
 
 class LabPlaceSearchResponse(BaseModel):
-    """Representa lab lugar busqueda respuesta."""
+    """Lugares de OpenStreetMap, con atribución y la advertencia de que no prueban competencia."""
 
     project_id: UUID
     latitude: float
@@ -121,7 +137,7 @@ class LabPlaceSearchResponse(BaseModel):
 
 
 class LabRouteRequest(BaseModel):
-    """Representa lab ruta solicitud."""
+    """Solicitud de ruta: zona, palabra clave, de 2 a 8 lugares distintos y el algoritmo."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -134,7 +150,7 @@ class LabRouteRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_unique_places(self) -> "LabRouteRequest":
-        """Valida unique places en laboratorio admin."""
+        """Rechaza la ruta si el mismo lugar aparece dos veces en `selected_place_ids`."""
         # Rama condicional: evalua len(set(self.selected_place_ids)) !=
         # len(self.selected_place_ids).
         if len(set(self.selected_place_ids)) != len(self.selected_place_ids):
@@ -143,7 +159,7 @@ class LabRouteRequest(BaseModel):
 
 
 class LabRouteStop(BaseModel):
-    """Representa lab ruta stop."""
+    """Parada de la ruta, con su distancia en línea recta desde la parada anterior."""
 
     osm_type: Literal["node", "way", "relation"]
     osm_id: int
@@ -154,7 +170,7 @@ class LabRouteStop(BaseModel):
 
 
 class LabRouteResponse(BaseModel):
-    """Representa lab ruta respuesta."""
+    """Ruta calculada. `persisted` es siempre falso: el laboratorio no guarda resultados."""
 
     project_id: UUID
     keyword: str
@@ -175,7 +191,7 @@ class LabRouteResponse(BaseModel):
 
 
 class HypothesisBudgetItemInput(BaseModel):
-    """Contrato de datos para hipotesis presupuesto elemento entrada."""
+    """Hipótesis con su costo estimado (0 a 1 000 000) y su valor esperado (0 a 100)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -185,7 +201,7 @@ class HypothesisBudgetItemInput(BaseModel):
 
 
 class HypothesisBudgetRequest(BaseModel):
-    """Representa hipotesis presupuesto solicitud."""
+    """Plan de presupuesto: tope, algoritmo y de 1 a 16 hipótesis sin repetir."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -195,7 +211,7 @@ class HypothesisBudgetRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_unique_hypotheses(self) -> "HypothesisBudgetRequest":
-        """Valida unique hypotheses en laboratorio admin."""
+        """Rechaza el plan si la misma hipótesis aparece dos veces en `items`."""
         ids = [item.hypothesis_id for item in self.items]
         # Rama condicional: se cumple len(set(ids)) != len(ids).
         if len(set(ids)) != len(ids):
@@ -204,7 +220,7 @@ class HypothesisBudgetRequest(BaseModel):
 
 
 class HypothesisBudgetSelection(BaseModel):
-    """Representa hipotesis presupuesto selection."""
+    """Hipótesis elegida dentro del plan de presupuesto."""
 
     hypothesis_id: UUID
     statement: str
@@ -214,7 +230,7 @@ class HypothesisBudgetSelection(BaseModel):
 
 
 class HypothesisBudgetResponse(BaseModel):
-    """Representa hipotesis presupuesto respuesta."""
+    """Plan de presupuesto calculado. `persisted` es siempre falso: no se guarda."""
 
     project_id: UUID
     algorithm: BudgetAlgorithm
@@ -228,7 +244,7 @@ class HypothesisBudgetResponse(BaseModel):
 
 
 class LabMetricPoint(BaseModel):
-    """Representa lab metric point."""
+    """Métricas de un día: llamadas, éxitos, errores, latencia promedio y tokens."""
 
     day: date
     calls: int
@@ -240,14 +256,14 @@ class LabMetricPoint(BaseModel):
 
 
 class LabMetricsResponse(BaseModel):
-    """Representa lab metrics respuesta."""
+    """Serie diaria de métricas de la IA, con un punto por cada día del periodo."""
 
     days: int
     points: list[LabMetricPoint]
 
 
 class PropositionDefinition(BaseModel):
-    """Representa proposition definition."""
+    """Una proposición lógica: símbolo (P1, R2...), nombre y su significado en lenguaje claro."""
 
     symbol: str
     name: str
@@ -255,14 +271,14 @@ class PropositionDefinition(BaseModel):
 
 
 class TruthTableRow(BaseModel):
-    """Representa truth table row."""
+    """Una fila de la tabla de verdad: el valor de cada entrada y el resultado de la regla."""
 
     values: dict[str, bool]
     result: bool
 
 
 class PropositionRuleTable(BaseModel):
-    """Representa proposition rule table."""
+    """Regla del sistema como tabla de verdad, con la función del código que la aplica."""
 
     id: str
     title: str
@@ -276,7 +292,7 @@ class PropositionRuleTable(BaseModel):
 
 
 class PeasDimension(BaseModel):
-    """Representa peas dimension."""
+    """Una dimensión del marco PEAS del agente: medida, entorno, actuadores o sensores."""
 
     symbol: str
     name: str
@@ -284,7 +300,7 @@ class PeasDimension(BaseModel):
 
 
 class LabPropositionsResponse(BaseModel):
-    """Representa lab propositions respuesta."""
+    """Reglas en forma de tabla de verdad y marco PEAS del sistema."""
 
     rules: list[PropositionRuleTable]
     peas: list[PeasDimension]

@@ -1,4 +1,4 @@
-"""Marca el paquete y su limite de imports. Area: asistente contextual.
+"""Agrupa el asistente contextual del proyecto. Area: asistente contextual.
 
 ARCHIVO: backend/app/modules/chat/__init__.py
 

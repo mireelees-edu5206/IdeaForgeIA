@@ -1,4 +1,4 @@
-"""Construye contexto, prompt y secciones del informe con la cadena hallazgo-evidencia-fuente.
+"""Arma el contexto, el prompt y las secciones del informe con su cadena de fuentes.
 
 ARCHIVO: backend/app/modules/reports/generation.py
 

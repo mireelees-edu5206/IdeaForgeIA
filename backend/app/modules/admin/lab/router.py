@@ -1,4 +1,6 @@
-"""Expone endpoints HTTP del dominio. Area: laboratorio administrativo.
+"""Expone los endpoints HTTP del laboratorio administrativo. Area: laboratorio administrativo.
+
+ARCHIVO: backend/app/modules/admin/lab/router.py
 
 Un router agrupa las rutas (URLs) de un tema. Este router vive bajo el prefijo /api/v1/admin/lab.
 Cada función es un endpoint: recibe una petición HTTP, le pide el trabajo al servicio y devuelve la

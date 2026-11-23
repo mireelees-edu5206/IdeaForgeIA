@@ -1,4 +1,15 @@
-"""Pruebas de comportamiento para projects."""
+"""Pruebas de proyectos e idea: CRUD, atributos y confirmación de estructura. Area: pruebas.
+
+ARCHIVO: backend/tests/api/test_projects.py
+
+¿Qué prueba?
+- Crear, listar (paginación y filtro por etapa), consultar, editar y borrar proyectos.
+- Los proyectos de otra persona no existen para el usuario (404).
+- Atributos de la idea: validación, límite por tipo, posición y edición de sugerencias de IA.
+- Confirmar la estructura: mínimos requeridos, bloqueo por sugerencias pendientes, regreso a
+  borrador al editar y bloqueo durante una investigación.
+- El resumen de proyectos por etapa.
+"""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,7 +24,7 @@ BASE = "/api/v1/projects"
 
 @pytest.fixture
 def headers(db_client: TestClient) -> dict[str, str]:
-    """Gestiona encabezados."""
+    """Cabeceras de autenticación de una cuenta de prueba para proyectos."""
     return user_headers(db_client)
 
 
@@ -255,12 +266,12 @@ def test_delete_attribute(db_client: TestClient, headers: dict) -> None:
 
 
 def confirm(client: TestClient, headers: dict, project_id: str):
-    """Gestiona confirm."""
+    """Confirma la estructura del proyecto y devuelve la respuesta HTTP."""
     return client.post(f"{BASE}/{project_id}/confirm-structure", headers=headers)
 
 
 def fill_required(client: TestClient, headers: dict, project_id: str) -> None:
-    """Gestiona fill obligatorio."""
+    """Completa los atributos obligatorios para poder confirmar la estructura."""
     # Itera type_ sobre (un valor, un valor, un valor).
     for type_ in ("problem", "solution", "customer_segment"):
         response = add_attribute(client, headers, project_id, type_, f"valor {type_}")

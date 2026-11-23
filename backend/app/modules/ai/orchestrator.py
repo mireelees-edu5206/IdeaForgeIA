@@ -17,7 +17,9 @@
 #   uso, servicio caído), se intenta el respaldo. Si no hay respaldo, el error sube tal cual.
 # - Búsqueda en internet: solo se cambia de proveedor si el error es de límite de uso (429).
 
-"""Utilidad de soporte. Area: proveedores de IA."""
+"""Elige el proveedor de cada llamada a la IA, aplica el respaldo y registra cada intento.
+
+Area: proveedores de IA."""
 
 import time
 from collections.abc import Sequence

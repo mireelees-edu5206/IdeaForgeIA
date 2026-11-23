@@ -1,4 +1,12 @@
-"""Pruebas de comportamiento para geo."""
+"""Pruebas de los endpoints de geografía con un proveedor de prueba. Area: pruebas.
+
+ARCHIVO: backend/tests/api/test_geo.py
+
+¿Qué prueba?
+- La geocodificación manual exige sesión y devuelve lugares normalizados.
+- Los lugares cercanos solo se buscan dentro de un proyecto del usuario, con radio y resultados
+  acotados.
+"""
 
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -18,12 +26,12 @@ class StubGeoProvider(GeoProvider):
     """Adaptador que ofrece servicios de stub geografico."""
 
     def __init__(self) -> None:
-        """Gestiona la inicializacion para pruebas."""
+        """Prepara el proveedor geográfico de prueba."""
         self.geocode_queries: list[str] = []
         self.nearby_requests: list[tuple[float, float, int, GeoCategory, str | None]] = []
 
     async def geocode(self, query: str) -> list[GeoPlace]:
-        """Gestiona geocode."""
+        """Devuelve un resultado de geocodificación fijo para las pruebas."""
         self.geocode_queries.append(query)
         return [
             GeoPlace(
@@ -63,7 +71,7 @@ class StubGeoProvider(GeoProvider):
 
 @contextmanager
 def geo_client(db_url: str, provider: GeoProvider) -> Iterator[TestClient]:
-    """Gestiona geografico client."""
+    """Crea un cliente HTTP con el proveedor geográfico de prueba."""
     app = create_app(
         make_settings(database_url=db_url),
         ai_provider=FakeProvider(),

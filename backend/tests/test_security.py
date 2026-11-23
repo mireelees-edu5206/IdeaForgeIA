@@ -1,4 +1,16 @@
-"""Pruebas de comportamiento para security."""
+"""Pruebas de seguridad: contraseñas, tokens de acceso y límite de intentos de login. Area: pruebas.
+
+ARCHIVO: backend/tests/test_security.py
+
+¿Qué prueba?
+- La contraseña se guarda como hash Argon2id y se verifica.
+- Un token de acceso hace el viaje completo; los alterados, sin firma o firmados con otra clave se
+  rechazan.
+- La huella de un token de renovación es SHA-256 en hexadecimal.
+- El límite de intentos bloquea tras varios fallos, también ante muchas cuentas desde una misma
+  dirección, y se reinicia tras un acierto.
+- La memoria del limitador tiene un tope de claves y elimina las vencidas.
+"""
 
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -73,14 +85,14 @@ def test_refresh_token_hash_is_sha256_hex() -> None:
 
 
 class FakeClock:
-    """Representa fake clock."""
+    """Reloj falso: la prueba avanza el tiempo a mano."""
 
     def __init__(self) -> None:
-        """Gestiona la inicializacion para pruebas."""
+        """Guarda el instante inicial del reloj falso."""
         self.now = 1000.0
 
     def __call__(self) -> float:
-        """Gestiona call para pruebas."""
+        """Devuelve el instante actual del reloj falso."""
         return self.now
 
 

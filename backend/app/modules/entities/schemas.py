@@ -1,4 +1,4 @@
-"""Valida contratos de entrada/salida. Area: entidades.
+"""Define los contratos de entidades y competidores. Area: entidades.
 
 ARCHIVO: backend/app/modules/entities/schemas.py
 

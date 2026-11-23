@@ -1,18 +1,19 @@
-"""Define el contrato comun de adaptadores. Area: proveedores de IA.
+"""Define la interfaz común que cumple todo proveedor de IA. Area: proveedores de IA.
 
 ARCHIVO: backend/app/modules/ai/providers/base.py
 
 ¿Qué es?
-La "forma" que debe tener cualquier proveedor de IA: Gemini, Ollama o el de prueba. Define dos
-acciones obligatorias: pedir datos estructurados y pedir texto con fuentes de internet.
+La clase abstracta `AIProvider`, con dos acciones obligatorias: pedir datos estructurados (JSON
+validado contra un esquema) y pedir texto basado en búsquedas, con fuentes y citas.
 
 ¿Para qué sirve?
-Para que el sistema pueda cambiar de proveedor sin cambiar el código de los servicios. Cada
-proveedor implementa las mismas dos acciones, aunque por dentro funcionen distinto.
+Para que el sistema pueda cambiar de proveedor sin cambiar el código de los servicios. Hoy hay dos
+implementaciones: el motor propio (`engine.py`) y el de pruebas (`fake.py`). Gemini y Ollama
+fueron retirados.
 
 ¿Quién lo usa?
-- Los proveedores concretos (gemini.py, ollama.py, fake.py) lo implementan.
-- factory.py y el orquestador lo usan sin saber qué proveedor es.
+- `engine.py` y `fake.py` lo implementan.
+- `factory.py` y `orchestrator.py` lo usan sin saber qué proveedor es.
 """
 
 from abc import ABC, abstractmethod
@@ -25,7 +26,7 @@ from app.modules.ai.types import AIMessage, GroundedResult, StructuredResult
 
 
 class AIProvider(ABC):
-    """Contrato neutral para Gemini y modelos locales ejecutados con Ollama.
+    """Contrato común de todos los proveedores de IA (motor propio y de pruebas).
 
     Las implementaciones traducen sus errores a `AIProviderError` y nunca registran
     la API key ni el contenido completo de los prompts.

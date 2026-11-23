@@ -1,4 +1,4 @@
-"""Valida contratos de entrada/salida. Area: acceso local heredado.
+"""Define los contratos de registro, inicio de sesión y tokens. Area: acceso local heredado.
 
 ARCHIVO: backend/app/modules/auth/schemas.py
 

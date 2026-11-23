@@ -1,4 +1,4 @@
-"""Construye el adaptador del motor de IA configurado. Area: proveedores de IA.
+"""Crea el motor de IA configurado y lo envuelve en el orquestador. Area: proveedores de IA.
 
 ARCHIVO: backend/app/modules/ai/factory.py
 
@@ -30,7 +30,7 @@ def build_ai_provider(settings: Settings) -> AIProvider:
 
 
 def _build(provider: AIProviderName, settings: Settings) -> AIProvider:
-    """Construye una instancia del motor según su identificador."""
+    """Crea una instancia del motor según su identificador (`engine` o `fake`)."""
     if provider == AIProviderName.FAKE:
         return FakeProvider(latency_ms=settings.ai_fake_latency_ms)
     if provider == AIProviderName.ENGINE:

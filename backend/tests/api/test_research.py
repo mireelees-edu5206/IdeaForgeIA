@@ -1,4 +1,19 @@
-"""Pruebas de comportamiento para research."""
+"""Pruebas del flujo de investigación: inicio, límites, fallos y recuperación. Area: pruebas.
+
+ARCHIVO: backend/tests/api/test_research.py
+
+¿Qué prueba?
+- Iniciar exige un proyecto estructurado.
+- Una investigación completa con el proveedor de prueba.
+- `RESEARCH_MAX_QUESTIONS` limita las preguntas.
+- Un run activo bloquea nuevos runs y cambios; editar después regresa a borrador y conserva el
+  historial.
+- Límite diario de investigaciones.
+- Runs interrumpidos se recuperan al arrancar.
+- Fallos de planificación o de búsqueda marcan el run como fallido o parcial.
+- La salida no confiable del proveedor se sanea.
+- Privacidad y pertenencia del run al proyecto.
+"""
 
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
@@ -29,7 +44,7 @@ def research_client(
     geo_provider: GeoProvider | None = None,
     **settings: object,
 ) -> Iterator[TestClient]:
-    """Gestiona investigacion client."""
+    """Crea un cliente HTTP con el proveedor de investigación de prueba."""
     app = create_app(
         make_settings(database_url=db_url, **settings),
         ai_provider=provider,
@@ -42,12 +57,12 @@ def research_client(
 
 @pytest.fixture
 def headers(db_client: TestClient) -> dict[str, str]:
-    """Gestiona encabezados."""
+    """Cabeceras de autenticación de una cuenta de prueba para investigación."""
     return user_headers(db_client)
 
 
 def structured_project(client: TestClient, headers: dict) -> dict:
-    """Gestiona structured proyecto."""
+    """Crea un proyecto y lo deja estructurado, listo para investigar."""
     project = create_project(client, headers)
     fill_required(client, headers, project["id"])
     assert confirm(client, headers, project["id"]).status_code == 200
@@ -60,7 +75,7 @@ def start(client: TestClient, headers: dict, project_id: str):
 
 
 def latest_run(client: TestClient, headers: dict, project_id: str) -> dict:
-    """Gestiona latest ejecucion."""
+    """Devuelve la investigación más reciente de un proyecto."""
     runs = client.get(f"{BASE}/{project_id}/research-runs", headers=headers).json()
     detail = client.get(f"{BASE}/{project_id}/research-runs/{runs[0]['id']}", headers=headers)
     assert detail.status_code == 200
@@ -68,7 +83,7 @@ def latest_run(client: TestClient, headers: dict, project_id: str) -> dict:
 
 
 def project_status(client: TestClient, headers: dict, project_id: str) -> str:
-    """Gestiona proyecto estado."""
+    """Devuelve el estado actual del proyecto."""
     return client.get(f"{BASE}/{project_id}", headers=headers).json()["status"]
 
 
@@ -235,24 +250,24 @@ def test_interrupted_runs_are_recovered_on_startup(migrated_db: str) -> None:
 
 
 class PlanningFails(FakeProvider):
-    """Representa planning fails."""
+    """Proveedor de prueba que falla al planear la investigación."""
 
     async def generate_structured(self, messages, schema):
-        """Gestiona generate structured."""
+        """Simula que la planeación no responde."""
         raise AIUnavailableError("detalle interno del proveedor")
 
 
 class SearchFails(FakeProvider):
-    """Representa busqueda fails."""
+    """Proveedor de prueba que falla en la búsqueda web."""
 
     def __init__(self, fail_all: bool) -> None:
-        """Gestiona la inicializacion para pruebas."""
+        """Guarda si todas las búsquedas deben fallar."""
         super().__init__()
         self.fail_all = fail_all
         self.calls = 0
 
     async def generate_grounded(self, messages: Sequence[AIMessage]) -> GroundedResult:
-        """Gestiona generate fundamentada."""
+        """Responde una búsqueda con fuentes de prueba."""
         self.calls += 1
         # Rama condicional: se cumple self.fail_all or self.calls == 1.
         if self.fail_all or self.calls == 1:
@@ -316,7 +331,7 @@ class UntrustedOutput(FakeProvider):
     """Salida defectuosa: URLs no http(s), duplicadas y spans fuera del texto."""
 
     async def generate_grounded(self, messages: Sequence[AIMessage]) -> GroundedResult:
-        """Gestiona generate fundamentada."""
+        """Responde una búsqueda con fuentes de prueba."""
         text = "Dato respaldado. Otro dato."
         return GroundedResult(
             text=text,

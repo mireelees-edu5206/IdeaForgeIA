@@ -1,17 +1,19 @@
-"""Utilidad de soporte. Area: proveedores de IA.
+"""Envía un POST en JSON a un servicio HTTP y traduce sus errores. Area: proveedores de IA.
 
 ARCHIVO: backend/app/modules/ai/providers/http.py
 
 ¿Qué es?
-Una función pequeña que manda una petición POST con datos en formato JSON a un servidor de IA
+Una función pequeña que manda una petición POST con datos en formato JSON a un servidor
 y devuelve la respuesta ya convertida en un diccionario.
 
 ¿Para qué sirve?
-Para no repetir el mismo código de red en cada proveedor. Además, traduce los errores de red y
-del servidor en los errores de IA del sistema (límite de uso, tiempo de espera, clave inválida).
+Para no repetir el mismo código de red en cada proveedor que hable con un servidor externo.
+Además, traduce los errores de red y del servidor en los errores de IA del sistema (límite de uso,
+tiempo de espera, clave inválida).
 
 ¿Quién lo usa?
-ollama.py y gemini.py para hablar con sus servidores.
+Los proveedores que llamen a un servicio HTTP externo. Los adaptadores de Gemini y Ollama fueron
+retirados, y el motor propio no necesita este módulo para su búsqueda pública.
 
 Partes importantes:
 - Se ejecuta en otro hilo (asyncio.to_thread) para no bloquear el resto del servidor.

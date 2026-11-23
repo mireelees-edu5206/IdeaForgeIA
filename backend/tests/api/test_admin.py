@@ -1,4 +1,14 @@
-"""Pruebas de comportamiento para admin."""
+"""Pruebas del panel de administración: permisos, gestión de cuentas y borrado. Area: pruebas.
+
+ARCHIVO: backend/tests/api/test_admin.py
+
+¿Qué prueba?
+- Un usuario normal recibe 403 en todos los endpoints de administración.
+- Desactivar una cuenta revoca sus sesiones.
+- Un administrador puede borrar la cuenta de otra persona y sus proyectos.
+- Nadie puede borrar su propia cuenta.
+- Borrar una cuenta vinculada a Supabase exige la clave de servicio del servidor.
+"""
 
 import uuid
 
@@ -13,7 +23,7 @@ from tests.conftest import run_sql
 def admin_headers(
     client: TestClient, migrated_db: str, email: str = "admin@ideaforge.dev"
 ) -> dict[str, str]:
-    """Gestiona administrador encabezados."""
+    """Crea un administrador de prueba y devuelve sus cabeceras de autenticación."""
     assert register(client, email=email).status_code == 201
     run_sql(migrated_db, "UPDATE users SET role = 'admin' WHERE email = :e", {"e": email})
     tokens = login(client, email=email).json()

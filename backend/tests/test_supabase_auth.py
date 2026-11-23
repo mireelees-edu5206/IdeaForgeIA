@@ -1,4 +1,13 @@
-"""Pruebas de comportamiento para supabase auth."""
+"""Pruebas de la verificación de tokens de Supabase (sin red). Area: pruebas.
+
+ARCHIVO: backend/tests/test_supabase_auth.py
+
+¿Qué prueba?
+- Un token HS256 con el secreto heredado se verifica.
+- Una clave asimétrica se valida con la clave pública del JWKS.
+- Un algoritmo no aprobado se rechaza.
+- Un token con emisor incorrecto se rechaza.
+"""
 
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -17,7 +26,7 @@ SUPABASE_SECRET = "supabase-test-secret-" + "x" * 32
 
 
 def token_payload(**changes: object) -> dict:
-    """Gestiona token payload."""
+    """Arma el contenido de un token de prueba y aplica los cambios indicados."""
     now = datetime.now(UTC)
     return {
         "iss": f"{SUPABASE_URL}/auth/v1",

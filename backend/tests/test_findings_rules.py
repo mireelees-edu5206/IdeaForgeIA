@@ -1,4 +1,12 @@
-"""Pruebas de comportamiento para findings rules."""
+"""Pruebas de las reglas de hallazgos: normalización de nombres y tope de confianza. Area: pruebas.
+
+ARCHIVO: backend/tests/test_findings_rules.py
+
+¿Qué prueba?
+- `normalize_entity_name` deja los nombres en una forma comparable (minúsculas, sin acentos ni
+  sufijos legales).
+- `cap_confidence` limita la confianza alta cuando hay pocos dominios o evidencia contradictoria.
+"""
 
 import pytest
 

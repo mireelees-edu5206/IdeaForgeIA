@@ -1,4 +1,4 @@
-"""Expone endpoints HTTP del dominio. Area: investigacion web.
+"""Expone los endpoints de investigación: iniciar, listar y consultar. Area: investigacion web.
 
 ARCHIVO: backend/app/modules/research/router.py
 

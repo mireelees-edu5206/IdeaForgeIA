@@ -1,4 +1,4 @@
-"""Aplica reglas de negocio y permisos. Area: resultados/evidencia.
+"""Crea, revisa y borra hallazgos según su origen (IA o persona). Area: resultados/evidencia.
 
 ARCHIVO: backend/app/modules/findings/service.py
 

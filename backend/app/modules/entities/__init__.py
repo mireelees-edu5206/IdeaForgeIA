@@ -1,4 +1,4 @@
-"""Marca el paquete y su limite de imports. Area: entidades.
+"""Agrupa las entidades (empresas, productos) y los competidores del proyecto. Area: entidades.
 
 ARCHIVO: backend/app/modules/entities/__init__.py
 

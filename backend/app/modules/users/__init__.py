@@ -1,4 +1,4 @@
-"""Marca el paquete y su limite de imports. Area: perfiles.
+"""Agrupa el perfil de la persona conectada. Area: perfiles.
 
 ARCHIVO: backend/app/modules/users/__init__.py
 

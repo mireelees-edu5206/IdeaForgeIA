@@ -1,4 +1,18 @@
-"""Define el contrato comun de adaptadores. Area: geografia."""
+"""Define el contrato que cumple todo proveedor geográfico. Area: geografia.
+
+ARCHIVO: backend/app/modules/geo/providers/base.py
+
+¿Qué es?
+La clase abstracta `GeoProvider`, con tres métodos: `geocode` (texto a coordenadas), `find_places`
+(lugares alrededor de una coordenada) y `aclose` (libera recursos, opcional).
+
+¿Para qué sirve?
+Para que `GeoService` y el laboratorio hablen con cualquier proveedor sin conocer sus URLs ni sus
+formatos de respuesta.
+
+¿Quién lo usa?
+`providers/openstreetmap.py` lo implementa; `service.py` y `admin/lab` lo reciben como dependencia.
+"""
 
 from abc import ABC, abstractmethod
 

@@ -1,4 +1,19 @@
-"""Pruebas de comportamiento para auth."""
+"""Pruebas de la autenticación local heredada: registro, sesión, renovación y contraseña.
+
+Area: pruebas.
+
+ARCHIVO: backend/tests/api/test_auth.py
+
+¿Qué prueba?
+- Registro: no devuelve la huella de la contraseña, guarda Argon2id, rechaza correos repetidos sin
+  distinguir mayúsculas, no permite elegir el rol y muestra los mensajes en español.
+- Inicio de sesión: los errores no revelan si el correo existe; hay límite de intentos.
+- Tokens: rutas protegidas, renovación rotativa, reutilizar un token revoca todas las sesiones,
+  cierre de sesión, token vencido y cuentas inactivas.
+- Perfil, cambio de contraseña y requisito de rol admin.
+
+Estas pruebas activan `LEGACY_AUTH_ENABLED`: la autenticación real es Supabase.
+"""
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -221,7 +236,7 @@ def test_require_admin(db_app: FastAPI, migrated_db: str) -> None:
 
     @db_app.get("/_test/admin")
     async def admin_only(user: AdminUser) -> dict[str, str]:
-        """Gestiona administrador only."""
+        """Ruta de prueba protegida por AdminUser."""
         return {"role": user.role}
 
     # Abre y libera los recursos declarados en este bloque.

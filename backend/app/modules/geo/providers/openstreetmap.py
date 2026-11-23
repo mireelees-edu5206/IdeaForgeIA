@@ -1,4 +1,27 @@
-"""Nominatim + Overpass con límites locales, caché y consultas explícitas del usuario."""
+"""Nominatim + Overpass con límites locales, caché y consultas explícitas del usuario.
+
+ARCHIVO: backend/app/modules/geo/providers/openstreetmap.py
+
+¿Qué es?
+El adaptador real de OpenStreetMap. Implementa `GeoProvider` con dos servicios públicos:
+- Nominatim: geocodifica texto y busca lugares por nombre dentro de una caja geográfica.
+- Overpass: busca negocios por categoría o palabra clave alrededor de una coordenada.
+
+¿Para qué sirve?
+Para dar datos de mapas al proyecto sin pagar un proveedor comercial.
+
+Límites que respeta el código:
+- Nominatim: una petición por segundo como máximo (`_NOMINATIM_MIN_INTERVAL_S`).
+- Overpass: separación de 0.25 s entre peticiones y reintentos en tres servidores.
+- Caché en memoria: geocodificación 1 hora; lugares 5 minutos; 256 entradas como máximo.
+- Respuestas de máximo 6 MB y hasta 80 lugares.
+
+Importante: los lugares de OpenStreetMap son datos del mapa. Un lugar encontrado no es, por sí
+solo, un competidor.
+
+¿Quién lo usa?
+`factory.py` lo crea; `geo/service.py` y `admin/lab/service.py` lo llaman.
+"""
 
 import asyncio
 import json
@@ -112,7 +135,9 @@ _SPANISH_KEYWORD_TAGS: tuple[tuple[tuple[str, ...], tuple[tuple[str, str], ...]]
 
 
 def _read_json(request: Request, timeout: float = 18.0) -> object:
-    """Lee json en geografia."""
+    """Descarga y decodifica una respuesta JSON. Los códigos 403, 429 y 509 significan que el
+    proveedor limitó las solicitudes. Cualquier fallo de red, tiempo o tamaño se convierte en
+    GeoProviderUnavailableError."""
     # Protege la operacion y dirige sus errores a manejadores explicitos.
     try:
         # Abre y libera los recursos declarados en este bloque.
@@ -149,7 +174,7 @@ class OpenStreetMapGeoProvider(GeoProvider):
         overpass_url: str,
         user_agent: str,
     ) -> None:
-        """Gestiona la inicializacion para geografia."""
+        """Guarda URLs y User-Agent, crea los candados de cada servicio y las cachés vacías."""
         self.nominatim_url = nominatim_url.rstrip("/")
         self.overpass_url = overpass_url
         self.user_agent = user_agent
@@ -161,7 +186,8 @@ class OpenStreetMapGeoProvider(GeoProvider):
         self._places_cache: dict[str, tuple[float, list[GeoBusiness]]] = {}
 
     async def geocode(self, query: str) -> list[GeoPlace]:
-        """Gestiona el flujo en geografia."""
+        """Convierte un texto en hasta 5 lugares de Nominatim. Usa caché de 1 hora y espera
+        lo necesario para no pasar de una petición por segundo."""
         normalized = " ".join(query.split()).casefold()
         now = time.monotonic()
         cached = self._geocode_cache.get(normalized)
@@ -241,7 +267,9 @@ class OpenStreetMapGeoProvider(GeoProvider):
         category: GeoCategory,
         keyword: str | None = None,
     ) -> list[GeoBusiness]:
-        """Busca places en geografia."""
+        """Busca lugares alrededor de una coordenada. Con palabra clave consulta primero Nominatim
+        y, si no hay resultados y la palabra corresponde a un giro conocido, Overpass. Sin palabra
+        clave usa Overpass con las categorías. Usa caché de 5 minutos."""
         clean_kw = _normalize_keyword(keyword)
         cache_key = f"{latitude:.4f}:{longitude:.4f}:{radius_m}:{category}:{clean_kw}"
         now = time.monotonic()
@@ -284,7 +312,8 @@ class OpenStreetMapGeoProvider(GeoProvider):
         keyword: str | None,
         clean_kw: str,
     ) -> list[GeoBusiness]:
-        """Busca places overpass safe en geografia."""
+        """Consulta Overpass en tres servidores, en orden. Si todos fallan y hay palabra clave,
+        devuelve lista vacía; si no la hay, lanza GeoProviderUnavailableError."""
         # Abre y libera los recursos declarados en este bloque.
         async with self._overpass_lock:
             now = time.monotonic()
@@ -437,7 +466,7 @@ class OpenStreetMapGeoProvider(GeoProvider):
 
 
 def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
-    """Gestiona m en geografia."""
+    """Distancia en metros entre dos coordenadas, con la fórmula de Haversine."""
     r = 6_371_000.0
     p1 = math.radians(lat1)
     p2 = math.radians(lat2)
@@ -448,7 +477,7 @@ def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 
 
 def _has_spanish_category_match(norm_keyword: str) -> bool:
-    """Indica si spanish category match en geografia."""
+    """Indica si la palabra clave contiene alguna raíz del diccionario de giros en español."""
     # Itera (stems, _) sobre _SPANISH_KEYWORD_TAGS.
     for stems, _ in _SPANISH_KEYWORD_TAGS:
         # Rama condicional: se cumple any((stem.strip() in norm_keyword for stem in stems)).
@@ -458,7 +487,7 @@ def _has_spanish_category_match(norm_keyword: str) -> bool:
 
 
 def _normalize_keyword(keyword: str | None) -> str:
-    """Normaliza keyword en geografia."""
+    """Pasa la palabra a minúsculas, quita acentos y signos, y la limita a 60 caracteres."""
     # Rama condicional: se cumple not keyword.
     if not keyword:
         return ""
@@ -471,7 +500,8 @@ def _normalize_keyword(keyword: str | None) -> str:
 
 
 def _keyword_selectors(latitude: float, longitude: float, radius_m: int, keyword: str) -> list[str]:
-    """Gestiona selectors en geografia."""
+    """Arma los selectores de Overpass para una palabra clave: etiquetas OSM del diccionario
+    en español y una búsqueda por nombre con expresión regular."""
     norm = _normalize_keyword(keyword)
     # Rama condicional: se cumple not norm.
     if not norm:
@@ -517,7 +547,7 @@ def _overpass_query(
     category: GeoCategory,
     keyword: str | None = None,
 ) -> str:
-    """Gestiona query en geografia."""
+    """Arma la consulta Overpass completa: por palabra clave, o por las categorías del filtro."""
     # Rama condicional: se cumple keyword and _normalize_keyword(keyword).
     if keyword and _normalize_keyword(keyword):
         selectors = _keyword_selectors(latitude, longitude, radius_m, keyword)
@@ -535,7 +565,8 @@ def _overpass_query(
 
 
 def _parse_businesses(elements: list[object], category: GeoCategory) -> list[GeoBusiness]:
-    """Interpreta businesses en geografia."""
+    """Convierte los elementos de Overpass en negocios. Descarta los que no tienen nombre o
+    coordenadas, y los repetidos."""
     places: list[GeoBusiness] = []
     seen: set[tuple[str, int]] = set()
     # Itera element sobre elements.
@@ -590,7 +621,7 @@ def _parse_businesses(elements: list[object], category: GeoCategory) -> list[Geo
 
 
 def _business_subtype(tags: dict) -> str | None:
-    """Gestiona subtype en geografia."""
+    """Devuelve el tipo del negocio (etiqueta `shop` o `amenity`), recortado a 80 caracteres."""
     # Itera key sobre (un valor, un valor).
     for key in ("shop", "amenity"):
         value = tags.get(key)
@@ -601,12 +632,12 @@ def _business_subtype(tags: dict) -> str | None:
 
 
 def _optional_string(value: object) -> str | None:
-    """Gestiona string en geografia."""
+    """Devuelve el valor si es texto, recortado a 200 caracteres; si no, None."""
     return value[:200] if isinstance(value, str) else None
 
 
 def _safe_website(value: object) -> str | None:
-    """Gestiona website en geografia."""
+    """Acepta el sitio web solo si empieza con http:// o https://."""
     # Rama condicional: se cumple isinstance(value, str) and value.startswith(('https://',
     # 'http://')).
     if isinstance(value, str) and value.startswith(("https://", "http://")):

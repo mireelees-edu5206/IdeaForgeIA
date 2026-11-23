@@ -1,4 +1,4 @@
-"""Aplica reglas de negocio y permisos. Area: perfiles.
+"""Actualiza el perfil de la persona conectada. Area: perfiles.
 
 ARCHIVO: backend/app/modules/users/service.py
 

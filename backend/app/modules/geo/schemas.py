@@ -1,4 +1,21 @@
-"""Valida contratos de entrada/salida. Area: geografia."""
+"""Define los contratos de geografía con Pydantic. Area: geografia.
+
+ARCHIVO: backend/app/modules/geo/schemas.py
+
+¿Qué es?
+Los modelos de lugar (`GeoPlace`), negocio de OpenStreetMap (`GeoBusiness`) y la respuesta de la
+búsqueda de lugares (`GeoPlacesResponse`), más la lista cerrada de categorías (`GeoCategory`).
+
+¿Para qué sirve?
+Para que cada respuesta tenga la misma forma y para que las coordenadas fuera de rango se rechacen
+antes de llegar al proveedor.
+
+¿Quién lo usa?
+`router.py`, `service.py`, `providers/openstreetmap.py` y `admin/lab/schemas.py`.
+
+Importante: `GeoPlacesResponse` siempre incluye la atribución de OpenStreetMap y una advertencia: la
+presencia de un lugar no confirma que sea competidor.
+"""
 
 from typing import Literal
 
@@ -8,7 +25,7 @@ GeoCategory = Literal["all", "clothing", "food", "groceries", "services"]
 
 
 class GeoPlace(BaseModel):
-    """Representa geografico lugar."""
+    """Lugar devuelto por la geocodificación: nombre completo, coordenadas, categoría y tipo."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -21,7 +38,7 @@ class GeoPlace(BaseModel):
 
 
 class GeoBusiness(BaseModel):
-    """Representa geografico business."""
+    """Negocio o lugar de OpenStreetMap, con su enlace al objeto original en el mapa."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -37,7 +54,7 @@ class GeoBusiness(BaseModel):
 
 
 class GeoPlacesResponse(BaseModel):
-    """Representa geografico lugares respuesta."""
+    """Resultado de la búsqueda de lugares, con atribución y advertencia sobre su uso."""
 
     latitude: float
     longitude: float

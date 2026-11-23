@@ -1,4 +1,4 @@
-"""Valida contratos de entrada/salida. Area: resultados/evidencia.
+"""Define los contratos de hallazgos y su revisión. Area: resultados/evidencia.
 
 ARCHIVO: backend/app/modules/findings/schemas.py
 

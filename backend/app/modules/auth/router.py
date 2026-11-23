@@ -1,4 +1,4 @@
-"""Expone endpoints HTTP del dominio. Area: acceso local heredado.
+"""Expone los endpoints de registro, sesión y renovación heredados. Area: acceso local heredado.
 
 ARCHIVO: backend/app/modules/auth/router.py
 

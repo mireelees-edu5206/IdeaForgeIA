@@ -1,4 +1,4 @@
-"""Aplica reglas de negocio y permisos. Area: asistente contextual.
+"""Responde con contexto acotado y atiende saludos sin llamar a la IA. Area: asistente contextual.
 
 ARCHIVO: backend/app/modules/chat/service.py
 

@@ -1,4 +1,4 @@
-"""Expone endpoints HTTP del dominio. Area: entidades.
+"""Expone los endpoints de entidades y competidores. Area: entidades.
 
 ARCHIVO: backend/app/modules/entities/router.py
 

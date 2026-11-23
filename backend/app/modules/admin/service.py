@@ -1,4 +1,4 @@
-"""Aplica reglas de negocio y permisos. Area: administracion.
+"""Calcula el resumen, gestiona cuentas y borra usuarios con sus reglas. Area: administracion.
 
 ARCHIVO: backend/app/modules/admin/service.py
 

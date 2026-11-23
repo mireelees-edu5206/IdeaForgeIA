@@ -1,4 +1,4 @@
-"""Marca el paquete y su limite de imports. Area: analisis.
+"""Agrupa el análisis: oportunidades, riesgos, hipótesis e información faltante. Area: analisis.
 
 ARCHIVO: backend/app/modules/analysis/__init__.py
 

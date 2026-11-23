@@ -1,4 +1,4 @@
-"""Aplica reglas de negocio y permisos. Area: investigacion web.
+"""Inicia y consulta investigaciones según sus reglas de estado y límite. Area: investigacion web.
 
 ARCHIVO: backend/app/modules/research/service.py
 

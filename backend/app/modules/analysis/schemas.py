@@ -1,4 +1,4 @@
-"""Valida contratos de entrada/salida. Area: analisis.
+"""Define los contratos del análisis: elementos, revisión y creación manual. Area: analisis.
 
 ARCHIVO: backend/app/modules/analysis/schemas.py
 

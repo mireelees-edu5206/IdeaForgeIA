@@ -1,4 +1,11 @@
-"""Pruebas de comportamiento para geo provider."""
+"""Pruebas del proveedor de OpenStreetMap con respuestas simuladas. Area: pruebas.
+
+ARCHIVO: backend/tests/test_geo_provider.py
+
+¿Qué prueba?
+- La geocodificación manual envía la búsqueda a Nominatim y convierte las coordenadas.
+- La búsqueda en Overpass respeta el radio y el filtro de categoría.
+"""
 
 import asyncio
 import io

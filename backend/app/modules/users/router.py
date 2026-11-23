@@ -1,4 +1,4 @@
-"""Expone endpoints HTTP del dominio. Area: perfiles.
+"""Expone los endpoints del perfil de la persona conectada. Area: perfiles.
 
 ARCHIVO: backend/app/modules/users/router.py
 

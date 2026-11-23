@@ -1,4 +1,13 @@
-"""Pruebas de comportamiento para app."""
+"""Pruebas de la aplicación completa: salud, cabeceras, CORS y documentación. Area: pruebas.
+
+ARCHIVO: backend/tests/test_app.py
+
+¿Qué prueba?
+- `/health` responde ok; `/health/db` responde 503 sin detalles si la base no está disponible.
+- Cabeceras de seguridad en respuestas correctas y de error.
+- CORS acepta solo el origen configurado.
+- La documentación de la API (/docs) solo existe en desarrollo.
+"""
 
 from fastapi.testclient import TestClient
 

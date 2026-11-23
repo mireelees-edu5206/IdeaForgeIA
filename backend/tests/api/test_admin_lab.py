@@ -1,4 +1,15 @@
-"""Pruebas de comportamiento para admin lab."""
+"""Pruebas de los endpoints del laboratorio administrativo. Area: pruebas.
+
+ARCHIVO: backend/tests/api/test_admin_lab.py
+
+¿Qué prueba?
+- Solo administradores pueden usar el laboratorio (403 para el resto).
+- Métricas por día y tablas de proposiciones.
+- El aprendizaje informa que todavía no hay ejemplos revisados.
+- Lista de proyectos y grafo de trazabilidad construido desde datos reales.
+- Búsqueda de lugares y ruta, con un proveedor geográfico de prueba.
+- Plan de presupuesto con hipótesis reales del proyecto.
+"""
 
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -19,7 +30,7 @@ class LabGeoProvider(GeoProvider):
     """Adaptador que ofrece servicios de lab geografico."""
 
     async def geocode(self, query: str) -> list[GeoPlace]:
-        """Gestiona geocode."""
+        """Devuelve un resultado de geocodificación fijo para las pruebas."""
         return []
 
     async def find_places(
@@ -55,7 +66,7 @@ class LabGeoProvider(GeoProvider):
 
 @contextmanager
 def lab_client(db_url: str) -> Iterator[TestClient]:
-    """Gestiona lab client."""
+    """Crea un cliente del laboratorio con el proveedor geográfico de prueba."""
     app = create_app(make_settings(database_url=db_url), geo_provider=LabGeoProvider())
     # Abre y libera los recursos declarados en este bloque.
     with TestClient(app) as client:

@@ -1,4 +1,4 @@
-"""Construye el contexto acotado para el asistente. Area: asistente contextual.
+"""Arma el contexto del proyecto para el asistente, con tamaño acotado. Area: asistente contextual.
 
 ARCHIVO: backend/app/modules/chat/context.py
 

@@ -1,4 +1,4 @@
-"""Aplica reglas de negocio y permisos. Area: informes/veredicto.
+"""Inicia, consulta y marca como fallidos los informes del proyecto. Area: informes/veredicto.
 
 ARCHIVO: backend/app/modules/reports/service.py
 

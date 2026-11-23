@@ -1,4 +1,4 @@
-"""Valida contratos de entrada/salida. Area: asistente contextual.
+"""Define los mensajes y las respuestas del asistente. Area: asistente contextual.
 
 ARCHIVO: backend/app/modules/chat/schemas.py
 

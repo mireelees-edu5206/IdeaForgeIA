@@ -1,4 +1,22 @@
-"""Expone endpoints HTTP del dominio. Area: geografia."""
+"""Expone los endpoints HTTP de geografía. Area: geografia.
+
+ARCHIVO: backend/app/modules/geo/router.py
+
+¿Qué es?
+Dos endpoints autenticados:
+- GET /api/v1/geo/geocode?q=...: búsqueda manual de una ubicación.
+- GET /api/v1/projects/{project_id}/geo/places: lugares alrededor de una coordenada, para un
+  proyecto del usuario.
+
+¿Para qué sirve?
+Para que el frontend busque ubicaciones y lugares solo cuando la persona lo pide.
+
+¿Quién lo usa?
+El frontend (mapa de competidores y búsqueda de ubicación). `api/v1/router.py` lo monta.
+
+Importante: `q` debe tener entre 3 y 160 caracteres, el radio entre 100 y 5000 metros, y la
+palabra clave hasta 80 caracteres.
+"""
 
 import uuid
 from typing import Annotated
@@ -13,7 +31,7 @@ router = APIRouter(tags=["geo"])
 
 
 def get_geo_service(request: Request, db: DbSession) -> GeoService:
-    """Obtiene geo service en geografia."""
+    """Crea el servicio de geografía con la sesión de la petición y el proveedor de `app.state`."""
     return GeoService(db, request.app.state.geo_provider)
 
 
@@ -42,7 +60,8 @@ async def nearby_places(
     category: GeoCategory = "all",
     keyword: KeywordQuery = None,
 ) -> GeoPlacesResponse:
-    """Gestiona places en geografia."""
+    """Lista lugares de OpenStreetMap alrededor de una coordenada, dentro de un proyecto del
+    usuario. Espacios repetidos en la palabra clave se limpian antes de buscar."""
     clean_keyword = " ".join((keyword or "").split()).strip() or None
     places = await service.nearby_places(
         user, project_id, latitude, longitude, radius_m, category, clean_keyword

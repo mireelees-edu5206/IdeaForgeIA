@@ -1,5 +1,7 @@
 """Convierte un hallazgo en números que el árbol puede usar. Área: aprendizaje del motor de IA.
 
+ARCHIVO: backend/app/modules/ai/learning/features.py
+
 El árbol de decisión solo sabe comparar números ("¿es mayor que X?"). Un hallazgo es texto,
 una lista de evidencias y un tipo. Este archivo lo traduce a una fila de números, en el mismo orden.
 

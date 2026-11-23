@@ -1,4 +1,19 @@
-"""Configura Alembic para ejecutar migraciones sincronas y asincronas del esquema."""
+"""Configura Alembic para migrar el esquema en modo síncrono y asíncrono. Area: base de datos.
+
+ARCHIVO: backend/alembic/env.py
+
+¿Qué es?
+El archivo que Alembic ejecuta antes de cada migración. Decide la URL de la base (la inyectada por
+las pruebas o `DATABASE_URL`), carga el metadata de todos los modelos y ejecuta las migraciones en
+modo asíncrono con asyncpg.
+
+¿Para qué sirve?
+Para que `alembic upgrade head` y `alembic revision --autogenerate` vean el mismo esquema que la
+aplicación.
+
+¿Quién lo usa?
+Alembic (`uv run alembic ...`) y `tests/conftest.py`, que lo llama para migrar la base de prueba.
+"""
 
 import asyncio
 from logging.config import fileConfig
@@ -42,7 +57,7 @@ def run_migrations_offline() -> None:
 
 
 def do_run_migrations(connection: Connection) -> None:
-    """Gestiona run migrations en migracion."""
+    """Ejecuta las migraciones sobre una conexión síncrona ya abierta."""
     context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
     # Abre y libera los recursos declarados en este bloque.
     with context.begin_transaction():

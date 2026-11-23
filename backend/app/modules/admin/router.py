@@ -1,4 +1,4 @@
-"""Expone endpoints HTTP del dominio. Area: administracion.
+"""Expone los endpoints de administración, solo para administradoras. Area: administracion.
 
 ARCHIVO: backend/app/modules/admin/router.py
 

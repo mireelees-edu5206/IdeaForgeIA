@@ -1,4 +1,14 @@
-"""Pruebas de comportamiento para chat."""
+"""Pruebas del asistente del proyecto: historial, contexto y saludos. Area: pruebas.
+
+ARCHIVO: backend/tests/test_chat.py
+
+¿Qué prueba?
+- El historial acepta solo los roles `user` y `assistant`, y tiene un tamaño máximo.
+- El contenido del proyecto entra al prompt como dato escapado, no como instrucción.
+- El proveedor de prueba responde con una respuesta marcada como simulada.
+- Un saludo recibe una respuesta contextual que no repite el saludo.
+- El endpoint exige sesión.
+"""
 
 import asyncio
 

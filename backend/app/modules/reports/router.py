@@ -1,4 +1,4 @@
-"""Expone endpoints HTTP del dominio. Area: informes/veredicto.
+"""Expone los endpoints de informes: iniciar, listar y consultar. Area: informes/veredicto.
 
 ARCHIVO: backend/app/modules/reports/router.py
 

@@ -1,4 +1,4 @@
-"""Marca el paquete y su limite de imports. Area: investigacion web.
+"""Agrupa la investigación web: ejecuciones, preguntas y fuentes. Area: investigacion web.
 
 ARCHIVO: backend/app/modules/research/__init__.py
 

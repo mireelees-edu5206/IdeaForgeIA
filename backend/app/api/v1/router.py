@@ -1,4 +1,20 @@
-"""Une los routers de dominio y publica el perfil versionado de la sesión actual."""
+"""Une los routers de todos los dominios bajo una sola API. Area: aplicacion.
+
+ARCHIVO: backend/app/api/v1/router.py
+
+¿Qué es?
+El router raíz de la versión 1. Incluye, en orden, los routers de salud, usuarios, proyectos,
+investigación, hallazgos, entidades, análisis, chat, informes, geografía y administración.
+También define `GET /perfil`, que devuelve los datos de la persona conectada.
+
+¿Para qué sirve?
+Para que `main.py` monte toda la API con una sola línea (`app.include_router(api_router, ...)`).
+
+¿Quién lo usa?
+`app/main.py`, que le agrega el prefijo `/api/v1`.
+
+Importante: el orden de los `include_router` no cambia las rutas, pero sí el orden en `/docs`.
+"""
 
 from fastapi import APIRouter
 

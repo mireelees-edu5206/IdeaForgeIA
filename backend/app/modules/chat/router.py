@@ -1,4 +1,4 @@
-"""Expone endpoints HTTP del dominio. Area: asistente contextual.
+"""Expone el endpoint del asistente del proyecto. Area: asistente contextual.
 
 ARCHIVO: backend/app/modules/chat/router.py
 

@@ -1,4 +1,4 @@
-"""Expone endpoints HTTP del dominio. Area: resultados/evidencia.
+"""Expone los endpoints de hallazgos. Area: resultados/evidencia.
 
 ARCHIVO: backend/app/modules/findings/router.py
 

@@ -1,4 +1,19 @@
-"""Pruebas de comportamiento para conftest."""
+"""Fixtures compartidas por todas las pruebas: configuración, aplicación, cliente HTTP y bases
+de datos de prueba. Area: pruebas.
+
+ARCHIVO: backend/tests/conftest.py
+
+¿Qué es?
+- `settings` y `make_settings`: configuración de prueba, sin leer el `.env` real.
+- `app` y `client`: la aplicación FastAPI y un cliente HTTP en memoria.
+- `test_db_url`: la base de prueba. Su nombre debe terminar en `_test`; se vacía en cada ejecución.
+- `migrated_db`: crea la base, aplica las migraciones de Alembic y la entrega a la prueba.
+- `db_app` y `db_client`: la aplicación y el cliente conectados a esa base migrada.
+- `run_sql` y `fetch_scalar`: ejecutan SQL directo para preparar o comprobar datos.
+
+¿Quién lo usa?
+Todas las pruebas de `tests/`. pytest lo carga automáticamente.
+"""
 
 import asyncio
 import os
@@ -29,7 +44,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 
 def make_settings(**overrides: object) -> Settings:
-    """Construye configuracion."""
+    """Crea la configuración de prueba, sin leer el `.env` real."""
     values: dict[str, object] = {
         "app_env": "test",
         "cors_origins": [ALLOWED_ORIGIN],
@@ -46,19 +61,19 @@ def make_settings(**overrides: object) -> Settings:
 
 @pytest.fixture
 def settings() -> Settings:
-    """Gestiona configuracion."""
+    """Entrega la configuración de prueba a cada test."""
     return make_settings()
 
 
 @pytest.fixture
 def app(settings: Settings) -> FastAPI:
-    """Gestiona aplicacion."""
+    """Crea la aplicación FastAPI con esa configuración."""
     return create_app(settings)
 
 
 @pytest.fixture
 def client(app: FastAPI) -> Iterator[TestClient]:
-    """Gestiona client."""
+    """Crea un cliente HTTP en memoria para la aplicación."""
     # Abre y libera los recursos declarados en este bloque.
     with TestClient(app, raise_server_exceptions=False) as test_client:
         yield test_client
@@ -70,7 +85,7 @@ def client(app: FastAPI) -> Iterator[TestClient]:
 
 
 def _alembic_config(url: str) -> Config:
-    """Gestiona alembic config."""
+    """Arma la configuración de Alembic con la URL indicada."""
     config = Config(str(BACKEND_DIR / "alembic.ini"))
     config.set_main_option("script_location", str(BACKEND_DIR / "alembic"))
     config.attributes["database_url"] = url
@@ -101,7 +116,7 @@ def run_sql(url: str, sql: str, params: dict | None = None) -> None:
 
 @pytest.fixture(scope="session")
 def anyio_backend() -> str:
-    """Gestiona anyio backend."""
+    """Usa asyncio como backend para las pruebas asíncronas."""
     return "asyncio"
 
 
@@ -122,7 +137,7 @@ def test_db_url() -> str:
 
 @pytest.fixture(scope="session")
 def migrated_db(test_db_url: str) -> Iterator[str]:
-    """Gestiona migrated db."""
+    """Crea la base de prueba, la migra hasta head y la entrega a la sesión de pruebas."""
     config = _alembic_config(test_db_url)
     command.downgrade(config, "base")  # parte de una BD limpia aunque una ejecución previa falle
     command.upgrade(config, "head")
@@ -139,7 +154,7 @@ def db_app(migrated_db: str) -> Iterator[FastAPI]:
 
 @pytest.fixture
 def db_client(db_app: FastAPI) -> Iterator[TestClient]:
-    """Gestiona db client."""
+    """Crea un cliente HTTP conectado a la base migrada."""
     # Abre y libera los recursos declarados en este bloque.
     with TestClient(db_app) as test_client:
         yield test_client

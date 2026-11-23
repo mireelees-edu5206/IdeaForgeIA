@@ -1,4 +1,4 @@
-"""Valida contratos de entrada/salida. Area: administracion.
+"""Define los contratos de entrada y salida de la administración. Area: administracion.
 
 ARCHIVO: backend/app/modules/admin/schemas.py
 

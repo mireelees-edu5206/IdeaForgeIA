@@ -1,4 +1,21 @@
-"""Pruebas de comportamiento para el motor propio de IA (IdeaForgeEngineProvider) y orquestador."""
+"""Pruebas del motor propio de IA (IdeaForgeEngineProvider) y del orquestador.
+
+Area: pruebas.
+
+ARCHIVO: backend/tests/test_ai_providers.py
+
+¿Qué prueba?
+- TF-IDF y similitud coseno ordenan primero los documentos parecidos.
+- El plan de investigación genera preguntas según la idea.
+- La síntesis usa fragmentos reales de búsqueda con citas.
+- La extracción crea hallazgos y entidades a partir de la evidencia.
+- El análisis de negocio se deduce de los hallazgos.
+- El chat calcula inversiones y cita hallazgos; el veredicto estructurado predice inversión.
+- El filtro IQR elimina una cifra mal escrita y no filtra si hay muy pocas cifras.
+- El orquestador registra ambos intentos cuando hay fallback.
+- Los límites de búsqueda conservan el código de error del proveedor.
+- La configuración selecciona el motor propio sin claves externas.
+"""
 
 import asyncio
 import json

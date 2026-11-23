@@ -1,4 +1,4 @@
-"""Marca el paquete y su limite de imports. Area: resultados/evidencia.
+"""Agrupa hallazgos, evidencias y competidores del proyecto. Area: resultados/evidencia.
 
 ARCHIVO: backend/app/modules/findings/__init__.py
 

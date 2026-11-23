@@ -1,4 +1,15 @@
-"""Pruebas de comportamiento para reports."""
+"""Pruebas de informes y veredicto: versiones, fuentes y fallos. Area: pruebas.
+
+ARCHIVO: backend/tests/api/test_reports.py
+
+¿Qué prueba?
+- Un informe exige análisis previo.
+- El veredicto no conserva inversiones sin referencias ni referencias del mapa desconocidas.
+- El informe genera secciones versionadas con fuentes trazables.
+- Un fallo se guarda y se registra en la bitácora.
+- El veredicto final usa las zonas confirmadas y los lugares actuales del mapa.
+- Un informe no es visible para otros usuarios.
+"""
 
 from collections.abc import Sequence
 
@@ -27,12 +38,12 @@ class ReportGeoProvider(GeoProvider):
     """Adaptador que ofrece servicios de informe geografico."""
 
     def __init__(self) -> None:
-        """Gestiona la inicializacion para pruebas."""
+        """Prepara el proveedor geográfico de prueba."""
         self.geocoded: list[str] = []
         self.searches: list[tuple[float, float, int, GeoCategory, str | None]] = []
 
     async def geocode(self, query: str) -> list[GeoPlace]:
-        """Gestiona geocode."""
+        """Devuelve un resultado de geocodificación fijo para las pruebas."""
         self.geocoded.append(query)
         return [
             GeoPlace(
@@ -205,10 +216,10 @@ def test_report_generates_versioned_sections_with_traceable_sources(
 
 
 class ReportFails(FakeProvider):
-    """Representa informe fails."""
+    """Proveedor de prueba que falla durante la generación del informe."""
 
     async def generate_structured(self, messages: Sequence[AIMessage], schema):
-        """Gestiona generate structured."""
+        """Simula que la generación del informe no responde."""
         # Rama condicional: se cumple schema is ReportDraft.
         if schema is ReportDraft:
             raise AIUnavailableError()

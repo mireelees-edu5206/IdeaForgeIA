@@ -1,4 +1,4 @@
-"""Expone endpoints HTTP del dominio. Area: analisis.
+"""Expone los endpoints del análisis de una investigación. Area: analisis.
 
 ARCHIVO: backend/app/modules/analysis/router.py
 

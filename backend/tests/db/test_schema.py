@@ -1,4 +1,20 @@
-"""Pruebas de comportamiento para schema."""
+"""Verifica que PostgreSQL haga cumplir las reglas del esquema. Area: pruebas.
+
+ARCHIVO: backend/tests/db/test_schema.py
+
+¿Qué es?
+Pruebas que intentan romper la base a propósito y comprueban que la rechace: correos duplicados
+sin distinguir mayúsculas, ideas fuera de rango, dos investigaciones activas en un proyecto,
+evidencia de un proyecto ligada a otro, citas sin posición en el texto y hallazgos de IA
+sin investigación.
+
+También comprueban que los modelos y las migraciones coinciden (`compare_metadata`), que las llaves
+primarias son UUIDv7, que `updated_at` lo cambia el trigger, y que borrar una investigación conserva
+el análisis, y que borrar un proyecto conserva los registros de uso de IA.
+
+¿Quién lo usa?
+pytest, con la base migrada de `tests/db/conftest.py`.
+"""
 
 import uuid
 
@@ -18,7 +34,7 @@ IDEA = "Una plataforma que conecta agricultores locales con restaurantes."
 
 
 async def _user(conn: AsyncConnection, email: str = "ana@example.com") -> uuid.UUID:
-    """Gestiona usuario."""
+    """Inserta un usuario de prueba y devuelve su id."""
     result = await conn.execute(
         text(
             "INSERT INTO users (email, password_hash, full_name)"
@@ -30,7 +46,7 @@ async def _user(conn: AsyncConnection, email: str = "ana@example.com") -> uuid.U
 
 
 async def _project(conn: AsyncConnection, user_id: uuid.UUID) -> uuid.UUID:
-    """Gestiona proyecto."""
+    """Inserta un proyecto de prueba y devuelve su id."""
     result = await conn.execute(
         text("INSERT INTO projects (user_id, title, raw_idea) VALUES (:u, 'P', :i) RETURNING id"),
         {"u": user_id, "i": IDEA},
@@ -51,7 +67,7 @@ async def _run(conn: AsyncConnection, project_id: uuid.UUID, status: str = "pend
 
 
 async def _source(conn: AsyncConnection, project_id: uuid.UUID) -> uuid.UUID:
-    """Gestiona fuente."""
+    """Inserta una fuente de prueba y devuelve su id."""
     result = await conn.execute(
         text(
             "INSERT INTO sources (project_id, url, canonical_url, domain)"
@@ -63,7 +79,7 @@ async def _source(conn: AsyncConnection, project_id: uuid.UUID) -> uuid.UUID:
 
 
 async def _expect_integrity_error(conn: AsyncConnection, sql: str, params: dict) -> None:
-    """Gestiona expect integrity error."""
+    """Ejecuta la inserción y comprueba que PostgreSQL la rechace con IntegrityError."""
     # Abre y libera los recursos declarados en este bloque.
     with pytest.raises(IntegrityError):
         # Abre y libera los recursos declarados en este bloque.
@@ -75,7 +91,7 @@ async def test_models_match_migrations(conn: AsyncConnection) -> None:
     """Prueba el escenario: models match migrations."""
 
     def diff(sync_conn):  # type: ignore[no-untyped-def]
-        """Gestiona diff."""
+        """Compara los modelos con las migraciones y devuelve las diferencias."""
         context = MigrationContext.configure(sync_conn, opts={"compare_type": True})
         return compare_metadata(context, Base.metadata)
 

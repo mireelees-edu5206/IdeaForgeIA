@@ -1,5 +1,7 @@
 """Algoritmos del laboratorio administrativo: búsqueda BFS, rutas y selección con presupuesto.
 
+ARCHIVO: backend/app/modules/admin/lab/algorithms.py
+
 Este archivo no conoce la base de datos ni HTTP. Recibe datos ya preparados (listas y números) y
 devuelve resultados. Por eso se puede probar sola, sin levantar el servidor.
 

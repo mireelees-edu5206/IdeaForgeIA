@@ -1,4 +1,4 @@
-"""Marca el paquete y su limite de imports. Area: proyectos.
+"""Agrupa los proyectos y la idea del usuario. Area: proyectos.
 
 ARCHIVO: backend/app/modules/projects/__init__.py
 

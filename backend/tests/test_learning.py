@@ -1,4 +1,16 @@
-"""Pruebas del aprendizaje del motor: árbol de decisión, métricas, compuerta e informe."""
+"""Pruebas del aprendizaje del motor: árbol de decisión, métricas, compuerta e informe.
+
+ARCHIVO: backend/tests/test_learning.py
+
+¿Qué prueba?
+- Gini: cero para etiquetas iguales y medio para una mitad y mitad.
+- El árbol aprende un corte, predice ambos lados y escribe sus reglas.
+- Rechaza parámetros inválidos y datos desalineados.
+- El reparto de datos es repetible, disjunto y cubre todos los ejemplos.
+- Las métricas cuentan la matriz de confusión y no dividen entre cero.
+- La compuerta exige el mínimo de ambas clases; el informe no entrena sin datos suficientes.
+- Con datos claros, el árbol aprende una regla y la evalúa con datos que no vio.
+"""
 
 import random
 

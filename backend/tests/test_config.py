@@ -1,4 +1,14 @@
-"""Pruebas de comportamiento para config."""
+"""Pruebas de la configuración: CORS, secretos y orígenes de proveedores. Area: pruebas.
+
+ARCHIVO: backend/tests/test_config.py
+
+¿Qué prueba?
+- `CORS_ORIGINS` acepta una lista separada por comas.
+- El comodín `*` se rechaza en CORS.
+- Una clave secreta demasiado corta se rechaza.
+- El secreto heredado no es obligatorio si la autenticación heredada está apagada.
+- Los proveedores públicos de geografía exigen orígenes HTTPS.
+"""
 
 import pytest
 from pydantic import ValidationError
